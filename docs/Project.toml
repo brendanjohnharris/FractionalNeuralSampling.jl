@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+FractionalNeuralSampling = "1a146edb-494d-4c3d-929d-e214933c7497"
