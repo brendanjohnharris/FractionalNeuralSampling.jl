@@ -1,2 +1,9 @@
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+Foresight = "c6e1034d-1844-4b96-abf2-c5824a5aa8c3"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StableDistributions = "3756410d-ab6e-41a2-9897-9aa267a7ef31"
+StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
