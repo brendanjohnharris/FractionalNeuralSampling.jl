@@ -13,10 +13,8 @@ struct LevyNoise{inplace,T}
     μ::T
 end
 function LevyNoise{inplace}(α, β=0.0, σ=1 / sqrt(2), μ=0.0) where {inplace}
+    Stable(α, β, σ, μ) # Check values
     LevyNoise{inplace,typeof(α)}(α, β, σ, μ)
-end
-function LevyNoise(args...)
-    LevyNoise{false}(args...)
 end
 function LevyNoise(args...)
     LevyNoise{false}(args...)
@@ -43,6 +41,10 @@ end
     StaticArraysCore.StaticArray
 }
     S(rand(rng, dist(L), size(S)))
+end
+@inline function (L::LevyNoise{false,T})(rng::AbstractRNG,
+    proto::S)::S where {T<:Number,S<:StaticArraysCore.StaticArray}
+    L(rng, S)
 end
 @inline function (L::LevyNoise{false,T})(rng::AbstractRNG,
     proto::Type{T})::T where {T}
