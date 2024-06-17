@@ -1,7 +1,12 @@
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+DiffEqNoiseProcess = "77a26b50-5914-5dd7-bc55-306e6241c503"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 Foresight = "c6e1034d-1844-4b96-abf2-c5824a5aa8c3"
+Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StableDistributions = "3756410d-ab6e-41a2-9897-9aa267a7ef31"
 StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"

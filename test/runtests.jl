@@ -1,3 +1,4 @@
+using CUDA
 using CairoMakie
 using Foresight
 using DifferentialEquations
@@ -7,12 +8,15 @@ using Random
 using Statistics
 using StaticArraysCore
 using Test
+using DiffEqNoiseProcess
 using StableDistributions
+using BenchmarkTools
+using Profile
 set_theme!(foresight(:physics))
 
-@testset "LEVYPROCESS" begin
-    import FractionalNeuralSampling.NoiseProcesses.LEVY_NOISE_DIST
-    DIST = LEVY_NOISE_DIST{false}(2.0, 0.0, 1 / sqrt(2), 0.0)
+@testset "LevyProcess" begin
+    import FractionalNeuralSampling.NoiseProcesses.LevyNoise
+    DIST = LevyNoise{false}(2.0, 0.0, 1 / sqrt(2), 0.0)
     Random.seed!(42)
     rng = Random.default_rng()
     a = DIST(rng)
@@ -31,7 +35,7 @@ set_theme!(foresight(:physics))
     y = DIST(x, nothing, 0.01, nothing, nothing, nothing, rng)
     @test typeof(y) == typeof(x)
 
-    DIST = LEVY_NOISE_DIST{true}(2.0, 0.0, 1 / sqrt(2), 0.0)
+    DIST = LevyNoise{true}(2.0, 0.0, 1 / sqrt(2), 0.0)
     x = zeros(10)
     DIST(rng, x)
     @test all(x .!= 0)
@@ -131,4 +135,53 @@ end
     ax = Axis(f[1, 1])
     [lines!(ax, s.t, s.u) for s in sol]
     display(f)
+end
+
+@testset "Benchmark LevyNoise" begin
+    import FractionalNeuralSampling.NoiseProcesses.LevyNoise
+    import FractionalNeuralSampling.NoiseProcesses.LevyNoise!
+    import DiffEqNoiseProcess.WHITE_NOISE_DIST as W
+    import DiffEqNoiseProcess.INPLACE_WHITE_NOISE_DIST as W!
+    L = LevyNoise(2.0, 0.0, 1 / sqrt(2), 0.0)
+    L! = LevyNoise!(2.0, 0.0, 1 / sqrt(2), 0.0)
+    rng = Random.default_rng()
+
+    X = zeros(100, 100)
+    _L = Stable(2.0, 0.0, 1 / sqrt(2), 0.0)
+    a = @benchmark randn(size(X))
+    c = @benchmark L(rng, X)
+    @test a.memory≈c.memory atol=10
+    @test a.allocs == c.allocs == 2
+
+    a = @benchmark W(X, 0.0, 0.01, 0.0, 0.0, 0.0, rng)
+    b = @benchmark L(X, 0.0, 0.01, 0.0, 0.0, 0.0, rng)
+    c = @benchmark W!(X, 0.0, 0.01, 0.0, 0.0, 0.0, rng)
+    d = @benchmark L!(X, 0.0, 0.01, 0.0, 0.0, 0.0, rng)
+    @test c.allocs == d.allocs == 0
+    @test c.memory≈d.memory atol=10
+    @test a.allocs == b.allocs == 4
+    @test a.memory≈b.memory atol=10
+
+    a = @benchmark rand!(rng, Stable(2.0, 0.0, 1 / sqrt(2), 0.0), X)
+    a = @benchmark L!(rng, X)
+    @test a.allocs == a.memory == 0
+
+    @benchmark Stable(2.0, 0.0, 1 / sqrt(2), 0.0) # * Super cheap
+end
+
+if CUDA.functional(true)
+    @testset "GPU Benchmark" begin
+        function f3!(u0, u, p, t, W)
+            u0[1] = 2u[1] * sin(W[1])
+        end
+        u0 = [1.00]
+        tspan = (0.0, 5.0)
+        L = LevyProcess!(2.0)
+        prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
+        ensemble = EnsembleProblem(prob)
+        @benchmark solve(ensemble, RandomEM(), EnsembleSerial(); trajectories = 5, dt)
+        @test_throws "MethodError" solve(ensemble, RandomEM(),
+                                         EnsembleGPUArray(CUDA.CUDABackend());
+                                         trajectories = 5, dt)
+    end
 end

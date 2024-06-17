@@ -6,6 +6,7 @@
 *.jld2
 *.mat
 *.parquet
+*.pb.gz
 .CondaPkg/
 .vscode
 /docs/Manifest.toml
