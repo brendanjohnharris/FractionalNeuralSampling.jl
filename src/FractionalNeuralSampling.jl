@@ -14,9 +14,11 @@ const AD_BACKEND = eval(Meta.parse(@load_preference("ad_backend",
 include("Probabilities.jl")
 include("NoiseProcesses.jl")
 include("Densities.jl")
+include("Boundaries.jl")
 include("Samplers.jl")
 
 @reexport using .NoiseProcesses
-@reexport using .Samplers
 @reexport using .Densities
+@reexport using .Boundaries
+@reexport using .Samplers
 end

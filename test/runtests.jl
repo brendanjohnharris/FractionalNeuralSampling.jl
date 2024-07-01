@@ -14,11 +14,14 @@ begin
     using StableDistributions
     using BenchmarkTools
     using Profile
+    using LinearAlgebra
     using ForwardDiff
     using LogDensityProblems
     using DifferentiationInterface
     using BenchmarkTools
     using InteractiveUtils
+    using TimeseriesTools
+    import FractionalNeuralSampling: Density
     set_theme!(foresight(:physics))
 end
 
@@ -153,24 +156,68 @@ end
           LogDensityProblems.logdensity_and_gradient(D, 0.1)
 end
 
-@testset "Samplers" begin
-    function langevin_sampler!(du, u, p, t, W)
-        𝜋, (β, γ) = p
-        b = ADgradient(𝜋, x) # b = ∂(log(𝜋(x))
-        x, v = u
-        du[1] = γ * b + β * v + γ^(1 // 2) * W[1] # W is a Wiener process, so α = 2
-        du[2] = β * b
-    end
+@testset "Basic Samplers" begin
+    u0 = [0.01]
+    tspan = (0.0, 1.0)
+    f = (x, y, z, w) -> x
+    S1 = @test_nowarn Sampler(f; u0, tspan)
+    S2 = @test_nowarn Sampler(f, u0, tspan)
+    @test S1.f == S2.f
+    @test typeof(Density(S1)) == typeof(Density(S2))
+end
+@testset "Langevin Sampler" begin
+    u0 = [0.0, 0.0]
+    tspan = (0.0, 100.0)
+    S = FNS.LangevinSampler(; u0, tspan, β=1.0, γ=10.0)
+    D = FNS.Density(Normal(0, 1))
+    a = @benchmark Density($S) # Can this be made faster?
+    @test a.allocs == a.memory == 0
+    @test Density(S).distribution == D.distribution
+    @test Density(S).doAd == D.doAd
+    sol = @test_nowarn solve(S; dt=0.0001, saveat=0.01)
+    x = first.(sol.u)
+    plot(x)
+    density(x)
+    @test x == trajectory(S)
+end
+@testset "Box boundaries" begin
+    box =
 
-    u0 = [0.01, 0]
-    tspan = (0.0, 5000.0)
+    # u0 = [0.0, 0.0]
+    # tspan = (0.0, 100.0)
+    # S = FNS.LangevinSampler(; u0, tspan, β=1.0, γ=10.0)
+    # D = FNS.Density(Normal(0, 1))
+    # a = @benchmark Density($S) # Can this be made faster?
+    # @test a.allocs == a.memory == 0
+    # @test Density(S).distribution == D.distribution
+    # @test Density(S).doAd == D.doAd
+    # sol = @test_nowarn solve(S; dt=0.0001, saveat=0.01)
+    # x = first.(sol.u)
+    # plot(x)
+    # density(x)
+    # @test x == trajectory(S)
+end
 
-    function b(x)
-        ∂(x -> log(π(x)), x) # propto -x for a normal distribution
-        # -x
-    end
-    p = (0.5, 1.0, b)
-    prob = RODEProblem(diffusion_sampler!, u0, tspan, p; rand_prototype=[0.0])
+@testset "Oscillations under flat potential?" begin
+    u0 = [0.0, 0.0]
+    tspan = (0.0, 100.0)
+
+    # * Quadratic potential (gaussian pdf)
+    𝜋 = Normal(0.0, 1.0) |> Density
+    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β=1.0, γ=0.1)
+    sol = solve(S; dt=0.0001, saveat=0.01)
+    x = Timeseries(sol.t, first.(sol.u))
+    plot(x) # Oscillating? Yes.
+    hill(collect(x))
+
+    # * Flat potential (uniform pdf... kind of. Discontinuity sucks. Add callback...boundary conditions...to handle this)
+    𝜋 = Uniform(-0.5, 0.5) |> Density
+    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β=1.0, γ=0.1, callbacks=...)
+    @test distribution(Density(S)) == distribution(𝜋)
+    sol = solve(S; dt=0.0001, saveat=0.01)
+    x = Timeseries(sol.t, first.(sol.u))
+    plot(x) # Oscillating? No; divergent. Can't really handle delta gradient
+    hill(collect(x))
 end
 
 @testset "LevyNoise" begin
@@ -212,6 +259,8 @@ end
     DIST(z, nothing, 0.01, nothing, nothing, nothing, rng)
     @test all(z .* 0.01 .^ (1 / DIST.α) .== y)
 end
+
+@testset "Test that adaptive stepping is disabled for LevySamplers" begin end
 
 @testset "FractionalNeuralSampling.jl" begin
     include("fractional_sampling.jl")
