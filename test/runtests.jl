@@ -1,20 +1,179 @@
-using CUDA
-using CairoMakie
-using Foresight
-using DifferentialEquations
-using FractionalNeuralSampling
-import FractionalNeuralSampling as FNS
-using Random
-using Statistics
-using StaticArraysCore
-using Test
-using DiffEqNoiseProcess
-using StableDistributions
-using BenchmarkTools
-using Profile
-set_theme!(foresight(:physics))
+begin
+    using CUDA
+    using CairoMakie
+    using Foresight
+    using DifferentialEquations
+    using FractionalNeuralSampling
+    import FractionalNeuralSampling as FNS
+    using Random
+    using Statistics
+    using StaticArraysCore
+    using Test
+    using Distributions
+    using DiffEqNoiseProcess
+    using StableDistributions
+    using BenchmarkTools
+    using Profile
+    using ForwardDiff
+    using LogDensityProblems
+    using DifferentiationInterface
+    using BenchmarkTools
+    using InteractiveUtils
+    set_theme!(foresight(:physics))
+end
 
-@testset "LevyProcess" begin
+@testset "Autodiff" begin
+    D = Normal(0, 0.5)
+    f = x -> logpdf(D, only(x))
+    ForwardDiff.gradient(f, [0.1])
+    backend = AutoForwardDiff()
+    @test gradlogdensity(FNS.Density{true}(D), 0.1:0.1:3) == gradlogpdf.([D], 0.1:0.1:3)
+    a = @benchmark gradient($f, $backend, 0.1)
+    b = @benchmark ForwardDiff.gradient($f, [0.1])
+    c = @benchmark gradlogpdf($D, 0.1)
+    @test a.allocs < 15
+    @test b.allocs < 10
+    @test c.allocs == c.memory == 0
+    a = @benchmark gradlogdensity(FNS.Density{false}($D), 0.1)
+    @test a.allocs == c.memory == 0
+    b = @benchmark gradlogdensity(FNS.Density{true}($D), 0.1)
+    @test b.allocs == b.memory == 0
+    cl = @code_lowered FNS.Densities._gradlogdensity(FNS.Density{true}(D), 0.1)
+    @test contains(string(cl.code), "AD_BACKEND")
+end
+@testset "Univariate DistributionDensity" begin
+    d = Normal(0.0, 0.5)
+    D = @test_nowarn FNS.Density(d)
+    @test D isa FNS.Densities.UnivariateDistributionDensity
+    @test D.doAd == false
+    @test D(0.0) == 2 / sqrt(2π)
+    @test D([0.0]) == 2 / sqrt(2π)
+    @test LogDensityProblems.dimension(D) == 1
+    @test all(LogDensityProblems.logdensity.([D], -1:0.1:1) .≈ log.(D.(-1:0.1:1)) .≈ logpdf(D, -1:0.1:1))
+    @inferred LogDensityProblems.logdensity(D, 0.0)
+    @inferred LogDensityProblems.logdensity(D, 0)
+    lines(-2:0.1:2, D.(-2:0.1:2))
+    lines(-2:0.01:2, FNS.Densities.potential(D).(-2:0.01:2))
+    @inferred FNS.Densities.gradlogdensity(D, 0.01)
+    @inferred FNS.Densities.gradlogdensity(D, 0.01:0.01:5)
+    @test FNS.Densities.gradlogdensity(D, 0.1:0.1:5) == gradlogpdf.([D], 0.1:0.1:5)
+
+    d = Uniform(-0.5, 0.5)
+    D = @test_nowarn FNS.Density(d)
+    @test D(0.0) == 1
+    @test LogDensityProblems.dimension(D) == 1
+    @test all(LogDensityProblems.logdensity.([D], -1:0.1:1) .≈ log.(D.(-1:0.1:1)))
+    @inferred LogDensityProblems.logdensity(D, 0.0)
+    @inferred LogDensityProblems.logdensity(D, -0.6)
+    @inferred LogDensityProblems.logdensity_and_gradient(D, -0.6)
+    @inferred LogDensityProblems.logdensity_and_gradient(D, [-0.6])
+    @inferred LogDensityProblems.logdensity_and_gradient(FNS.Density{true}(d), 0.5)
+
+    if isinteractive()
+        @benchmark FNS.Densities.gradlogdensity($D).(-1:0.01:1)
+        @benchmark LogDensityProblems.logdensity_and_gradient.([$D], -1:0.01:1)
+    end
+    lines(-2:0.1:2, D.(-2:0.1:2))
+    lines(-2:0.01:2, FNS.Densities.potential(D).(-2:0.01:2))
+    lines(-2:0.01:2, FNS.Densities.gradlogdensity(D).(-2:0.01:2))
+
+    D = @test_nowarn FNS.Density(Normal(0.0f0, 0.5f0))
+    @test LogDensityProblems.logdensity(D, 0.0f0) isa Float32
+    @test FNS.Densities.gradlogdensity(D, 0.0f0) isa Float32
+end
+
+@testset "Multivariate DistributionDensity" begin
+    N = 3
+    μs = randn(N)
+    x = randn(N, 100)
+    Σ = x * x'
+    d = MvNormal(μs, Σ)
+    D = @test_nowarn FNS.Density(d)
+    @test D isa FNS.Densities.MultivariateDistributionDensity
+    @test D.doAd == false
+    p = randn(N)
+    @test logdensity(D)(p) == logpdf(d, p)
+    ps = eachcol(randn(N, 100))
+    @test logdensity(D)(ps) == logpdf.([d], ps)
+    @test gradlogdensity(D)(p) == gradlogpdf(d, p)
+    @test gradlogdensity(D)(ps) == gradlogpdf.([d], ps)
+
+    # * Ad
+    D = @test_nowarn FNS.Density{true}(MvNormal(μs, Σ))
+    @test D.doAd == true
+    @test LogDensityProblems.logdensity(D, p) isa Float64
+    @test logdensity(D)(p) == logpdf(d, p)
+    @test logdensity(D)(ps) == logpdf.([d], ps)
+    @test gradlogdensity(D)(p) ≈ gradlogpdf(d, p)
+end
+
+@testset "Mixture DistributionDensity" begin
+    Nd = 3
+    N = 10
+    μs = [randn(Nd) for _ in 1:N]
+    Σs = map(1:N) do i
+        x = randn(Nd, 100)
+        x * x'
+    end
+    d = MixtureModel([MvNormal(μs[i], Σs[i]) for i in 1:N])
+    D = @test_nowarn FNS.Density(d)
+    @test D isa FNS.Densities.AdDistributionDensity
+    p = rand(distribution(D))
+    @test logdensity(D)(p) == logpdf(d, p)
+    ps = eachcol(randn(Nd, 100))
+    @test logdensity(D)(ps) == logpdf.([d], ps)
+    @test gradlogdensity(D)(p) isa Vector{Float64}
+
+    d = MixtureModel([Normal(0, 1), Normal(0, 0.5)])
+    D = @test_nowarn FNS.Density(d)
+    @test D.doAd == true
+    @test gradlogdensity(D)(0) == 0.0
+end
+
+@testset "AdDistributionDensity" begin
+    D = FNS.Densities.Density{true}(Normal(0.0, 0.5))
+    x = zeros(LogDensityProblems.dimension(D)) # ℓ is your log density
+    @inferred LogDensityProblems.logdensity(D, x) # check inference, also see @code_warntype
+    ds = FNS.Densities.distribution(D)
+    g = gradlogpdf(ds, -0.1)
+    @test g == FNS.Densities.gradlogdensity(D, -0.1)
+    if isinteractive()
+        @benchmark gradlogpdf($ds, -0.1)
+        @benchmark FNS.Densities.gradlogdensity($D, -0.1)
+        @benchmark pdf($ds, $x) # check performance and allocations
+        @benchmark ($D)($x) # check performance and allocations
+        @benchmark LogDensityProblems.logdensity($D, $x) # check performance and allocations
+    end
+    @test only(LogDensityProblems.logdensity(D, [0.1])) ==
+          LogDensityProblems.logdensity(D, 0.1)
+    @test_nowarn Distributions.gradlogpdf(D, 0.1)
+    @inferred gradlogdensity(D, [0.1])
+    @test gradlogdensity(D, [0.1]) == [-0.4]
+    @test only.(LogDensityProblems.logdensity_and_gradient(D, [0.1])) ==
+          LogDensityProblems.logdensity_and_gradient(D, 0.1)
+end
+
+@testset "Samplers" begin
+    function langevin_sampler!(du, u, p, t, W)
+        𝜋, (β, γ) = p
+        b = ADgradient(𝜋, x) # b = ∂(log(𝜋(x))
+        x, v = u
+        du[1] = γ * b + β * v + γ^(1 // 2) * W[1] # W is a Wiener process, so α = 2
+        du[2] = β * b
+    end
+
+    u0 = [0.01, 0]
+    tspan = (0.0, 5000.0)
+
+    function b(x)
+        ∂(x -> log(π(x)), x) # propto -x for a normal distribution
+        # -x
+    end
+    p = (0.5, 1.0, b)
+    prob = RODEProblem(diffusion_sampler!, u0, tspan, p; rand_prototype=[0.0])
+end
+
+@testset "LevyNoise" begin
     import FractionalNeuralSampling.NoiseProcesses.LevyNoise
     DIST = LevyNoise{false}(2.0, 0.0, 1 / sqrt(2), 0.0)
     Random.seed!(42)
@@ -183,7 +342,8 @@ if CUDA.functional(true)
         L = LevyProcess!(2.0)
         prob = RODEProblem{true}(f3!, u0, tspan; noise=L)
         ensemble = EnsembleProblem(prob)
-        @benchmark solve($ensemble, RandomEM(), EnsembleSerial(); trajectories=5, dt=$dt)
+        @test_nowarn @benchmark solve($ensemble, RandomEM(), EnsembleSerial(); trajectories=5,
+            dt=$dt)
         @test_throws "MethodError" solve(ensemble, RandomEM(),
             EnsembleGPUArray(CUDA.CUDABackend());
             trajectories=5, dt)
