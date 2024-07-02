@@ -206,11 +206,11 @@ end
     # 𝜋 = FNS.Density(Normal(0, 0.25))
     𝜋 = FNS.Density(Uniform(-0.5, 0.5))
     S = FNS.LangevinSampler(; u0, tspan, β = 0.0, γ = 0.1, boundaries = box(), 𝜋)
-    sol = @test_nowarn solve(S; dt = 0.0001, saveat = 0.01)
+    sol = @test_nowarn solve(S, EM(); dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
     minimum(x)
-    plot(sol.t, x) # !! This is too smooth. Why are we integraitng the noise process????
+    lines(sol.t, x; linewidth = 3) # !! This is too smooth. Why are we integraitng the noise process????
     plot(sol.t, y)
     # density(x)
     # @test x == trajectory(S)
