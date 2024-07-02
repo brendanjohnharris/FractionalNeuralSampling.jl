@@ -16,7 +16,7 @@ function diffusion_sampler!(du, u, p, t, W)
 end
 
 u0 = [0.01, 0]
-tspan = (0.0, 5000.0)
+tspan = (0.0, 500.0)
 
 π(x; k = 6) = exp(-(x)^k) / (2 * gamma((k + 1) / k))
 # π(x) = (exp(-(x - 3)^2) + exp(-(x + 3)^2)) ./ sqrt(4 * pi)

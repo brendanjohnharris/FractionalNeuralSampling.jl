@@ -6,12 +6,14 @@ module Samplers
 using SciMLBase
 using DiffEqNoiseProcess
 using SciMLBase
+using StaticArrays
 using LogDensityProblems
 using Distributions
 using LinearAlgebra
 using ..Densities
 import ..Densities.Density
-import SciMLBase: AbstractRODEProblem, RODEFunction, NullParameters, prepare_initial_state, promote_tspan, warn_paramtype, @add_kwonly
+import SciMLBase: AbstractRODEProblem, RODEFunction, NullParameters, prepare_initial_state,
+    promote_tspan, warn_paramtype, @add_kwonly
 export AbstractSampler, Sampler, LangevinSampler, parameters
 
 abstract type AbstractSampler{uType,tType,isinplace,ND} <:
@@ -32,20 +34,21 @@ parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
 
 function default_distribution(u0::AbstractVector)
-    if length(u0) < 3
+    if length(u0) == 1
         return Normal(0.0, 1.0)
     else
-        MvNormal(zeros(length(u0) - 1), I(length(u0) - 1))
+        MvNormal(zeros(length(u0)), I(length(u0)))
     end
 end
 function default_distribution(u0::Real)
     Normal(0.0, 1.0)
 end
-function Sampler{iip}(f::RODEFunction{iip}, u0, tspan,
+function Sampler{iip}(f::RODEFunction{iip}, u0::AbstractMatrix, tspan,
     p=NullParameters(),
-    𝜋=Density(default_distribution(u0)); # Assume momentum term
-    rand_prototype=nothing,
-    noise=nothing, seed=UInt64(0),
+    𝜋=Density(default_distribution(first(u0))); # Assume momentum term
+    rand_prototype=zeros(size(u0, 1)),
+    noise=WienerProcess(first(tspan), zeros(length(rand_prototype))),
+    seed=UInt64(0),
     kwargs...) where {iip}
     _u0 = prepare_initial_state(u0)
     _tspan = promote_tspan(tspan)
@@ -56,7 +59,8 @@ function Sampler{iip}(f::RODEFunction{iip}, u0, tspan,
         typeof(rand_prototype),typeof(𝜋)}(f, _u0, _tspan, (p, 𝜋), noise, kwargs,
         rand_prototype, seed)
 end
-function Sampler{iip}(f::RODEFunction{iip}; u0, tspan, p=NullParameters(), 𝜋=Density(default_distribution(u0)), kwargs...) where {iip}
+function Sampler{iip}(f::RODEFunction{iip}; u0, tspan, p=NullParameters(),
+    𝜋=Density(default_distribution(first(u0))), kwargs...) where {iip}
     Sampler{iip}(f, u0, tspan, p, 𝜋; kwargs...)
 end
 function Sampler{iip}(; f, kwargs...) where {iip}
@@ -70,18 +74,21 @@ function Sampler(f, args...; kwargs...)
     Sampler(RODEFunction{isinplace(f, 5)}(f), args...; kwargs...)
 end
 
-
-
-
 # * Langevin sampler (Brownian motion)
 function langevin_sampler!(du, u, p, t, W)
     (β, γ), 𝜋 = p
-    x, v = u
+    x, v = eachcol(u)
     b = gradlogdensity(𝜋)(x) # ? Should this be in-place
-    du[1] = γ * b + β * v + γ^(1 // 2) * W[1] # W is a Wiener process, so α = 2
-    du[2] = β * b
+    du[:, 1] .= γ .* b .+ β .* v .+ γ^(1 // 2) .* W[eachindex(x)] # W is a Wiener process, so α = 2
+    du[:, 2] .= β .* b
 end
 
-LangevinSampler(; β, γ, u0=[0.0, 0.0], rand_prototype=[zero(eltype(u0))], kwargs...) = Sampler(langevin_sampler!; kwargs..., u0, rand_prototype, p=(β, γ))
+function LangevinSampler(; tspan, β, γ, u0=[0.0; 0.0], boundaries=nothing,
+    rand_prototype=zeros(size(u0, 1)),
+    noise=WienerProcess(first(tspan), zeros(length(rand_prototype))),
+    kwargs...)
+    Sampler(langevin_sampler!; callback=boundaries, kwargs..., u0, rand_prototype, noise,
+        tspan, p=(β, γ))
+end
 
 end # module

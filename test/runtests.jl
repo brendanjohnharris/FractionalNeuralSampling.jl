@@ -52,7 +52,8 @@ end
     @test D(0.0) == 2 / sqrt(2π)
     @test D([0.0]) == 2 / sqrt(2π)
     @test LogDensityProblems.dimension(D) == 1
-    @test all(LogDensityProblems.logdensity.([D], -1:0.1:1) .≈ log.(D.(-1:0.1:1)) .≈ logpdf(D, -1:0.1:1))
+    @test all(LogDensityProblems.logdensity.([D], -1:0.1:1) .≈ log.(D.(-1:0.1:1)) .≈
+              logpdf(D, -1:0.1:1))
     @inferred LogDensityProblems.logdensity(D, 0.0)
     @inferred LogDensityProblems.logdensity(D, 0)
     lines(-2:0.1:2, D.(-2:0.1:2))
@@ -168,32 +169,49 @@ end
 @testset "Langevin Sampler" begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 100.0)
-    S = FNS.LangevinSampler(; u0, tspan, β=1.0, γ=10.0)
+    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 10.0)
     D = FNS.Density(Normal(0, 1))
     a = @benchmark Density($S) # Can this be made faster?
     @test a.allocs == a.memory == 0
     @test Density(S).distribution == D.distribution
     @test Density(S).doAd == D.doAd
-    sol = @test_nowarn solve(S; dt=0.0001, saveat=0.01)
+    sol = @test_nowarn solve(S; dt = 0.0001, saveat = 0.01)
     x = first.(sol.u)
     plot(x)
     density(x)
     @test x == trajectory(S)
 end
 @testset "Box boundaries" begin
-    box =
+    box = ReflectingBox(-1 .. 1)
+    # box = FNS.NoBoundary()
 
-    # u0 = [0.0, 0.0]
-    # tspan = (0.0, 100.0)
-    # S = FNS.LangevinSampler(; u0, tspan, β=1.0, γ=10.0)
-    # D = FNS.Density(Normal(0, 1))
-    # a = @benchmark Density($S) # Can this be made faster?
-    # @test a.allocs == a.memory == 0
-    # @test Density(S).distribution == D.distribution
-    # @test Density(S).doAd == D.doAd
-    # sol = @test_nowarn solve(S; dt=0.0001, saveat=0.01)
-    # x = first.(sol.u)
-    # plot(x)
+    u0 = [0.0, 1.0]
+    tspan = (0.0, 10.0)
+    # 𝜋 = FNS.Density(Normal(0, 0.25))
+    𝜋 = FNS.Density(Uniform(-0.5, 0.5))
+    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 0.25, boundaries = box(), 𝜋)
+    sol = @test_nowarn solve(S; dt = 0.0001, saveat = 0.01)
+    x = first.(sol.u)
+    y = last.(sol.u)
+    minimum(x)
+    plot(sol.t, x)
+    plot(sol.t, y)
+    # density(x)
+    # @test x == trajectory(S)
+
+    box = FNS.PeriodicBox(-1 .. 1)
+    box = FNS.NoBoundary()
+    u0 = [0.0 0.0]
+    tspan = (0.0, 100.0)
+    # 𝜋 = FNS.Density(Normal(0, 0.25))
+    𝜋 = FNS.Density(Uniform(-0.5, 0.5))
+    S = FNS.LangevinSampler(; u0, tspan, β = 0.0, γ = 0.1, boundaries = box(), 𝜋)
+    sol = @test_nowarn solve(S; dt = 0.0001, saveat = 0.01)
+    x = first.(sol.u)
+    y = last.(sol.u)
+    minimum(x)
+    plot(sol.t, x) # !! This is too smooth. Why are we integraitng the noise process????
+    plot(sol.t, y)
     # density(x)
     # @test x == trajectory(S)
 end
@@ -204,17 +222,17 @@ end
 
     # * Quadratic potential (gaussian pdf)
     𝜋 = Normal(0.0, 1.0) |> Density
-    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β=1.0, γ=0.1)
-    sol = solve(S; dt=0.0001, saveat=0.01)
+    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1)
+    sol = solve(S; dt = 0.0001, saveat = 0.01)
     x = Timeseries(sol.t, first.(sol.u))
     plot(x) # Oscillating? Yes.
     hill(collect(x))
 
     # * Flat potential (uniform pdf... kind of. Discontinuity sucks. Add callback...boundary conditions...to handle this)
     𝜋 = Uniform(-0.5, 0.5) |> Density
-    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β=1.0, γ=0.1, callbacks=...)
+    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1, callbacks = ...)
     @test distribution(Density(S)) == distribution(𝜋)
-    sol = solve(S; dt=0.0001, saveat=0.01)
+    sol = solve(S; dt = 0.0001, saveat = 0.01)
     x = Timeseries(sol.t, first.(sol.u))
     plot(x) # Oscillating? No; divergent. Can't really handle delta gradient
     hill(collect(x))
@@ -238,7 +256,7 @@ end
     @test DIST(rng, randn(10, 10)) isa Matrix
     @test DIST(rng, Float64) isa Float64
     @test_throws MethodError DIST(rng, Float32)  # Method error on type mismatch
-    x = StaticArraysCore.SMatrix{3,3}(zeros(3, 3))
+    x = StaticArraysCore.SMatrix{3, 3}(zeros(3, 3))
     Random.seed!(42)
     y = DIST(x, nothing, 0.01, nothing, nothing, nothing, rng)
     @test typeof(y) == typeof(x)
@@ -279,8 +297,8 @@ end
         accept_step!(W, dt, u, p)
     end
     Random.seed!(rng, 42)
-    prob = NoiseProblem(LevyProcess(2.0; rng, reseed=false), (0.0, 1.0))
-    sol = solve(prob; dt=0.1)
+    prob = NoiseProblem(LevyProcess(2.0; rng, reseed = false), (0.0, 1.0))
+    sol = solve(prob; dt = 0.1)
 
     function f3(u, p, t, W)
         2u * sin(W)
@@ -288,8 +306,8 @@ end
     Random.seed!(rng, 42)
     u0 = 1.00
     tspan = (0.0, 5.0)
-    prob = RODEProblem(f3, u0, tspan; noise=LevyProcess(2.0))
-    @time sol = solve(prob, RandomEM(), dt=1 / 100)
+    prob = RODEProblem(f3, u0, tspan; noise = LevyProcess(2.0))
+    @time sol = solve(prob, RandomEM(), dt = 1 / 100)
     plot(sol)
 
     function f4(du, u, p, t, W)
@@ -298,8 +316,8 @@ end
     end
     u0 = [1.00; 1.00]
     tspan = (0.0, 5.0)
-    prob = RODEProblem(f4, u0, tspan; noise=LevyProcess(2.0))
-    @test_throws "BoundsError" solve(prob, RandomEM(), dt=1 / 100)
+    prob = RODEProblem(f4, u0, tspan; noise = LevyProcess(2.0))
+    @test_throws "BoundsError" solve(prob, RandomEM(), dt = 1 / 100)
     @test_throws "DomainError" NoiseProblem(LevyProcess(-1.0), (0.0, 1.0))
 
     function f3!(u0, u, p, t, W)
@@ -308,8 +326,8 @@ end
     u0 = [1.00]
     tspan = (0.0, 5.0)
     L = LevyProcess!(2.0)
-    prob = RODEProblem{true}(f3!, u0, tspan; noise=L)
-    @time solve(prob, RandomEM(); dt=1 / 100)
+    prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
+    @time solve(prob, RandomEM(); dt = 1 / 100)
 end
 
 @testset "Brownian Noise" begin
@@ -318,8 +336,8 @@ end
     ensemble = EnsembleProblem(prob)
     sol = solve(prob, RandomEM(); dt)
 
-    lines(sol.t, sol.u; linewidth=2)
-    @test std(diff(sol.u)) ≈ sqrt(dt) rtol = 1e-2
+    lines(sol.t, sol.u; linewidth = 2)
+    @test std(diff(sol.u))≈sqrt(dt) rtol=1e-2
 end
 
 @testset "Levy Noise" begin
@@ -329,7 +347,7 @@ end
     sol = solve(prob, RandomEM(); dt)
 
     f = fit(Stable, diff(sol.u) ./ (dt^(1 / 1.5)))
-    @test L.dist.α ≈ f.α atol = 1e-2
+    @test L.dist.α≈f.α atol=1e-2
 end
 
 @testset "Ensemble" begin
@@ -338,9 +356,9 @@ end
     dt = 1e-3
     prob = NoiseProblem(L, (0.0, 1.0))
     ensemble = EnsembleProblem(prob)
-    sol = @test_nowarn solve(ensemble, RandomEM(), EnsembleSerial(); trajectories=5, dt)
-    @test_nowarn solve(ensemble, RandomEM(), EnsembleDistributed(); trajectories=5, dt)
-    @test_nowarn solve(ensemble, RandomEM(), EnsembleThreads(); trajectories=5, dt)
+    sol = @test_nowarn solve(ensemble, RandomEM(), EnsembleSerial(); trajectories = 5, dt)
+    @test_nowarn solve(ensemble, RandomEM(), EnsembleDistributed(); trajectories = 5, dt)
+    @test_nowarn solve(ensemble, RandomEM(), EnsembleThreads(); trajectories = 5, dt)
     f = Figure()
     ax = Axis(f[1, 1])
     [lines!(ax, s.t, s.u) for s in sol]
@@ -360,7 +378,7 @@ end
     _L = Stable(2.0, 0.0, 1 / sqrt(2), 0.0)
     a = @benchmark randn(size($X))
     c = @benchmark $L($rng, $X)
-    @test a.memory ≈ c.memory atol = 10
+    @test a.memory≈c.memory atol=10
     @test a.allocs == c.allocs == 2
 
     a = @benchmark $W($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
@@ -368,9 +386,9 @@ end
     c = @benchmark $W!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
     d = @benchmark $L!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
     @test c.allocs == d.allocs == 0
-    @test c.memory ≈ d.memory atol = 10
+    @test c.memory≈d.memory atol=10
     @test a.allocs == b.allocs == 4
-    @test a.memory ≈ b.memory atol = 10
+    @test a.memory≈b.memory atol=10
 
     a = @benchmark rand!($rng, Stable(2.0, 0.0, 1 / sqrt(2), 0.0), $X)
     a = @benchmark $L!($rng, $X)
@@ -389,12 +407,13 @@ if CUDA.functional(true)
         tspan = (0.0, 5.0)
         dt = 0.01
         L = LevyProcess!(2.0)
-        prob = RODEProblem{true}(f3!, u0, tspan; noise=L)
+        prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
         ensemble = EnsembleProblem(prob)
-        @test_nowarn @benchmark solve($ensemble, RandomEM(), EnsembleSerial(); trajectories=5,
-            dt=$dt)
+        @test_nowarn @benchmark solve($ensemble, RandomEM(), EnsembleSerial();
+                                      trajectories = 5,
+                                      dt = $dt)
         @test_throws "MethodError" solve(ensemble, RandomEM(),
-            EnsembleGPUArray(CUDA.CUDABackend());
-            trajectories=5, dt)
+                                         EnsembleGPUArray(CUDA.CUDABackend());
+                                         trajectories = 5, dt)
     end
 end
