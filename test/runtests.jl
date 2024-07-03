@@ -182,38 +182,65 @@ end
     @test x == trajectory(S)
 end
 @testset "Box boundaries" begin
-    box = ReflectingBox(-1 .. 1)
+    box = ReflectingBox(-5 .. 5)
     # box = FNS.NoBoundary()
-
-    u0 = [0.0, 1.0]
-    tspan = (0.0, 10.0)
+    u0 = [0.0 1.0]
+    tspan = (0.0, 1000.0) # Must be a matrix; col 1 is position, col2 is momentum
     # 𝜋 = FNS.Density(Normal(0, 0.25))
-    𝜋 = FNS.Density(Uniform(-0.5, 0.5))
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 0.25, boundaries = box(), 𝜋)
-    sol = @test_nowarn solve(S; dt = 0.0001, saveat = 0.01)
+    𝜋 = FNS.Density(Uniform(-5, 5)) # No potential here is pathalogical; no transient to momentum equilibrium
+    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 0.1, boundaries = box(), 𝜋)
+    sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.1)
     x = first.(sol.u)
     y = last.(sol.u)
-    minimum(x)
-    plot(sol.t, x)
-    plot(sol.t, y)
-    # density(x)
+    @test minimum(x) ≥ -5
+    @test maximum(x) ≤ 5
+    lines(sol.t, x)
+    lines(sol.t, y) # Momentum is constant?
+    density(x) # The boundaries interfere with the density if they are too close
     # @test x == trajectory(S)
 
-    box = FNS.PeriodicBox(-1 .. 1)
-    box = FNS.NoBoundary()
+    box = FNS.ReflectingBox(-1 .. 1)
     u0 = [0.0 0.0]
     tspan = (0.0, 100.0)
-    # 𝜋 = FNS.Density(Normal(0, 0.25))
-    𝜋 = FNS.Density(Uniform(-0.5, 0.5))
-    S = FNS.LangevinSampler(; u0, tspan, β = 0.0, γ = 0.1, boundaries = box(), 𝜋)
-    sol = @test_nowarn solve(S, EM(); dt = 0.001, saveat = 0.01)
+    𝜋 = FNS.Density(Normal(0, 1))
+    S = FNS.LangevinSampler(; u0, tspan, β = 0.5, γ = 0.1, boundaries = box(), 𝜋)
+    sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
     minimum(x)
-    lines(sol.t, x; linewidth = 3) # !! This is too smooth. Why are we integraitng the noise process????
-    plot(sol.t, y)
-    # density(x)
-    # @test x == trajectory(S)
+    lines(sol.t, x; linewidth = 3)
+    lines(sol.t, y, linewidth = 3)
+    density(x)
+    @test minimum(x) ≥ -1 - 0.02
+    @test maximum(x) ≤ 1 + 0.02
+
+    box = FNS.PeriodicBox(-1 .. 1)
+    u0 = [0.0 1.0]
+    tspan = (0.0, 10.0)
+    𝜋 = FNS.Density(Normal(0, 1))
+    S = FNS.LangevinSampler(; u0, tspan, β = 1, γ = 0.1, boundaries = box(), 𝜋)
+    sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
+    x = first.(sol.u)
+    y = last.(sol.u)
+    minimum(x)
+    lines(sol.t, x; linewidth = 3)
+    lines(sol.t, y, linewidth = 3)
+    density(x)
+    @test minimum(x) ≥ -1 - 0.02
+    @test maximum(x) ≤ 1 + 0.02
+
+    box = NoBoundary()
+    u0 = [0.0f0 1.0f0]
+    tspan = (0.0f0, 10000.0f0)
+    𝜋 = FNS.Density{true}(Laplace(0.0f0, 1.0f0))
+    S = FNS.LangevinSampler(; u0, tspan, β = 1.0f0, γ = 1.0f0, boundaries = box(), 𝜋)
+    # @benchmark solve(S; dt = 0.001, saveat = 0.01)
+    sol = @test_nowarn solve(S; dt = 0.001f0, saveat = 0.1f0)
+    x = first.(sol.u)
+    density(x)
+    f = fit(Laplace, x)
+    @test f.μ≈0.0f0 atol=1e-3
+    @test f.θ≈0.5f0 atol=1e-1
 end
 
 @testset "Oscillations under flat potential?" begin

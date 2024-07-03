@@ -7,25 +7,29 @@ using SciMLBase
 using DiffEqNoiseProcess
 using SciMLBase
 using StaticArrays
+using StochasticDiffEq
 using LogDensityProblems
 using Distributions
 using LinearAlgebra
 using ..Densities
 import ..Densities.Density
-import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters, prepare_initial_state,
-    promote_tspan, warn_paramtype, @add_kwonly
+import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
+                  prepare_initial_state,
+                  promote_tspan, warn_paramtype, @add_kwonly
 export AbstractSampler, Sampler, LangevinSampler, parameters
 
-abstract type AbstractSampler{uType,tType,isinplace,ND} <:
-              AbstractSDEProblem{uType,tType,isinplace,ND} end
-
-mutable struct Sampler{uType,tType,isinplace,P,NP,F,G,K,ND,D} <:
-               AbstractSampler{uType,tType,isinplace,ND}
+abstract type AbstractSampler{uType, tType, isinplace, ND} <:
+              AbstractSDEProblem{uType, tType, isinplace, ND} end
+function SciMLBase.solve(P::AbstractSampler; kwargs...)
+    SciMLBase.solve(P, EM(); kwargs...)
+end
+mutable struct Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D} <:
+               AbstractSampler{uType, tType, isinplace, ND}
     f::F
     g::G
     u0::uType
     tspan::tType
-    p::Tuple{P,D} # = (params, 𝜋)
+    p::Tuple{P, D} # = (params, 𝜋)
     noise::NP
     kwargs::K
     noise_rate_prototype::ND
@@ -45,30 +49,31 @@ function default_distribution(u0::Real)
     Normal(0.0, 1.0)
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}, u0::AbstractMatrix, tspan,
-    p=NullParameters(),
-    𝜋=Density(default_distribution(first(u0))); # Assume momentum term
-    noise_rate_prototype=nothing,
-    noise=nothing,
-    seed=UInt64(0),
-    kwargs...) where {iip}
+                      p = NullParameters(),
+                      𝜋 = Density(default_distribution(first(u0))); # Assume momentum term
+                      noise_rate_prototype = nothing,
+                      noise = nothing,
+                      seed = UInt64(0),
+                      kwargs...) where {iip}
     _u0 = prepare_initial_state(u0)
     _tspan = promote_tspan(tspan)
     warn_paramtype(p)
-    Sampler{typeof(_u0),typeof(_tspan),
-        isinplace(f),typeof(p),
-        typeof(noise),typeof(f),typeof(f.g),typeof(kwargs),
-        typeof(noise_rate_prototype),typeof(𝜋)}(f, f.g, _u0, _tspan, (p, 𝜋), noise, kwargs,
-        noise_rate_prototype, seed)
+    Sampler{typeof(_u0), typeof(_tspan),
+            isinplace(f), typeof(p),
+            typeof(noise), typeof(f), typeof(f.g), typeof(kwargs),
+            typeof(noise_rate_prototype), typeof(𝜋)}(f, f.g, _u0, _tspan, (p, 𝜋), noise,
+                                                     kwargs,
+                                                     noise_rate_prototype, seed)
 end
-function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan, p=NullParameters(),
-    𝜋=Density(default_distribution(first(u0))), kwargs...) where {iip}
+function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan, p = NullParameters(),
+                      𝜋 = Density(default_distribution(first(u0))), kwargs...) where {iip}
     Sampler{iip}(f, u0, tspan, p, 𝜋; kwargs...)
 end
 # function Sampler{iip}(; f, kwargs...) where {iip}
 #     Sampler{iip}(f; kwargs...)
 # end
 function Sampler(f::AbstractSDEFunction, args...;
-    kwargs...)
+                 kwargs...)
     Sampler{isinplace(f)}(f, args...; kwargs...)
 end
 function Sampler(f, g, args...; kwargs...)
@@ -90,12 +95,13 @@ function langevin_g!(du, u, p, t)
     dv .= 0.0
 end
 
-function LangevinSampler(; tspan, β, γ, u0=[0.0; 0.0], boundaries=nothing,
-    noise_rate_prototype=nothing,
-    noise=nothing,#WienerProcess(first(tspan), zero(noise_rate_prototype)),
-    kwargs...)
-    Sampler(langevin_f!, langevin_g!; callback=boundaries, kwargs..., u0, noise_rate_prototype, noise,
-        tspan, p=(β, γ))
+function LangevinSampler(; tspan, β, γ, u0 = [0.0; 0.0], boundaries = nothing,
+                         noise_rate_prototype = nothing,
+                         noise = nothing,#WienerProcess(first(tspan), zero(noise_rate_prototype)),
+                         kwargs...)
+    Sampler(langevin_f!, langevin_g!; callback = boundaries, kwargs..., u0,
+            noise_rate_prototype, noise,
+            tspan, p = (β, γ))
 end
 
 end # module

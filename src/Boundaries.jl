@@ -114,7 +114,7 @@ function getaffect(R::PeriodicBox)
 end
 
 function (B::AbstractBoxBoundary)(; kwargs...)
-    DiscreteCallback(getcondition(B), getaffect(B); save_positions = (false, false),
+    DiscreteCallback(getcondition(B), getaffect(B); save_positions = (false, false), # ! Will need to think about this more
                      kwargs...)
 end
 
