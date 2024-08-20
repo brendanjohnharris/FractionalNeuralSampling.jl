@@ -11,32 +11,32 @@ import FractionalNeuralSampling.AD_BACKEND
 
 export AbstractDensity, Density, distribution, potential, logdensity, gradlogdensity
 
-abstract type AbstractDensity{D,doAd} end
-const AbstractDistributionDensity{D,doAd} = AbstractDensity{D,
-    doAd} where {D<:Distribution,
-    doAd}
-const DistributionDensity{D} = AbstractDensity{D,false} where {D<:Distribution}
-const AdDistributionDensity{D} = AbstractDensity{D,true} where {D<:Distribution}
-const AdDensity{D} = AbstractDensity{D,true} where {D}
+abstract type AbstractDensity{D, doAd} end
+const AbstractDistributionDensity{D, doAd} = AbstractDensity{D,
+                                                             doAd} where {D <: Distribution,
+                                                                          doAd}
+const DistributionDensity{D} = AbstractDensity{D, false} where {D <: Distribution}
+const AdDistributionDensity{D} = AbstractDensity{D, true} where {D <: Distribution}
+const AdDensity{D} = AbstractDensity{D, true} where {D}
 potential(D::AbstractDensity, x) = -logdensity(D, x)
 potential(D::AbstractDensity) = Base.Fix1(potential, D)
 logdensity(D::AbstractDensity) = Base.Fix1(logdensity, D)
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
 
-struct Density{D,doAd} <: AbstractDensity{D,doAd}
+struct Density{D, doAd} <: AbstractDensity{D, doAd}
     distribution::D
     doAd::Bool
 end
 distribution(D::Density) = D.distribution
 
-Density{doAd}(distribution::D) where {D,doAd} = Density{D,doAd}(distribution, doAd)
-function Density(d::D) where {D<:UnivariateDistribution}
+Density{doAd}(distribution::D) where {D, doAd} = Density{D, doAd}(distribution, doAd)
+function Density(d::D) where {D <: UnivariateDistribution}
     Density{!hasmethod(Distributions.gradlogpdf, (D, Real))}(d)
 end
-function Density(d::D) where {D<:MultivariateDistribution}
+function Density(d::D) where {D <: MultivariateDistribution}
     Density{!hasmethod(Distributions.gradlogpdf, (D, Vector{Real}))}(d)
 end
-function Density(d::D) where {D<:MixtureModel}
+function Density(d::D) where {D <: MixtureModel}
     Density{!hasmethod(Distributions.gradlogpdf, (D, Vector{Real}))}(d)
 end
 
@@ -44,8 +44,8 @@ function _gradlogdensity(D::AdDensity, x::Real)
     gradient(logdensity(D), AD_BACKEND, x)
 end
 function gradlogdensity!(grad::AbstractVector{T}, D::AdDensity,
-    x::AbstractVector{T},
-    extras=prepare_gradient(logdensity(D), AD_BACKEND, x)) where {T}
+                         x::AbstractVector{T},
+                         extras = prepare_gradient(logdensity(D), AD_BACKEND, x)) where {T}
     gradient!(logdensity(D), grad, AD_BACKEND, x, extras)
 end
 function _gradlogdensity(D::AdDensity, x::AbstractVector{<:Real})
@@ -55,7 +55,7 @@ function _gradlogdensity(D::AdDensity, x::AbstractVector{<:Real})
     return grad
 end
 function _gradlogdensity(D::AdDensity,
-    x::AbstractVector{<:AbstractVector{T}}) where {T}
+                         x::AbstractVector{<:AbstractVector{T}}) where {T}
     grad = similar(x)
     extras = prepare_gradient(logdensity(D), AD_BACKEND, first(x))
     gradlogdensity!(grad, D, x, extras)

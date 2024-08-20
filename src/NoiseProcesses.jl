@@ -76,7 +76,7 @@ function (L::LevyNoise{false, T})(dW::StaticArraysCore.SArray{N, T}, W, dt, u, p
 end
 function (L!::LevyNoise{true})(rand_vec, W, dt, u, p, t, rng)
     L!(rng, rand_vec)
-    # @fastmath rand_vec .*= abs(dt)^(1 / L!.α)
+    @fastmath rand_vec .*= abs(dt)^(1 / L!.α)
 end
 function LevyProcess(α, β = 0.0, σ = 1 / sqrt(2), μ = 0.0, t0 = 0.0, W0 = 0.0, Z0 = nothing;
                      kwargs...)
