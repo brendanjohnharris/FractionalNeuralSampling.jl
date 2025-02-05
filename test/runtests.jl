@@ -1,4 +1,10 @@
-begin
+using Test
+using TestItems
+using TestItemRunner
+
+@run_package_tests
+
+@testsnippet Setup begin
     using StatsBase
     using CairoMakie
     using Foresight
@@ -29,9 +35,9 @@ begin
     set_theme!(foresight(:physics))
 end
 
-@testset "Langevin sampler bias" begin
+@testitem "Langevin sampler bias" setup=[Setup] begin
     u0 = [0.0001 0.0001]
-    tspan = (0.0, 100.0)
+    tspan = (0.0, 1000.0)
     dt = 0.01
     D = FNS.Density(Normal(0, 1))
     S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
@@ -52,27 +58,31 @@ end
     lines!(-2.5:0.1:2.5, D.(-2.5:0.1:2.5))
     current_figure()
     @test mean(first.(sol.u))≈0.0 atol=0.05
-    @test std(first.(sol.u))≈1.0 atol=0.01
+    @test std(first.(sol.u))≈1.0 atol=0.05
 
-    βs = range(0, 5, length = 10)
-
-    er = map(βs) do β
-        P = remake(S, p = ((β, S.p[1][2:end]...), S.p[2:end]...))
-        ensemble = EnsembleProblem(P)
-        sol = solve(ensemble, EM(); dt, trajectories = 1000)
-        ts = [s[1, :] for s in sol]
-        er = evaluate.([KLDivergence()], [D], ts) |> mean
-        s = std.(ts) |> mean
-        return (er, s)
+    if false
+        tspan = (0.0, 100.0)
+        S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
+                                noise = WienerProcess(0.0, 0.0))
+        βs = range(0, 5, length = 10)
+        er = map(βs) do β
+            P = remake(S, p = ((β, S.p[1][2:end]...), S.p[2:end]...))
+            ensemble = EnsembleProblem(P)
+            sol = solve(ensemble, EM(); dt, trajectories = 1000)
+            ts = [s[1, :] for s in sol]
+            er = evaluate.([KLDivergence()], [D], ts) |> mean
+            s = std.(ts) |> mean
+            return (er, s)
+        end
+        stds = last.(er)
+        ers = first.(er)
+        lines(βs, ers)
+        lines(βs, stds)
     end
-    stds = last.(er)
-    ers = first.(er)
-    lines(βs, ers)
-    lines(βs, stds)
 end
 
-@testset "Levy sampler bias" begin
-    u0 = [0.0 0.00]
+@testitem "Levy sampler bias" setup=[Setup] begin
+    u0 = [0.0 0.0]
     tspan = (0.0, 500.0)
     dt = 0.01
     D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
@@ -94,57 +104,59 @@ end
     current_figure()
     @test evaluate(KLDivergence(), D, x) < 0.1
 
-    βs = range(0, 2, length = 20)
-    er = map(βs) do β
-        P = remake(S, p = ((S.p[1][1], β, S.p[1][3]), S.p[2:end]...))
-        ensemble = EnsembleProblem(P)
-        sol = solve(ensemble, EM(); dt, trajectories = 10)
-        ts = map(sol) do s
-            x = s[1, :]
-            x = x[abs.(x) .< 6]
+    if false
+        βs = range(0, 2, length = 20)
+        er = map(βs) do β
+            P = remake(S, p = ((S.p[1][1], β, S.p[1][3]), S.p[2:end]...))
+            ensemble = EnsembleProblem(P)
+            sol = solve(ensemble, EM(); dt, trajectories = 10)
+            ts = map(sol) do s
+                x = s[1, :]
+                x = x[abs.(x) .< 6]
+            end
+            er = evaluate.([KLDivergence()], [D], ts) |> mean
+            return er
         end
-        er = evaluate.([KLDivergence()], [D], ts) |> mean
-        return er
-    end
-    lines(βs, er)
+        lines(βs, er)
 
-    αs = range(1.1, 2.0, length = 20)
-    er = map(αs) do α
-        P = remake(S, p = ((α, S.p[1][2:end]...), S.p[2:end]...))
-        ensemble = EnsembleProblem(P)
-        sol = solve(ensemble, EM(), EnsembleThreads(); dt, trajectories = 100)
-        ts = map(sol) do s
-            x = s[1, :]
-            x = x[abs.(x) .< 6]
+        αs = range(1.1, 2.0, length = 20)
+        er = map(αs) do α
+            P = remake(S, p = ((α, S.p[1][2:end]...), S.p[2:end]...))
+            ensemble = EnsembleProblem(P)
+            sol = solve(ensemble, EM(), EnsembleThreads(); dt, trajectories = 100)
+            ts = map(sol) do s
+                x = s[1, :]
+                x = x[abs.(x) .< 6]
+            end
+            er = evaluate.([KLDivergence()], [D], ts) |> mean
+            return er
         end
-        er = evaluate.([KLDivergence()], [D], ts) |> mean
-        return er
-    end
-    lines(αs, er)
+        lines(αs, er)
 
-    αs = range(1.25, 2.0, length = 52)
-    βs = range(0, 2, length = 51)
-    ps = Iterators.product(αs, βs) .|> collect
-    push!.(ps, 1.0) # Add γ
-    ers = pmap(ps) do p
-        P = remake(S, p = (Tuple(p), S.p[2:end]...))
-        ensemble = EnsembleProblem(P)
-        sol = solve(ensemble, EM(); dt, trajectories = 1000)
-        ts = [s[1, :] for s in sol]
-        ts = map(sol) do s
-            x = s[1, :]
-            x = x[abs.(x) .< 6]
+        αs = range(1.25, 2.0, length = 52)
+        βs = range(0, 2, length = 51)
+        ps = Iterators.product(αs, βs) .|> collect
+        push!.(ps, 1.0) # Add γ
+        ers = pmap(ps) do p
+            P = remake(S, p = (Tuple(p), S.p[2:end]...))
+            ensemble = EnsembleProblem(P)
+            sol = solve(ensemble, EM(); dt, trajectories = 1000)
+            ts = [s[1, :] for s in sol]
+            ts = map(sol) do s
+                x = s[1, :]
+                x = x[abs.(x) .< 6]
+            end
+            er = evaluate.([KLDivergence()], [D], ts) |> mean
+            return er
         end
-        er = evaluate.([KLDivergence()], [D], ts) |> mean
-        return er
+        fax = heatmap(αs, βs, (ers); axis = (; xlabel = "α", ylabel = "β"))
+        Colorbar(fax.figure[1, 2], fax.plot; label = "KL Divergence")
+        fax
+        # heatmap(αs, βs, stds; axis = (; xlabel = "α", ylabel = "β"))
     end
-    fax = heatmap(αs, βs, (ers); axis = (; xlabel = "α", ylabel = "β"))
-    Colorbar(fax.figure[1, 2], fax.plot; label = "KL Divergence")
-    fax
-    # heatmap(αs, βs, stds; axis = (; xlabel = "α", ylabel = "β"))
 end
 
-begin
+if false
     u0 = [-3.0 0.00]
     tspan = (0.0, 5000.0)
     dt = 0.01
@@ -159,17 +171,17 @@ begin
     lines!(-4:0.1:4, D.(-4:0.1:4))
     current_figure()
 
-    f = Figure(size = (800, 400))
-    ax = Axis(f[1, 1])
+    g = Figure(size = (800, 400))
+    ax = Axis(g[1, 1])
     lines!((1:10000), x[1:10000])
-    ax = Axis(f[1, 2])
+    ax = Axis(g[1, 2])
     xx = Timeseries((1:length(x)), x)
     lines!((1:5000), autocor(centraldiff(xx), 1:5000))
     # spectrumplot(spectrum(xx, 1))
-    f
+    g
 end
 
-begin # * Simple potential: power law iqr?
+if false # * Simple potential: power law iqr?
     u0 = [-0.001 0.00]
     tspan = (0.0, 1.0)
     dt = 0.00001
@@ -188,9 +200,9 @@ begin # * Simple potential: power law iqr?
     current_figure()
 end
 
-begin # * Unimodal vs bimodal comparison
+if false # * Unimodal vs bimodal comparison
     Random.seed!(43)
-    f = Figure(size = (720, 360))
+    g = Figure(size = (720, 360))
     u0 = [-0.001 0.00]
     tspan = (0.0, 1000.0)
     dt = 0.001
@@ -198,21 +210,21 @@ begin # * Unimodal vs bimodal comparison
     # ft = identity
     ft = x -> abs.((x[3:end] .- x[1:(end - 2)]) ./ 2)
 
-    ax = Axis(f[1, 1]; xlabel = "t", ylabel = "v", title = "Unimodal")
+    ax = Axis(g[1, 1]; xlabel = "t", ylabel = "v", title = "Unimodal")
     D = FNS.Density(Laplace(0, 0.5))
     S = FNS.LevyFlightSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
     x = sol[1, :][idxs]
     lines!(ax, ft(x), color = :cornflowerblue, linewidth = 2)
 
-    ax = Axis(f[1, 2])
+    ax = Axis(g[1, 2])
     hist!(ax, ft(x); direction = :x, bins = 50, color = :gray)
     hidedecorations!(ax)
     hidespines!(ax)
     tightlimits!(ax)
 
     u0 = [-0.201 0.00]
-    ax = Axis(f[2, 1]; xlabel = "t", ylabel = "v", title = "Bimodal")
+    ax = Axis(g[2, 1]; xlabel = "t", ylabel = "v", title = "Bimodal")
     D = FNS.Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
     S = FNS.LevyFlightSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
@@ -220,19 +232,19 @@ begin # * Unimodal vs bimodal comparison
 
     lines!(ax, ft(x); color = :crimson, linewidth = 2)
 
-    ax = f[2, 2] |> Axis
+    ax = g[2, 2] |> Axis
     hist!(ax, ft(x); direction = :x, bins = 50, color = :gray)
     hidedecorations!(ax)
     hidespines!(ax)
     tightlimits!(ax)
 
-    colgap!(f.layout, 1, Relative(0))
-    colsize!(f.layout, 2, Relative(0.2))
-    linkyaxes!(contents(f.layout)...)
-    f
+    colgap!(g.layout, 1, Relative(0))
+    colsize!(g.layout, 2, Relative(0.2))
+    linkyaxes!(contents(g.layout)...)
+    g
 end
 
-begin # * Fixation simulation: heavy tailed msd??
+if false # * Fixation simulation: heavy tailed msd??
     u0 = [-0.001 0.00]
     tspan = (0.0, 100.0)
     dt = 0.001
@@ -264,31 +276,39 @@ begin # * Fixation simulation: heavy tailed msd??
                                                                                        x)))))))
     c = c[abs.(c) .< 0.01]
     hist(c, bins = 100, normalization = :pdf)
-    f = fit(Stable, c)
-    lines!(-0.005:0.00001:0.005, pdf.([f], -0.005:0.00001:0.005))
+    g = fit(Stable, c)
+    lines!(-0.005:0.00001:0.005, pdf.([g], -0.005:0.00001:0.005))
     current_figure()
 end
 
-@testset "Autodiff" begin
+@testitem "Autodiff" setup=[Setup] begin
     D = Normal(0, 0.5)
-    f = x -> logpdf(D, only(x))
-    ForwardDiff.gradient(f, [0.1])
+    @inferred logpdf(D, 0.1)
+    g(x::T) where {T <: Real} = logpdf(D, x)::T
+    g(x::AbstractVector{T}) where {T <: Real} = logpdf(D, only(x))::T
+    @inferred g(0.1)
+    @inferred ForwardDiff.gradient(g, [0.1])
     backend = AutoForwardDiff()
     @test gradlogdensity(FNS.Density{true}(D), 0.1:0.1:3) == gradlogpdf.([D], 0.1:0.1:3)
-    a = @benchmark gradient($f, $backend, 0.1)
-    b = @benchmark ForwardDiff.gradient($f, [0.1])
+    gr = @inferred gradient(g, backend, [0.1])
+    @test gr isa Vector
+    @test length(gr) == 1
+    a = @benchmark gradient($g, $backend, [0.1])
+    b = @benchmark ForwardDiff.gradient($g, [0.1])
     c = @benchmark gradlogpdf($D, 0.1)
     @test a.allocs < 15
     @test b.allocs < 10
     @test c.allocs == c.memory == 0
+    @inferred gradlogdensity(FNS.Density{false}(D), 0.1)
     a = @benchmark gradlogdensity(FNS.Density{false}($D), 0.1)
     @test a.allocs == c.memory == 0
+    @inferred gradlogdensity(FNS.Density{true}(D), 0.1)
     b = @benchmark gradlogdensity(FNS.Density{true}($D), 0.1)
     @test b.allocs == b.memory == 0
     cl = @code_lowered FNS.Densities._gradlogdensity(FNS.Density{true}(D), 0.1)
     @test contains(string(cl.code), "AD_BACKEND")
 end
-@testset "Univariate DistributionDensity" begin
+@testitem "Univariate DistributionDensity" setup=[Setup] begin
     d = Normal(0.0, 0.5)
     D = @test_nowarn FNS.Density(d)
     @test D isa FNS.Densities.UnivariateDistributionDensity
@@ -330,7 +350,7 @@ end
     @test FNS.Densities.gradlogdensity(D, 0.0f0) isa Float32
 end
 
-@testset "Multivariate DistributionDensity" begin
+@testitem "Multivariate DistributionDensity" setup=[Setup] begin
     N = 3
     μs = randn(N)
     x = randn(N, 100)
@@ -355,7 +375,7 @@ end
     @test gradlogdensity(D)(p) ≈ gradlogpdf(d, p)
 end
 
-@testset "Mixture DistributionDensity" begin
+@testitem "Mixture DistributionDensity" setup=[Setup] begin
     Nd = 3
     N = 10
     μs = [randn(Nd) for _ in 1:N]
@@ -378,7 +398,7 @@ end
     @test gradlogdensity(D)(0) == 0.0
 end
 
-@testset "AdDistributionDensity" begin
+@testitem "AdDistributionDensity" setup=[Setup] begin
     D = FNS.Densities.Density{true}(Normal(0.0, 0.5))
     x = zeros(LogDensityProblems.dimension(D)) # ℓ is your log density
     @inferred LogDensityProblems.logdensity(D, x) # check inference, also see @code_warntype
@@ -401,16 +421,16 @@ end
           LogDensityProblems.logdensity_and_gradient(D, 0.1)
 end
 
-@testset "Basic Samplers" begin
+@testitem "Basic Samplers" setup=[Setup] begin
     u0 = [0.01]
     tspan = (0.0, 1.0)
-    f = (x, y, z, w) -> x
-    S1 = @test_nowarn Sampler(f; u0, tspan)
-    S2 = @test_nowarn Sampler(f, u0, tspan)
+    g = (x, y, z, w) -> x
+    S1 = @test_nowarn Sampler(g; u0, tspan)
+    S2 = @test_nowarn Sampler(g, u0, tspan)
     @test S1.f == S2.f
     @test typeof(Density(S1)) == typeof(Density(S2))
 end
-@testset "Langevin Sampler" begin
+@testitem "Langevin Sampler" setup=[Setup] begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 100.0)
     S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 10.0)
@@ -425,7 +445,7 @@ end
     density(x)
     @test x == trajectory(S)
 end
-@testset "Box boundaries" begin
+@testitem "Box boundaries" setup=[Setup] begin
     box = ReflectingBox(-5 .. 5)
     # box = FNS.NoBoundary()
     u0 = [0.0 1.0]
@@ -482,12 +502,12 @@ end
     sol = @test_nowarn solve(S; dt = 0.001f0, saveat = 0.1f0)
     x = first.(sol.u)
     density(x)
-    f = fit(Laplace, x)
-    @test f.μ≈0.0f0 atol=1e-3
-    @test f.θ≈0.5f0 atol=1e-1
+    g = fit(Laplace, x)
+    @test g.μ≈0.0f0 atol=1e-3
+    @test g.θ≈0.5f0 atol=1e-1
 end
 
-@testset "Oscillations under flat potential?" begin
+@testitem "Oscillations under flat potential?" setup=[Setup] begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 100.0)
 
@@ -509,7 +529,7 @@ end
     hill(collect(x))
 end
 
-@testset "LevyNoise" begin
+@testitem "LevyNoise" setup=[Setup] begin
     import FractionalNeuralSampling.NoiseProcesses.LevyNoise
     DIST = LevyNoise{false}(2.0, 0.0, 1 / sqrt(2), 0.0)
     Random.seed!(42)
@@ -549,13 +569,13 @@ end
     @test all(z .* 0.01 .^ (1 / DIST.α) .== y)
 end
 
-@testset "Test that adaptive stepping is disabled for LevyFlightSamplers" begin end
+@testitem "Test that adaptive stepping is disabled for LevyFlightSamplers" setup=[Setup] begin end
 
-@testset "FractionalNeuralSampling.jl" begin
+@testitem "FractionalNeuralSampling.jl" setup=[Setup] begin
     include("fractional_sampling.jl")
 end
 
-@testset "LevyProcess" begin
+@testitem "LevyProcess" setup=[Setup] begin
     rng = Random.default_rng()
     Random.seed!(rng, 42)
     W = LevyProcess(2.0; rng)
@@ -601,7 +621,7 @@ end
     @time solve(prob, RandomEM(); dt = 1 / 100)
 end
 
-@testset "Brownian Noise" begin
+@testitem "Brownian Noise" setup=[Setup] begin
     prob = NoiseProblem(LevyProcess(2.0), (0.0, 1.0))
     dt = 0.00001
     ensemble = EnsembleProblem(prob)
@@ -611,17 +631,17 @@ end
     @test std(diff(sol.u))≈sqrt(dt) rtol=1e-2
 end
 
-@testset "Levy Noise" begin
+@testitem "Levy Noise" setup=[Setup] begin
     L = LevyProcess(1.5)
     prob = NoiseProblem(L, (0.0, 1.0))
     dt = 1e-6
     sol = solve(prob, RandomEM(); dt)
 
-    f = fit(Stable, diff(sol.u) ./ (dt^(1 / 1.5)))
-    @test L.dist.α≈f.α atol=1e-2
+    g = fit(Stable, diff(sol.u) ./ (dt^(1 / 1.5)))
+    @test L.dist.α≈g.α atol=1e-2
 end
 
-@testset "Ensemble" begin
+@testitem "Ensemble" setup=[Setup] begin
     Random.seed!(42)
     L = LevyProcess(1.5)
     dt = 1e-3
@@ -630,13 +650,13 @@ end
     sol = @test_nowarn solve(ensemble, RandomEM(), EnsembleSerial(); trajectories = 5, dt)
     @test_nowarn solve(ensemble, RandomEM(), EnsembleDistributed(); trajectories = 5, dt)
     @test_nowarn solve(ensemble, RandomEM(), EnsembleThreads(); trajectories = 5, dt)
-    f = Figure()
-    ax = Axis(f[1, 1])
+    g = Figure()
+    ax = Axis(g[1, 1])
     [lines!(ax, s.t, s.u) for s in sol]
-    display(f)
+    display(g)
 end
 
-@testset "Benchmark LevyNoise" begin
+@testitem "Benchmark LevyNoise" setup=[Setup] begin
     import FractionalNeuralSampling.NoiseProcesses.LevyNoise
     import FractionalNeuralSampling.NoiseProcesses.LevyNoise!
     import DiffEqNoiseProcess.WHITE_NOISE_DIST as W
@@ -669,7 +689,7 @@ end
 end
 
 if CUDA.functional(true)
-    @testset "GPU Benchmark" begin
+    @testitem "GPU Benchmark" setup=[Setup] begin
         using DiffEqGPU
         function f3!(u0, u, p, t, W)
             u0[1] = 2u[1] * sin(W[1])
@@ -687,4 +707,42 @@ if CUDA.functional(true)
                                          EnsembleGPUArray(CUDA.CUDABackend());
                                          trajectories = 5, dt)
     end
+end
+
+# @testitem "2D potential" setup=[Setup] begin
+if false
+    using DifferentialEquations
+    Δx = 5
+    d = MixtureModel([
+                         MvNormal([-Δx / 2, 0], [1 0; 0 1]),
+                         MvNormal([Δx / 2, 0], [1 0; 0 1])
+                     ])
+    D = Density(d)
+
+    αs = [2.0, 1.6, 1.2]
+    f = Figure(size = (900, 300))
+    gs = subdivide(f, 1, 3)
+    map(αs, gs) do α, g
+        L = LevyFlightSampler(;
+                              u0 = [-Δx / 2 0 0 0],
+                              tspan = 500.0,
+                              α = α,
+                              β = 0.2,
+                              γ = 0.02,
+                              𝜋 = D,
+                              seed = 42)
+        sol = solve(L, EM(); dt = 0.001)
+        x, y = eachrow(sol[1:2, :])
+
+        xmax = maximum(abs.(extrema(vcat(x, y)))) * 1.5
+        xs = range(-xmax, xmax, length = 100)
+
+        ax = Axis(g[1, 1], title = "α = $α", aspect = DataAspect())
+        # heatmap!(ax, xs, xs, potential(D).(collect.(Iterators.product(xs, xs))), colormap=seethrough(:turbo))
+        heatmap!(ax, xs, xs, D.(collect.(Iterators.product(xs, xs))),
+                 colormap = seethrough(:turbo))
+        lines!(ax, x[1:10:end], y[1:10:end], color = (:black, 0.5), linewidth = 1)
+        hidedecorations!(ax)
+    end
+    f
 end

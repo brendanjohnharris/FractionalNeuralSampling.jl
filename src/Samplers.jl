@@ -13,6 +13,7 @@ using LogDensityProblems
 using Distributions
 using LinearAlgebra
 import ..NoiseProcesses
+import ..FractionalNeuralSampling.divide_dims
 using ..Densities
 import ..Densities.Density
 import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
@@ -51,7 +52,7 @@ end
 function default_distribution(u0::Real)
     Normal(0.0, 1.0)
 end
-function Sampler{iip}(f::AbstractSDEFunction{iip}, u0::AbstractMatrix, tspan,
+function Sampler{iip}(f::AbstractSDEFunction{iip}, u0::AbstractArray, tspan,
                       p = (NullParameters(), Density(default_distribution(first(u0)))); # Assume momentum term
                       noise_rate_prototype = nothing,
                       noise = nothing,
@@ -115,25 +116,55 @@ function LangevinSampler(; tspan, β, γ, u0 = [0.0 0.0], boundaries = nothing,
             tspan, p = ((β, γ), 𝜋))
 end
 
+# * Modulated langevin sampler
+# function modulated_langevin_f!(du, u, p, t)
+#     (β, γ), 𝜋 = p
+#     x, v = eachcol(u)
+#     b = gradlogdensity(𝜋)(x) # ? Should this be in-place
+#     du[:, 1] .= γ .* b .+ β .* v
+#     du[:, 2] .= β .* b
+# end
+# function modulated_langevin_g!(du, u, p, t)
+#     (β, γ), 𝜋 = p
+#     dx, dv = eachcol(du)
+#     dx .= sqrt(2) * γ^(1 // 2) # * dW. why sqrt(2)??
+#     dv .= 0.0
+# end
+
+# function ModulatedLangevinSampler(; tspan, β, γ, u0 = [0.0 0.0], boundaries = nothing,
+#                                   noise_rate_prototype = nothing,
+#                                   𝜋 = Density(default_distribution(first(u0))),
+#                                   noise = nothing,#WienerProcess(first(tspan), zero(noise_rate_prototype)),
+#                                   kwargs...)
+#     Sampler(langevin_f!, langevin_g!; callback = boundaries, kwargs..., u0,
+#             noise_rate_prototype, noise,
+#             tspan, p = ((β, γ), 𝜋))
+# end
+
 # * Levy flight sampler (noise on position)
 function levy_flight_f!(du, u, p, t)
     (α, β, γ), 𝜋 = p
-    x, v = eachcol(u)
+    x, v = divide_dims(u, length(u) ÷ 2)
     b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2) # ? Should this be in-place
-    du[:, 1] .= γ .* b .+ β .* v
-    du[:, 2] .= β .* b
+    dx, dv = divide_dims(du, length(du) ÷ 2)
+    dx .= γ .* b .+ β .* v
+    dv .= β .* b
 end
 function levy_flight_g!(du, u, p, t)
     (α, β, γ), 𝜋 = p
-    dx, dv = eachcol(du)
-    dx .= sqrt(2) * γ^(1 / α) # * dW
+    dx, dv = divide_dims(du, length(du) ÷ 2)
+    dx .= sqrt(2) * γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication
     dv .= 0.0
 end
 
-function LevyFlightSampler(; tspan, α, β, γ, u0 = [0.0 0.0], boundaries = nothing,
-                           noise_rate_prototype = nothing,
+function LevyFlightSampler(;
+                           tspan, α, β, γ, u0 = [0.0 0.0],
+                           boundaries = nothing,
+                           noise_rate_prototype = zeros(size(u0)),
                            𝜋 = Density(default_distribution(first(u0))),
-                           noise = NoiseProcesses.LevyProcess!(α),
+                           noise = NoiseProcesses.LevyProcess!(α; ND = 2,
+                                                               W0 = Diagonal(zeros(length(u0),
+                                                                                   length(u0)))),
                            kwargs...)
     Sampler(levy_flight_f!, levy_flight_g!; callback = boundaries, kwargs..., u0,
             noise_rate_prototype, noise,

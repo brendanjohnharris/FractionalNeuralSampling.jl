@@ -18,3 +18,5 @@ data
 docs/build/
 docs/site/
 lcov*.info
+tmp.jl
+*.mp4

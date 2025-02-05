@@ -18,6 +18,7 @@ LogDensityProblemsAD = "996a588d-648d-4e1f-a8f0-a84b347e47b1"
 MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
@@ -39,6 +40,7 @@ Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 DistancesExt = ["Distances"]
 
 [compat]
+RecursiveArrayTools = "3.28.0"
 julia = "1.9"
 
 [extras]

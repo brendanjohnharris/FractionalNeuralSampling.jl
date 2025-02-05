@@ -41,12 +41,12 @@ function Density(d::D) where {D <: MixtureModel}
 end
 
 function _gradlogdensity(D::AdDensity, x::Real)
-    gradient(logdensity(D), AD_BACKEND, x)
+    gradient(x -> logdensity(D, only(x)), AD_BACKEND, [x]) |> only
 end
 function gradlogdensity!(grad::AbstractVector{T}, D::AdDensity,
                          x::AbstractVector{T},
                          extras = prepare_gradient(logdensity(D), AD_BACKEND, x)) where {T}
-    gradient!(logdensity(D), grad, AD_BACKEND, x, extras)
+    gradient!(logdensity(D), grad, extras, AD_BACKEND, x)
 end
 function _gradlogdensity(D::AdDensity, x::AbstractVector{<:Real})
     grad = similar(x)
@@ -70,8 +70,8 @@ const MultivariateDistributionDensity{D, doAd} = AbstractDistributionDensity{D,
                                                                              doAd} where {D <: Distribution{Multivariate}, doAd}
 # ! format: on
 _gradlogdensity(D::DistributionDensity, x) = Distributions.gradlogpdf(D, x)
-function gradlogdensity(D::UnivariateDistributionDensity, x::Real)
-    _gradlogdensity(D, x)
+function gradlogdensity(D::UnivariateDistributionDensity, x::T) where {T<:Real}
+    _gradlogdensity(D, x)::T
 end
 function gradlogdensity(D::UnivariateDistributionDensity, x::AbstractVector{<:Number})
     _gradlogdensity.([D], x)
