@@ -102,7 +102,7 @@ end
 function langevin_g!(du, u, p, t)
     (β, γ), 𝜋 = p
     dx, dv = eachcol(du)
-    dx .= sqrt(2) * γ^(1 // 2) # * dW. why sqrt(2)??
+    dx .= sqrt(2) * γ^(1 // 2) # * dW
     dv .= 0.0
 end
 
@@ -127,7 +127,7 @@ end
 # function modulated_langevin_g!(du, u, p, t)
 #     (β, γ), 𝜋 = p
 #     dx, dv = eachcol(du)
-#     dx .= sqrt(2) * γ^(1 // 2) # * dW. why sqrt(2)??
+#     dx .= sqrt(2) * γ^(1 // 2) # * dW
 #     dv .= 0.0
 # end
 

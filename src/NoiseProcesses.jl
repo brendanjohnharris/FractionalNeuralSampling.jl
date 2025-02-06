@@ -104,6 +104,6 @@ LEVYPROCESS = NoiseProcess{A, B, C, D, E, F,
 LevyProblem = RODEProblem{A, B, C, D,
                           E} where {A, B, C, D, E <: LEVYPROCESS}
 
-# ! Will want to throw an error to solve if anything other than RandomEM() is used.
+# ! Will want to throw an error to solve if anything other than EM() is used.
 
 end # module

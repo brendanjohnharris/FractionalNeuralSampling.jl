@@ -2,15 +2,17 @@ using CairoMakie
 using Foresight
 using DifferentialEquations
 using FractionalNeuralSampling
+using Distributions
+using LinearAlgebra
 import FractionalNeuralSampling: Density
 set_theme!(foresight(:physics))
 
 begin
     Δx = 5
-    d = MixtureModel([
-                         MvNormal([-Δx / 2, 0], [1 0; 0 1]),
-                         MvNormal([Δx / 2, 0], [1 0; 0 1])
-                     ])
+    Ng = 3
+    phis = range(0, stop = 2π, length = Ng + 1)[1:Ng]
+    centers = exp.(2π * im * phis)
+    d = MixtureModel([MvNormal([real(c), imag(c)], I(2)) for c in centers])
     D = Density(d)
 
     αs = [2.0, 1.6, 1.2]

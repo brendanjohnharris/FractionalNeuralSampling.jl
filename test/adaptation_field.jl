@@ -3,14 +3,14 @@ using DifferentialEquations, CairoMakie, Interpolations
 # -------------------------
 # Parameters and grid setup
 # -------------------------
-V0 = 1.0       # amplitude (sets the depth of the wells to -V0)
+V0 = 2.0       # amplitude (sets the depth of the wells to -V0)
 d_well = 5.0   # wells are located at x = ±d_well
 sigma = 1.0    # (unused in the quartic potential, kept for compatibility)
 alpha = 1.0    # strength of the adaptation contribution to the effective potential
-γ = 4.0        # adaptation writing strength
-τ = 100.0      # adaptation decay time constant
-ε = 0.3        # width of the kernel for adaptation
-D = 0.5        # diffusion constant
+γ = 5      # adaptation writing strength
+τ = 5     # adaptation decay time constant
+ε = 0.6        # width of the kernel for adaptation
+D = 0.05       # diffusion constant
 
 # Grid for the adaptation field A(x,t)
 x_min = -15.0
@@ -91,7 +91,7 @@ end
 # Set up and solve the SDE
 # -------------------------
 p = (V0, d_well, sigma, alpha, γ, τ, ε, grid, D)
-tspan = (0.0, 200.0)
+tspan = (0.0, 500.0)
 prob = SDEProblem(f!, g!, u0, tspan, p)
 sol = solve(prob, EM(), dt = 0.01)
 
@@ -108,7 +108,7 @@ begin
 end
 
 # Choose a sampling interval for animation frames:
-sample_interval = 50
+sample_interval = 100
 indices = 1:sample_interval:length(sol.t)
 if indices[end] != length(sol.t)
     indices = vcat(indices, length(sol.t))
@@ -123,7 +123,8 @@ V_static = [V(x, V0, d_well, sigma) for x in grid]
 # Create a figure with two vertically arranged axes.
 fig = Figure(size = (800, 600))
 ax1 = Axis(fig[1, 1], xlabel = "x", ylabel = "V",
-           title = "Static (red) and Effective (dashed) Potentials; Particle Position")
+           title = "Static (red) and Effective (dashed) Potentials; Particle Position",
+           limits = ((-10, 10), (-3, 5)))
 ax2 = Axis(fig[2, 1], xlabel = "Time", ylabel = "x", title = "Time Series of x(t)")
 
 # Upper panel: plot static potential V(x) in red.
@@ -144,7 +145,7 @@ particle_pos_obs = Observable(Point2f(init_x, V(init_x, V0, d_well, sigma)))
 # Plot the particle as a blue marker.
 scatter!(ax1, particle_pos_obs, color = :blue, markersize = 8)
 
-axislegend(ax1)
+# axislegend(ax1)
 
 # Lower panel: plot the full time series x(t) in blue.
 lines!(ax2, sol.t, sol[1, :], color = :blue, linewidth = 2, label = "x(t)")
@@ -156,7 +157,7 @@ tlo_x = @lift $time_line_obs[1]
 tlo_y = @lift $time_line_obs[2]
 lines!(ax2, tlo_x, tlo_y, color = :black, linestyle = :dash, linewidth = 2)
 
-record(fig, "animation.mp4", 1:n_frames; framerate = 30) do i
+record(fig, "animation.mp4", 1:n_frames; framerate = 24) do i
     # Update the effective potential observable.
     A_frame = sol.u[indices[i]][2:end]  # adaptation field at the current frame
     V_eff_frame = [V(x, V0, d_well, sigma) + alpha * A_frame[j]
