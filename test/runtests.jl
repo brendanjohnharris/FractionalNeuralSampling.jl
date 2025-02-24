@@ -31,6 +31,7 @@ using TestItemRunner
     using SpecialFunctions
     using StatsBase
     using TimeseriesTools
+    using Normalization
     import FractionalNeuralSampling: Density
     set_theme!(foresight(:physics))
 end
@@ -745,4 +746,25 @@ if false
         hidedecorations!(ax)
     end
     f
+end
+
+@testitem "InterpolationsExt" setup=[Setup] begin
+    img = load("test_image.jpg")
+    img = img[1:20:end, 1:20:end]
+    img = Colors.Gray.(img)
+    img = getproperty.(img, :val)
+    img = convert(Matrix{Float64}, img)
+    img = .-(MinMax(img)(img) .- 1) # SO that blacks become peaks of the normalized density
+    xs = range(-1, 1, length = size(img, 1))
+    img = img ./ sum(img) ./ step(xs)^2
+
+    itp = Interpolations.scale(interpolate(img, BSpline(Cubic(Line(OnGrid())))), xs, xs)
+    D = @inferred Density(itp)
+    v = @inferred D([0.1, 0.1])
+    lv = @inferred logdensity(D, [0.1, 0.1])
+    @test lv == log(v)
+    g = @inferred gradlogdensity(D, [0.1, 0.1]) # Via autodiff
+    t = @timed gradlogdensity(D, [0.1, 0.1])
+    @test t.time < 1e-4
+    @test t.bytes < 1e3
 end

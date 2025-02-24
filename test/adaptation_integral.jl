@@ -20,7 +20,7 @@ end
 #   m(t) = (1/τ)∫₀ᵗ e^{-(t-s)/τ} x(s) ds,
 # so that
 #   ẋ = -V'(x) + α (x - m) + √(2D) ξ(t)
-#   ḿ = (x - m)/τ
+#   ṁ = (x - m)/τ
 #
 # The noise acts only on x.
 function f!(du, u, p, t)
@@ -44,9 +44,9 @@ end
 # Potential and dynamics parameters
 V0 = 4.0       # amplitude; wells at x = ±d have V = -V0, barrier at 0 is 0.
 d = 5.0       # location of the wells at x = ±d
-α = 0.4      # strength of the repelling (adaptation) force
-τ = 50.0     # memory time constant
-D = 0.6       # noise intensity
+α = 0.5     # strength of the repelling (adaptation) force
+τ = 100.0     # memory time constant
+D = 0.5      # noise intensity
 
 # Initial conditions:
 # Start with the particle in the left well and the memory set equal to the initial x.
@@ -56,7 +56,7 @@ u0 = [x0, m0]
 
 # Parameter tuple passed to the functions
 p = (V0, d, α, τ, D)
-tspan = (0.0, 2000.0)
+tspan = (0.0, 1000.0)
 
 # =======================================
 # 4. Set up and solve the SDE problem
@@ -119,15 +119,31 @@ lines!(ax2, tx, ty,
 # =======================================
 # 6. Record the Animation
 # =======================================
-record(fig, "animation.mp4", 1:n_frames; framerate = 30) do i
-    # Update the particle marker on the upper panel.
-    current_x = x_anim[i]
-    current_y = V(current_x, V0, d)
-    particle_pos_obs[] = Point2f(current_x, current_y)
+# record(fig, "animation.mp4", 1:n_frames; framerate = 30) do i
+#     # Update the particle marker on the upper panel.
+#     current_x = x_anim[i]
+#     current_y = V(current_x, V0, d)
+#     particle_pos_obs[] = Point2f(current_x, current_y)
 
-    # Update the vertical time indicator on the lower panel.
-    current_t = t_anim[i]
-    time_line_obs[] = ([current_t, current_t], [time_min, time_max])
-end
+#     # Update the vertical time indicator on the lower panel.
+#     current_t = t_anim[i]
+#     tx[] = [current_t, current_t]
+#     # ty[] = [time_min, time_max]
+# end
 
 println("Animation saved as animation.mp4")
+begin
+    using StatsBase
+    # * Plot the autocorrelation function of the particles velocity
+    f = Figure()
+    ax = Axis(f[1, 1], xlabel = "Time", ylabel = "x",
+              title = "Time Series of x(t)")
+    lines!(ax, sol.t[1:50000], sol[1, 1:50000], color = :blue, linewidth = 2)
+    ax = Axis(f[2, 1], xlabel = "Time", ylabel = "Autocorrelation",
+              title = "Velocity Autocorrelation")
+    v = sqrt.(diff(x_anim) .^ 2)
+    lags = 1:500
+    autocorrs = autocor(v, lags)
+    lines!(ax, lags, autocorrs, color = :blue, linewidth = 2)
+    f
+end

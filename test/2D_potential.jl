@@ -4,6 +4,7 @@ using DifferentialEquations
 using FractionalNeuralSampling
 using Distributions
 using LinearAlgebra
+
 import FractionalNeuralSampling: Density
 set_theme!(foresight(:physics))
 

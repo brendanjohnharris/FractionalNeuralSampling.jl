@@ -5,7 +5,7 @@ using LogDensityProblems
 using TransformVariables
 using DifferentiationInterface
 using TransformedLogDensities
-import LogDensityProblems: logdensity, logdensity_and_gradient
+import LogDensityProblems: logdensity, logdensity_and_gradient, dimension
 import Distributions: gradlogpdf
 import FractionalNeuralSampling.AD_BACKEND
 
@@ -22,6 +22,10 @@ potential(D::AbstractDensity, x) = -logdensity(D, x)
 potential(D::AbstractDensity) = Base.Fix1(potential, D)
 logdensity(D::AbstractDensity) = Base.Fix1(logdensity, D)
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
+function LogDensityProblems.dimension(D::AbstractDensity)
+    LogDensityProblems.dimension(distribution(D))
+end
+export dimension
 
 struct Density{D, doAd} <: AbstractDensity{D, doAd}
     distribution::D
@@ -101,4 +105,5 @@ function logdensity_and_gradient(D::AbstractDistributionDensity, x)
     (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
 end
 
+include("InterpolationsExt.jl")
 end # module

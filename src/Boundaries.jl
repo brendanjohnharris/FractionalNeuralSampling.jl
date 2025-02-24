@@ -4,6 +4,8 @@ import SciMLBase: DECallback
 using IntervalSets
 using Statistics
 using LinearAlgebra
+using LogDensityProblems
+import ..FractionalNeuralSampling.divide_dims
 
 export AbstractBoundary, AbstractContinuousBoundary, AbstractBoxBoundary, ReflectingBox,
        NoBoundary, PeriodicBox
@@ -84,7 +86,9 @@ function corners(R::AbstractBoxBoundary)
 end
 function getaffect(R::ReflectingBox)
     function affect!(integrator)
-        reflectvelocity!(view(integrator.u, 2), view(integrator.u, 1), _corners(R)...)
+        D = last(integrator.p)
+        x, v = divide_dims(integrator.u, LogDensityProblems.dimension(D))
+        reflectvelocity!(v, x, _corners(R)...)
     end
 end
 function getcondition(R::AbstractBoxBoundary)
@@ -109,7 +113,9 @@ function reenterbox!(velocity, point, min_corner, max_corner)
 end
 function getaffect(R::PeriodicBox)
     function affect!(integrator)
-        reenterbox!(view(integrator.u, 2), view(integrator.u, 1), _corners(R)...)
+        D = last(integrator.p)
+        x, v = divide_dims(integrator.u, LogDensityProblems.dimension(D))
+        reenterbox!(v, x, _corners(R)...)
     end
 end
 
