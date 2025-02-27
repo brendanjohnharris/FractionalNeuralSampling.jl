@@ -85,7 +85,7 @@ begin
         z = map(surf ∘ collect, zip(x[trans:subd:end], y[trans:subd:end]))
 
         ax = Axis3(g[1, 1], title = "α = $α",
-                   limits = (nothing, nothing, (minimum(z), maximum(z))),
+                   limits = (nothing, nothing, (minimum(z) - 1, maximum(z))),
                    aspect = (5.0, 5.0, 2 / 3))
         # heatmap!(ax, xs, xs, potential(D).(collect.(Iterators.product(xs, xs))),
         # colormap=seethrough(:turbo))
