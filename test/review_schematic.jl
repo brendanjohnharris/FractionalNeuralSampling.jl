@@ -1,3 +1,5 @@
+using TestEnv;
+TestEnv.activate();
 using CairoMakie
 using Foresight
 using DifferentialEquations
@@ -8,10 +10,10 @@ using Interpolations
 using FileIO
 using Normalization
 using IntervalSets
-# using CairoMakie
-# using CairoMakie.Colors
-using GLMakie
-using GLMakie.Colors
+using CairoMakie
+using CairoMakie.Colors
+# using GLMakie
+# using GLMakie.Colors
 import FractionalNeuralSampling: Density
 set_theme!(foresight(:physics))
 
@@ -60,11 +62,11 @@ begin
     begin
         xmax = 1.1
         cxmax = 0.8
-        trans = length(sol) ÷ 2
 
         surf = potential(D)
         subd = 10
         box = ReflectingBox(-xmax .. xmax, -xmax .. xmax)
+        @info "Starting simulation"
         L = LevyFlightSampler(;
                               u0 = [0 0 0 0],
                               tspan = 500.0,
@@ -75,6 +77,7 @@ begin
                               seed = 42,
                               boundaries = box())
         sol = solve(L, EM(); dt = 0.001)
+        trans = length(sol) ÷ 2
         xs = range(-xmax, xmax, length = 1000)
         x, y = eachrow(sol[1:2, :])
 
@@ -92,7 +95,7 @@ begin
         # reverse(seethrough(:turbo, -1))
         subd = 10
 
-        begin
+        if false
             # Get the subsequences for plotting.
             xseg = x[trans:subd:end]
             yseg = y[trans:subd:end]
@@ -142,9 +145,10 @@ begin
             end
         end
     end
-    # begin
-    #     lines!(ax, x[trans:subd:end], y[trans:subd:end], z, color = (:black, 0.5),
-    #            linewidth = 2)
-    # end
+    begin
+        lines!(ax, x[trans:subd:end], y[trans:subd:end], z, color = (:black, 0.5),
+               linewidth = 2)
+    end
+    save("test/review_schematic.pdf", f)
     f
 end

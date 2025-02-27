@@ -24,7 +24,7 @@ end
 function LogDensityProblems.logdensity(D::AbstractInterpolationDensity, x)
     D(x) |> log
 end
-function logdensity_and_gradient(D::AbstractDistributionDensity, x)
+function logdensity_and_gradient(D::AbstractInterpolationDensity, x)
     (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
 end
 

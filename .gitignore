@@ -20,3 +20,4 @@ docs/site/
 lcov*.info
 tmp.jl
 *.mp4
+*.pdf
