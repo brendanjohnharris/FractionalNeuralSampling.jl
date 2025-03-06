@@ -36,6 +36,27 @@ using TestItemRunner
     set_theme!(foresight(:physics))
 end
 
+@testitem "Density" setup=[Setup] begin
+    # Use a normal pdf
+    f(x) = 1 / sqrt(2π) * exp(-x^2 / 2)
+    D = @inferred Density{1, false}(f) # 1D, do autodiff
+    @test_throws "MethodError" gradlogdensity(D, 0.0) # No autodiff, so errors
+
+    D = @inferred Density{1}(f) # 1D, do autodiff
+    d = @inferred D(0.0)
+    logd = @inferred logdensity(D, 0.0)
+    glogd = @inferred gradlogdensity(D, 0.0)
+    @inferred gradlogdensity(D, [0])
+    @test_throws "ArgumentError" gradlogdensity(D, [0.0, 0.0])
+    @inferred gradlogdensity(D, [[0.0], [1.0]])
+
+    @inferred potential(D, 0.0)
+    @inferred gradpotential(D, 0.0)
+    @test gradpotential(D) isa Function
+
+    @inferred FractionalNeuralSampling.Densities.logdensity_and_gradient(D, 0.0)
+end
+
 @testitem "Langevin sampler bias" setup=[Setup] begin
     u0 = [0.0001 0.0001]
     tspan = (0.0, 1000.0)
