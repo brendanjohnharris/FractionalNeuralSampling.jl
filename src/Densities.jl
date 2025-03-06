@@ -1,6 +1,5 @@
 module Densities
 using Distributions
-using DistributionsAD
 using LogDensityProblems
 using TransformVariables
 using DifferentiationInterface
@@ -9,41 +8,28 @@ import LogDensityProblems: logdensity, logdensity_and_gradient, dimension
 import Distributions: gradlogpdf
 import FractionalNeuralSampling.AD_BACKEND
 
-export AbstractDensity, Density, distribution, potential, logdensity, gradlogdensity
+export AbstractDensity, Density, GradDensity, distribution, potential, logdensity,
+       gradlogdensity
 
-abstract type AbstractDensity{D, doAd} end
-const AbstractDistributionDensity{D, doAd} = AbstractDensity{D,
-                                                             doAd} where {D <: Distribution,
-                                                                          doAd}
-const DistributionDensity{D} = AbstractDensity{D, false} where {D <: Distribution}
-const AdDistributionDensity{D} = AbstractDensity{D, true} where {D <: Distribution}
+abstract type AbstractDensity{D, doA, N <: Int} end
 const AdDensity{D} = AbstractDensity{D, true} where {D}
 potential(D::AbstractDensity, x) = -logdensity(D, x)
 potential(D::AbstractDensity) = Base.Fix1(potential, D)
 logdensity(D::AbstractDensity) = Base.Fix1(logdensity, D)
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
-function LogDensityProblems.dimension(D::AbstractDensity)
-    LogDensityProblems.dimension(distribution(D))
+function LogDensityProblems.dimension(d::AbstractDensity{D, doAd, N}) where {D, doAd, N}
+    return N
 end
 export dimension
 
-struct Density{D, doAd} <: AbstractDensity{D, doAd}
+struct Density{D, doAd, N} <: AbstractDensity{D, doAd, N}
     distribution::D
-    doAd::Bool
 end
 distribution(D::Density) = D.distribution
 
-Density{doAd}(distribution::D) where {D, doAd} = Density{D, doAd}(distribution, doAd)
-function Density(d::D) where {D <: UnivariateDistribution}
-    Density{!hasmethod(Distributions.gradlogpdf, (D, Real))}(d)
+function Density{doAd}(distribution::D; dimension) where {D, doAd}
+    Density{D, doAd, dimension}(distribution)
 end
-function Density(d::D) where {D <: MultivariateDistribution}
-    Density{!hasmethod(Distributions.gradlogpdf, (D, Vector{Real}))}(d)
-end
-function Density(d::D) where {D <: MixtureModel}
-    Density{!hasmethod(Distributions.gradlogpdf, (D, Vector{Real}))}(d)
-end
-
 function _gradlogdensity(D::AdDensity, x::Real)
     gradient(x -> logdensity(D, only(x)), AD_BACKEND, [x]) |> only
 end
@@ -65,45 +51,39 @@ function _gradlogdensity(D::AdDensity,
     gradlogdensity!(grad, D, x, extras)
     return grad
 end
-
-# * Distributions based on densities
-#! format: off
-const UnivariateDistributionDensity{D, doAd} = AbstractDistributionDensity{D,
-                                                                           doAd} where {D <: Distribution{Univariate}, doAd}
-const MultivariateDistributionDensity{D, doAd} = AbstractDistributionDensity{D,
-                                                                             doAd} where {D <: Distribution{Multivariate}, doAd}
-# ! format: on
-_gradlogdensity(D::DistributionDensity, x) = Distributions.gradlogpdf(D, x)
-function gradlogdensity(D::UnivariateDistributionDensity, x::T) where {T<:Real}
-    _gradlogdensity(D, x)::T
-end
-function gradlogdensity(D::UnivariateDistributionDensity, x::AbstractVector{<:Number})
-    _gradlogdensity.([D], x)
-end
-function gradlogdensity(D::DistributionDensity, x::AbstractVector{<:AbstractVector{<:Number}})
-    _gradlogdensity.([D], x)
-end
-function gradlogdensity(D::AbstractDistributionDensity, x)
-    _gradlogdensity(D, x)
-end
-
-(D::AbstractDistributionDensity)(x) = pdf(distribution(D), x)
-(D::UnivariateDistributionDensity)(x::AbstractVector) = D(only(x))
-function Distributions.logpdf(D::AbstractDistributionDensity, x)
-    Distributions.logpdf(distribution(D), x)
-end
-function Distributions.gradlogpdf(D::AbstractDistributionDensity, x)
-    Distributions.gradlogpdf(distribution(D), x)
-end
-
-function LogDensityProblems.capabilities(::Type{<:AbstractDistributionDensity})
+function LogDensityProblems.capabilities(::Type{<:Density})
     LogDensityProblems.LogDensityOrder{1}()
 end
-LogDensityProblems.dimension(D::AbstractDistributionDensity) = length(distribution(D))
-LogDensityProblems.logdensity(D::AbstractDistributionDensity, x) = logpdf(D, x)
-function logdensity_and_gradient(D::AbstractDistributionDensity, x)
-    (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
+
+# ? Density interface: just need to define the following methods and traits. E.g. for
+# ? Densities with supplied gradients:
+# begin # * GradDensity
+#     struct GradDensity{D, G} <: AbstractDensity{D, false} # You are supplying a gradient function, so don't autodiff
+#         distribution::D # Should be f([x, y]) -> d
+#         gradlogdistribution::G # Should be f([x, y]) -> [∂x, ∂y]
+#         dimension::Int
+#     end
+#     GradDensity(d::D, g::G; dimension) where {D, G} = GradDensity{D, G}(d, g, dimension)
+
+#     gradlogdensity(d::D) where {D <: GradDensity} = d.gradlogdistribution
+#     gradlogdensity(d::D, x) where {D <: GradDensity} = d.gradlogdistribution(x)
+#     (D::GradDensity)(x) = distribution(D)(x)
+#     Distributions.logpdf(d::GradDensity, x) = (log ∘ distribution(d))(x)
+#     Distributions.gradlogpdf(d::GradDensity, x) = d.gradlogdistribution(x)
+
+#     function LogDensityProblems.capabilities(::Type{<:GradDensity})
+#         LogDensityProblems.LogDensityOrder{1}()
+#     end
+#     LogDensityProblems.dimension(d::GradDensity) = d.dimension
+#     LogDensityProblems.logdensity(d::GradDensity, x) = (log ∘ distribution(d))(x)
+#     function logdensity_and_gradient(D::GradDensity, x)
+#         (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
+#     end
+# end
+
+begin # * PotentialDensity
 end
 
-include("InterpolationsExt.jl")
+# include("Distributions.jl")
+# include("../ext/InterpolationsExt.jl")
 end # module
