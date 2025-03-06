@@ -67,15 +67,15 @@ begin
         subd = 10
         box = ReflectingBox(-xmax .. xmax, -xmax .. xmax)
         @info "Starting simulation"
-        L = LevyFlightSampler(;
-                              u0 = [0 0 0 0],
-                              tspan = 500.0,
-                              α = α,
-                              β = 0.5,
-                              γ = 0.01,
-                              𝜋 = D,
-                              seed = 42,
-                              boundaries = box())
+        L = LevyWalkSampler(;
+                            u0 = [0 0 0 0],
+                            tspan = 500.0,
+                            α = α,
+                            β = 0.04,
+                            γ = 1.4,
+                            𝜋 = D,
+                            seed = 42,
+                            boundaries = box())
         sol = solve(L, EM(); dt = 0.001)
         trans = length(sol) ÷ 2
         xs = range(-xmax, xmax, length = 1000)

@@ -172,34 +172,34 @@ function LevyFlightSampler(;
 end
 
 # !! Need to update equations, and check they are consistent
-# # * Levy walk sampler (noise on velocity)
-# function levy_walk_f!(du, u, p, t)
-#     (α, β, γ), 𝜋 = p
-#     x, v = divide_dims(u, length(u) ÷ 2)
-#     b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2) # ? Should this be in-place
-#     dx, dv = divide_dims(du, length(du) ÷ 2)
-#     dx .= γ .* b .+ β .* v
-#     dv .= β .* b
-# end
-# function levy_walk_g!(du, u, p, t)
-#     (α, β, γ), 𝜋 = p
-#     dx, dv = divide_dims(du, length(du) ÷ 2)
-#     dx .= sqrt(2) * γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication
-#     dv .= 0.0
-# end
+# * Levy walk sampler (noise on velocity)
+function levy_walk_f!(du, u, p, t)
+    (α, β, γ), 𝜋 = p
+    x, v = divide_dims(u, length(u) ÷ 2)
+    b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2) # ? Should this be in-place
+    dx, dv = divide_dims(du, length(du) ÷ 2)
+    dx .= β .* v
+    dv .= β .* b - γ .* v
+end
+function levy_walk_g!(du, u, p, t)
+    (α, β, γ), 𝜋 = p
+    dx, dv = divide_dims(du, length(du) ÷ 2)
+    dx .= 0.0
+    dv .= sqrt(2) * γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication
+end
 
-# function LevyWalkSampler(;
-#                          tspan, α, β, γ, u0 = [0.0 0.0],
-#                          boundaries = nothing,
-#                          noise_rate_prototype = zeros(size(u0)),
-#                          𝜋 = Density(default_distribution(first(u0))),
-#                          noise = NoiseProcesses.LevyProcess!(α; ND = 2,
-#                                                              W0 = Diagonal(zeros(length(u0),
-#                                                                                  length(u0)))),
-#                          kwargs...)
-#     Sampler(levy_walk_f!, levy_walk_g!; callback = boundaries, kwargs..., u0,
-#             noise_rate_prototype, noise,
-#             tspan, p = ((α, β, γ), 𝜋))
-# end
+function LevyWalkSampler(;
+                         tspan, α, β, γ, u0 = [0.0 0.0],
+                         boundaries = nothing,
+                         noise_rate_prototype = zeros(size(u0)),
+                         𝜋 = Density(default_distribution(first(u0))),
+                         noise = NoiseProcesses.LevyProcess!(α; ND = 2,
+                                                             W0 = Diagonal(zeros(length(u0),
+                                                                                 length(u0)))),
+                         kwargs...)
+    Sampler(levy_walk_f!, levy_walk_g!; callback = boundaries, kwargs..., u0,
+            noise_rate_prototype, noise,
+            tspan, p = ((α, β, γ), 𝜋))
+end
 
 end # module
