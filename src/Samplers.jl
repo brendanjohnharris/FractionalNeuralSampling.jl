@@ -42,18 +42,18 @@ end
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
 
-function default_distribution(u0::AbstractVector)
+function default_density(u0::AbstractVector)
     if length(u0) == 1
         return Normal(0.0, 1.0)
     else
         MvNormal(zeros(length(u0)), I(length(u0)))
     end
 end
-function default_distribution(u0::Real)
+function default_density(u0::Real)
     Normal(0.0, 1.0)
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}, u0::AbstractArray, tspan,
-                      p = (NullParameters(), Density(default_distribution(first(u0)))); # Assume momentum term
+                      p = (NullParameters(), Density(default_density(first(u0)))); # Assume momentum term
                       noise_rate_prototype = nothing,
                       noise = nothing,
                       seed = UInt64(0),
@@ -70,7 +70,7 @@ function Sampler{iip}(f::AbstractSDEFunction{iip}, u0::AbstractArray, tspan,
                                                            noise_rate_prototype, seed)
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan,
-                      p = (NullParameters(), Density(default_distribution(first(u0)))),
+                      p = (NullParameters(), Density(default_density(first(u0)))),
                       kwargs...) where {iip}
     Sampler{iip}(f, u0, tspan, p; kwargs...)
 end
@@ -108,7 +108,7 @@ end
 
 function LangevinSampler(; tspan, β, γ, u0 = [0.0 0.0], boundaries = nothing,
                          noise_rate_prototype = nothing,
-                         𝜋 = Density(default_distribution(first(u0))),
+                         𝜋 = Density(default_density(first(u0))),
                          noise = nothing,#WienerProcess(first(tspan), zero(noise_rate_prototype)),
                          kwargs...)
     Sampler(langevin_f!, langevin_g!; callback = boundaries, kwargs..., u0,
@@ -133,7 +133,7 @@ end
 
 # function ModulatedLangevinSampler(; tspan, β, γ, u0 = [0.0 0.0], boundaries = nothing,
 #                                   noise_rate_prototype = nothing,
-#                                   𝜋 = Density(default_distribution(first(u0))),
+#                                   𝜋 = Density(default_density(first(u0))),
 #                                   noise = nothing,#WienerProcess(first(tspan), zero(noise_rate_prototype)),
 #                                   kwargs...)
 #     Sampler(langevin_f!, langevin_g!; callback = boundaries, kwargs..., u0,
@@ -161,7 +161,7 @@ function LevyFlightSampler(;
                            tspan, α, β, γ, u0 = [0.0 0.0],
                            boundaries = nothing,
                            noise_rate_prototype = zeros(size(u0)),
-                           𝜋 = Density(default_distribution(first(u0))),
+                           𝜋 = Density(default_density(first(u0))),
                            noise = NoiseProcesses.LevyProcess!(α; ND = 2,
                                                                W0 = Diagonal(zeros(length(u0),
                                                                                    length(u0)))),
@@ -192,7 +192,7 @@ function LevyWalkSampler(;
                          tspan, α, β, γ, u0 = [0.0 0.0],
                          boundaries = nothing,
                          noise_rate_prototype = zeros(size(u0)),
-                         𝜋 = Density(default_distribution(first(u0))),
+                         𝜋 = Density(default_density(first(u0))),
                          noise = NoiseProcesses.LevyProcess!(α; ND = 2,
                                                              W0 = Diagonal(zeros(length(u0),
                                                                                  length(u0)))),

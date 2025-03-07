@@ -6,7 +6,7 @@ const AbstractInterpolationDensity{D, doAd} = AbstractDensity{D,
                                                                            Interpolations.AbstractInterpolation,
                                                                            doAd}
 function (D::AbstractInterpolationDensity)(x::AbstractVector)
-    d = D.distribution(x...)
+    d = D.density(x...)
     if d < 0
         @warn "Density ($(round(d; sigdigits=2))) is negative at $x. Clipping to `eps`"
     end
@@ -19,7 +19,7 @@ function LogDensityProblems.capabilities(::Type{<:AbstractInterpolationDensity})
     LogDensityProblems.LogDensityOrder{1}()
 end
 function LogDensityProblems.dimension(D::AbstractInterpolationDensity)
-    ndims(distribution(D))
+    ndims(density(D))
 end
 function LogDensityProblems.logdensity(D::AbstractInterpolationDensity, x)
     D(x) |> log
