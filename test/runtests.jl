@@ -74,7 +74,6 @@ end
     @test W.g == S.g
 
     @test_nowarn KLDivergence()(D, randn(100))
-
     sol = solve(S, EM(); dt)
     density(first.(sol.u))
     lines!(-2.5:0.1:2.5, D.(-2.5:0.1:2.5))

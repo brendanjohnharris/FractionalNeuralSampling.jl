@@ -15,7 +15,7 @@ export distribution, potential, logdensity, gradlogdensity, gradpotential, dimen
 abstract type AbstractDensity{D, N, doAd} end
 const AbstractUnivariateDensity{D, doAd} = AbstractDensity{D, 1, doAd} where {D, doAD}
 
-logdensity(D::AbstractDensity, x) = (log ∘ distribution(D))(x)
+logdensity(D::AbstractDensity, x) = logdensity(D)(x)
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
 
 potential(D::AbstractDensity, x) = -logdensity(D, x)
@@ -61,8 +61,8 @@ function gradlogdensity(d::AbstractUnivariateDensity, x::T) where {T <: Real}
     _gradlogdensity(d, x)::T
 end
 function gradlogdensity(d::AbstractUnivariateDensity,
-                        x::T) where {T <: AbstractVector{<:Real}}# For 1 element vectors
-    convert(T, [_gradlogdensity(d, only(x))])
+                        x::AbstractVector{T}) where {T <: Real} # For 1 element vectors
+    convert(Vector{T}, [_gradlogdensity(d, only(x))])
 end
 function gradlogdensity(d::AbstractDensity,
                         x::AbstractVector{<:AbstractVector{T}}) where {T <: Real}

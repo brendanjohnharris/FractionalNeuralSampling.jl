@@ -11,7 +11,7 @@ function (K::Distances.KLDivergence)(D::Density, x::AbstractVector)
     xs = xs[idxs]
     logp̂ = h.weights[idxs] .|> log
     logp = logdensity(D, xs)
-    p = D.(xs)
+    p = map(D, xs)
     sum(p .* (logp .- logp̂))
 end
 
