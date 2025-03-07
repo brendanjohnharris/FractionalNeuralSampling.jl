@@ -132,6 +132,6 @@ end
 begin # * PotentialDensity
 end
 
-# include("Distributions.jl")
-# include("../ext/InterpolationsExt.jl")
+include("Distributions.jl")
+include("../ext/InterpolationsExt.jl")
 end # module
