@@ -426,6 +426,7 @@ end
 end
 
 @testitem "AdDistributionDensity" setup=[Setup] begin
+    D = @inferred FNS.Densities.Density(Normal(0.0, 0.5))
     D = @inferred FNS.Densities.Density{true}(Normal(0.0, 0.5))
     x = zeros(LogDensityProblems.dimension(D)) # ℓ is your log density
     @inferred LogDensityProblems.logdensity(D)(x) # check inference, also see @code_warntype
