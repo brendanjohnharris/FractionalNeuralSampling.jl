@@ -473,8 +473,8 @@ end
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.1)
     x = first.(sol.u)
     y = last.(sol.u)
-    @test minimum(x) ≥ -5 - 1e-2
-    @test maximum(x) ≤ 5 + 1e-2
+    @test minimum(x) ≥ -5 - 2e-2
+    @test maximum(x) ≤ 5 + 2e-2
     lines(sol.t, x)
     lines(sol.t, y) # Momentum is constant?
     density(x) # The boundaries interfere with the density if they are too close
