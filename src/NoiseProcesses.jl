@@ -28,35 +28,7 @@ end
 
 dist(L::LevyNoise) = Stable(L.α, L.β, L.σ, L.μ)
 
-# @inline function (L::LevyNoise{false, T})(rng::AbstractRNG)::T where {T}
-#     rand(rng, dist(L))
-# end
-
-# @inline function (L::LevyNoise{false, T})(rng::AbstractRNG,
-#                                           proto::AbstractArray{T})::AbstractArray{T} where {T <:
-#                                                                                             Number}
-#     rand(rng, dist(L), size(proto))
-# end
-# @inline function (L::LevyNoise{false, T})(rng::AbstractRNG,
-#                                           proto::Type{S})::S where {T <:
-#                                                                     Number,
-#                                                                     S <:
-#                                                                     StaticArraysCore.StaticArray
-#                                                                     }
-#     S(rand(rng, dist(L), size(S)))
-# end
-# @inline function (L::LevyNoise{false, T})(rng::AbstractRNG,
-#                                           proto::S)::S where {T <: Number,
-#                                                               S <:
-#                                                               StaticArraysCore.StaticArray}
-#     L(rng, S)
-# end
-# @inline function (L::LevyNoise{false, T})(rng::AbstractRNG,
-#                                           proto::Type{T})::T where {T}
-#     rand(rng, dist(L))
-# end
-@inline function (L::LevyNoise{true})(rng::AbstractRNG, rand_mat::AbstractMatrix)
-    rand_vec = view(rand_mat, diagind(rand_mat))
+@inline function (L::LevyNoise{true})(rng::AbstractRNG, rand_vec::AbstractVector)
     rand_vecs = divide_dims(rand_vec, L.ND) # * Add ND noise independently to each column (each variable)
     map(rand_vecs) do x
         randn!(rng, x) # * Choose a point from a spherical distribution
@@ -64,25 +36,11 @@ dist(L::LevyNoise) = Stable(L.α, L.β, L.σ, L.μ)
         x .*= rand(rng, dist(L)) # * Take a levy step in the chosen direction
     end
 end
-# @inline function (L::LevyNoise{true})(rng::AbstractRNG, rand_vec)
-#     rand_vec .= Base.Broadcast.Broadcasted(_ -> rand(rng, dist(L)), ())
-# end
-# # This fallback works for GPUs because it doesn't assume we can pass an RNG
-# @inline function (L::LevyNoise{true})(rng::AbstractRNG,
-#                                       rand_vec::DiffEqNoiseProcess.GPUArraysCore.AbstractGPUArray)
-#     rand!(rng, dist(L), rand_vec)
-# end
+@inline function (L::LevyNoise{true})(rng::AbstractRNG, rand_mat::AbstractMatrix)
+    rand_vec = view(rand_mat, diagind(rand_mat))
+    L(rng, rand_vec)
+end
 
-# function (L::LevyNoise{false, T})(dW::T, W, dt, u, p, t, rng) where {T}
-#     @fastmath L(rng) * abs(dt)^(1 / L.α)
-# end
-# function (L::LevyNoise{false, T})(dW::AbstractArray{T}, W, dt, u, p, t, rng) where {T}
-#     @fastmath L(rng, dW) * abs(dt)^(1 / L.α)
-# end
-# function (L::LevyNoise{false, T})(dW::StaticArraysCore.SArray{N, T}, W, dt, u, p, t,
-#                                   rng) where {N, T}
-#     @fastmath L(rng, dW) * abs(dt)^(1 / L.α)
-# end
 function (L!::LevyNoise{true})(rand_mat, W, dt, u, p, t, rng)
     L!(rng, rand_mat)
     @fastmath rand_mat .*= abs(dt)^(1 / L!.α)

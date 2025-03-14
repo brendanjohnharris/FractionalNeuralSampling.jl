@@ -124,4 +124,8 @@ function (B::AbstractBoxBoundary)(; kwargs...)
                      kwargs...)
 end
 
+function domain(R::AbstractBoxBoundary)
+    [Interval(is...) for is in zip(R.min_corner, R.max_corner)]
+end
+
 end # module

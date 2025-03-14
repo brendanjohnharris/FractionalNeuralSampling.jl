@@ -42,17 +42,20 @@ end
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
 
-function default_density(u0::AbstractVector)
+function default_density(u0; dims = length(u0) ÷ 2)
+    u0 = divide_dims(u0, dims) |> first
     if length(u0) == 1
-        return Normal(0.0, 1.0)
+        D = Normal(0.0, 1.0)
     else
-        MvNormal(zeros(length(u0)), I(length(u0)))
+        D = MvNormal(zeros(length(u0)), I(length(u0)))
     end
+    D = Density(D)
+    return D
 end
 function default_density(u0::Real)
-    Normal(0.0, 1.0)
+    Normal(0.0, 1.0) |> Density
 end
-function Sampler{iip}(f::AbstractSDEFunction{iip}, u0::AbstractArray, tspan,
+function Sampler{iip}(f::AbstractSDEFunction{iip}, u0, tspan,
                       p = (NullParameters(), Density(default_density(first(u0)))); # Assume momentum term
                       noise_rate_prototype = nothing,
                       noise = nothing,
