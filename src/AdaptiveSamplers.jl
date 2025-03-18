@@ -18,7 +18,7 @@ end
 
 function adaptive_walk_f!(du, u, p, t)
     ps, 𝜋 = p
-    γ, τ_r, τ_d, k, space, D, approx_n_modes = ps
+    γ, τ_r, τ_d, space, D, kernel, ps, plan = ps
 
     x, a_K = u.x
     dx, da_K = du.x
@@ -29,15 +29,16 @@ function adaptive_walk_f!(du, u, p, t)
     if !(space isa TensorSpace) && !(x isa Number) # Handle 1D space
         ∇K = (D .* [K])
         ∇K = (∇K) .∘ only
-        k̂ = Fun(ComposedFunction(k, Base.Fix2(-, only(x))), space, approx_n_modes) # !! SUPER SLOW
+        a_k̂ = plan * map(kernel ∘ Base.Fix2(-, only(x)), ps)
     else
-        ∇K = (D .* [K])
-        k̂ = Fun(ComposedFunction(k, Base.Fix2(-, x)), space, approx_n_modes) # !! SUPER SLOW
+        ∇K = (D .* [K]) # This is also kind of slow...
+        a_k̂ = plan * map(kernel ∘ Base.Fix2(-, x), ps)
     end
-    a_k̂ = k̂.coefficients
 
     # * So we do actually have to do the phase shift ourselves.
+    # ks = points(space, length(a_k̂))
     # ϕ = -im .* dot.(ks, [x]) # Phase shift due to recentering for current position
+
     da_K .= -a_K / τ_d .+ a_k̂ / τ_r # Update the adaptive basis coefficients
     dx .= -(∇V(x) + [δK(x) for δK in ∇K]) # Update the position
 end
@@ -59,10 +60,10 @@ function AdaptiveWalkSampler(kernel, approx_n_modes; tspan,
     # kernel = x -> exp(-(norm(x)) / (2 * σ^2))
     dimension = length(u0)
 
-    space = Boundaries.domain(boundaries) # So boundaries must be passed explicitly
-    space = prod(Fourier.(space)) # Fourier ensures periodicity of the solution
+    sp = Boundaries.domain(boundaries) # So boundaries must be passed explicitly
+    sp = prod(Fourier.(sp)) # Fourier ensures periodicity of the solution
 
-    k = Fun(kernel, space, approx_n_modes)
+    k = Fun(kernel, sp, approx_n_modes)
 
     n_modes = length(k.coefficients) # The number of modes in the adaptive potential
     a_K = zeros(n_modes) # The adaptive basis coefficients
@@ -73,14 +74,17 @@ function AdaptiveWalkSampler(kernel, approx_n_modes; tspan,
     #W0 = zero(u0))
 
     Ds = SVector{dimension, Int}.(eachrow(I(dimension)))
-    if space isa TensorSpace
-        D = Derivative.([space], Ds)
+    if sp isa TensorSpace
+        D = Derivative.([sp], Ds)
     else
         Ds = only.(Ds)
-        D = Derivative.([space], Ds)
+        D = Derivative.([sp], Ds)
     end
 
-    p = ((γ, τ_r, τ_d, k, space, D, approx_n_modes), 𝜋)
+    ps = points(sp, approx_n_modes)
+    plan = ApproxFunBase.plan_transform(sp, length(ps))
+
+    p = ((γ, τ_r, τ_d, sp, D, kernel, ps, plan), 𝜋)
 
     Sampler(adaptive_walk_f!, adaptive_walk_g!;
             callback = boundaries(),
