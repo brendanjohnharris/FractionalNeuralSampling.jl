@@ -5,6 +5,7 @@ using FractionalNeuralSampling
 using Distributions
 using LinearAlgebra
 using TimeseriesTools
+using ApproxFun
 
 import FractionalNeuralSampling: Density, divide_dims
 set_theme!(foresight(:physics))
@@ -21,6 +22,9 @@ Dy = Derivative(domain, [0, 1])
 ∇xK = Dx * K # For a given xt, yt = [0.0, 0.0]
 ∇yK = Dy * K # For a given
 
+function recenter(f, x)
+    compose(f, Base.Fix2(-, x))
+end
 s∇xK = recenter(∇xK, [x[1], x[2]])
 s∇yK = recenter(∇yK, [x[1], x[2]])
 
@@ -77,9 +81,6 @@ begin # * Choose a basis for the adaptive potential. Gives periodic approximatio
     ∇yK(0.0, 0.5)
 end
 begin # * To get the gradient relative to the walkers position
-    function recenter(f, x)
-        compose(f, Base.Fix2(-, x))
-    end
     s∇xK = recenter(∇xK, [0.6, 0.6])
     s∇xK([5.1, 0.6])
 end

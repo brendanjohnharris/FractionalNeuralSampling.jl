@@ -15,7 +15,7 @@ begin
     D = PotentialDensity{1}(V)
 
     ff = Figure()
-    u0 = VectorOfArray([-Δx / 2, 0.0])
+    u0 = ArrayPartition([-Δx / 2], [0.0])
     L = LangevinSampler(;
                         u0,
                         tspan = 1000.0,
@@ -23,7 +23,7 @@ begin
                         γ = 2.0,
                         𝜋 = D,
                         seed = 50,
-                        noise_rate_prototype = [0.0, 0.0])
+                        noise_rate_prototype = similar(u0))
     sol = solve(L, EM(); dt = 0.001)
     x = sol[1, :]
 

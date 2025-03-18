@@ -4,6 +4,8 @@ authors = ["brendanjohnharris <bhar9988@uni.sydney.edu.au> and contributors"]
 version = "1.0.0-DEV"
 
 [deps]
+ApproxFun = "28f2ccd6-bb30-5033-b560-165f7b14dc2f"
+CompositionsBase = "a33af91c-f02d-484b-be07-31d278c5ca2b"
 DiffEqNoiseProcess = "77a26b50-5914-5dd7-bc55-306e6241c503"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -39,6 +41,8 @@ Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 DistancesExt = ["Distances"]
 
 [compat]
+ApproxFun = "0.13.28"
+CompositionsBase = "0.1.2"
 DifferentiationInterface = "0.6.30"
 Distances = "0.10.10"
 Distributions = "0.25.106"

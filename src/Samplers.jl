@@ -97,14 +97,15 @@ end
 # * Langevin sampler (Brownian motion)
 function langevin_f!(du, u, p, t)
     (β, γ), 𝜋 = p
-    x, v = eachcol(u)
+    x, v = divide_dims(u, length(u) ÷ 2)
     b = gradlogdensity(𝜋)(x) # ? Should this be in-place
-    du[:, 1] .= γ .* b .+ β .* v
-    du[:, 2] .= β .* b
+    dx, dv = divide_dims(u, length(u) ÷ 2)
+    dx .= γ .* b .+ β .* v
+    dv .= β .* b
 end
 function langevin_g!(du, u, p, t)
     (β, γ), 𝜋 = p
-    dx, dv = eachcol(du)
+    dx, dv = divide_dims(u, length(u) ÷ 2)
     dx .= sqrt(2) * γ^(1 // 2) # * dW
     dv .= 0.0
 end
@@ -163,11 +164,10 @@ end
 function LevyFlightSampler(;
                            tspan, α, β, γ, u0 = [0.0 0.0],
                            boundaries = nothing,
-                           noise_rate_prototype = zeros(size(u0)),
+                           noise_rate_prototype = similar(u0),
                            𝜋 = Density(default_density(first(u0))),
                            noise = NoiseProcesses.LevyProcess!(α; ND = 2,
-                                                               W0 = Diagonal(zeros(length(u0),
-                                                                                   length(u0)))),
+                                                               W0 = zero(u0)),
                            kwargs...)
     Sampler(levy_flight_f!, levy_flight_g!; callback = boundaries, kwargs..., u0,
             noise_rate_prototype, noise,
@@ -194,15 +194,16 @@ end
 function LevyWalkSampler(;
                          tspan, α, β, γ, u0 = [0.0 0.0],
                          boundaries = nothing,
-                         noise_rate_prototype = zeros(size(u0)),
+                         noise_rate_prototype = similar(u0),
                          𝜋 = Density(default_density(first(u0))),
                          noise = NoiseProcesses.LevyProcess!(α; ND = 2,
-                                                             W0 = Diagonal(zeros(length(u0),
-                                                                                 length(u0)))),
+                                                             W0 = zero(u0)),
                          kwargs...)
     Sampler(levy_walk_f!, levy_walk_g!; callback = boundaries, kwargs..., u0,
             noise_rate_prototype, noise,
             tspan, p = ((α, β, γ), 𝜋))
 end
+
+include("AdaptiveSamplers.jl")
 
 end # module

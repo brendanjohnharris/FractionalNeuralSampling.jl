@@ -181,6 +181,29 @@ end
     end
 end
 
+@testitem "Recursive Arrays" setup=[Setup] begin
+    # So for recursive arrays, we can use diagonal noise by setting the noise_rate prototype
+    # to similar(u0)
+    u0 = ArrayPartition([0.0], [0.0])
+    tspan = (0.0, 500.0)
+    dt = 0.01
+    D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
+    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+
+    W = @test_nowarn remake(S, p = S.p)
+    @test_nowarn solve(W, EM(); dt, saveat = 0.01)
+    @test W.p == S.p
+    @test W.u0 == S.u0
+    @test W.tspan == S.tspan
+    @test W.f == S.f
+    @test W.g == S.g
+
+    sol = solve(S, EM(); dt)
+    x = first.(sol.u)
+    x = x[abs.(x) .< 6]
+    @test evaluate(KLDivergence(), D, x) < 0.1
+end
+
 if false
     u0 = [-3.0 0.00]
     tspan = (0.0, 5000.0)
