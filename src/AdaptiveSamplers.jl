@@ -18,15 +18,15 @@ end
 
 function adaptive_walk_f!(du, u, p, t)
     ps, 𝜋 = p
-    γ, τ_r, τ_d, space, D, kernel, ps, plan = ps
+    @unpack γ, τ_r, τ_d, sp, D, kernel, ps, plan = ps
 
     x, a_K = u.x
     dx, da_K = du.x
 
     ∇V = (-) ∘ gradlogdensity(𝜋)
-    # Main.@infiltrate
-    K = Fun(space, a_K)
-    if !(space isa TensorSpace) && !(x isa Number) # Handle 1D space
+
+    K = Fun(sp, a_K)
+    if !(sp isa TensorSpace) && !(x isa Number) # Handle 1D space
         ∇K = (D .* [K])
         ∇K = (∇K) .∘ only
         a_k̂ = plan * map(kernel ∘ Base.Fix2(-, only(x)), ps)
@@ -35,16 +35,12 @@ function adaptive_walk_f!(du, u, p, t)
         a_k̂ = plan * map(kernel ∘ Base.Fix2(-, x), ps)
     end
 
-    # * So we do actually have to do the phase shift ourselves.
-    # ks = points(space, length(a_k̂))
-    # ϕ = -im .* dot.(ks, [x]) # Phase shift due to recentering for current position
-
-    da_K .= -a_K / τ_d .+ a_k̂ / τ_r # Update the adaptive basis coefficients
-    dx .= -(∇V(x) + [δK(x) for δK in ∇K]) # Update the position
+    da_K .= -a_K / τ_d .+ a_k̂ / τ_r
+    dx .= -(∇V(x) + [δK(x) for δK in ∇K])
 end
 function adaptive_walk_g!(du, u, p, t)
     ps, 𝜋 = p
-    γ, _ = ps
+    @unpack γ = ps
     dx, da_K = du.x
     dx .= sqrt(2γ)
     da_K .= 0.0
@@ -84,7 +80,7 @@ function AdaptiveWalkSampler(kernel, approx_n_modes; tspan,
     ps = points(sp, approx_n_modes)
     plan = ApproxFunBase.plan_transform(sp, length(ps))
 
-    p = ((γ, τ_r, τ_d, sp, D, kernel, ps, plan), 𝜋)
+    p = ((; γ, τ_r, τ_d, sp, D, kernel, ps, plan), 𝜋)
 
     Sampler(adaptive_walk_f!, adaptive_walk_g!;
             callback = boundaries(),

@@ -19,12 +19,14 @@ logdensity(D::AbstractDensity, x) = logdensity(D)(x)
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
 
 potential(D::AbstractDensity, x) = -logdensity(D, x)
+potential(D::AbstractDensity, x::Tuple) = potential(D, collect(x))
 potential(D::AbstractDensity) = Base.Fix1(potential, D)
 
 gradpotential(D::AbstractDensity, x) = -gradlogdensity(D, x)
 gradpotential(D::AbstractDensity) = (-) ∘ gradlogdensity(D)
 
 (D::AbstractDensity)(x) = density(D)(x)
+(D::AbstractDensity)(x::Tuple) = D(collect(x))
 (D::AbstractUnivariateDensity)(x::AbstractVector) = D(only(x))
 
 function LogDensityProblems.dimension(d::AbstractDensity{D, N, doAd}) where {D, N,

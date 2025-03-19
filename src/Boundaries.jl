@@ -8,7 +8,7 @@ using LogDensityProblems
 import ..FractionalNeuralSampling.divide_dims
 
 export AbstractBoundary, AbstractContinuousBoundary, AbstractBoxBoundary, ReflectingBox,
-       NoBoundary, PeriodicBox
+       NoBoundary, PeriodicBox, domain, gridaxes, grid
 
 # ? Boundary conditions are just callbacks
 abstract type AbstractBoundary{D} end
@@ -126,6 +126,17 @@ end
 
 function domain(R::AbstractBoxBoundary)
     [Interval(is...) for is in zip(R.min_corner, R.max_corner)]
+end
+
+function gridaxes(R::AbstractBoxBoundary{D}, n::Int) where {D}
+    map(domain(R)) do r
+        range(r, length = n)
+    end
+end
+
+function grid(R::AbstractBoxBoundary, n)
+    r = gridaxes(R, n)
+    Iterators.product(r...)
 end
 
 end # module
