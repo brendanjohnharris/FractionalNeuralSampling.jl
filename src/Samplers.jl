@@ -41,6 +41,7 @@ mutable struct Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D} <:
 end
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
+DiffEqBase.is_diagonal_noise(S::Sampler) = true
 
 function default_density(u0; dims = length(u0) ÷ 2)
     u0 = divide_dims(u0, dims) |> first

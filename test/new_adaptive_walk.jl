@@ -10,40 +10,38 @@ using ApproxFun
 import FractionalNeuralSampling: Density, AdaptiveWalkSampler
 
 begin # * Try construction
-    σ = 1.0
+    σ = 2.0 # Width of adaptive kernel
     n_modes = 100
-    kernel = x -> exp(-(norm(x)) / (2 * σ^2))
+    kernel = x -> exp(-(norm(x)^2) / (2 * σ^2))
     # kernel = x -> exp(-sqrt(norm(x)) / σ)
 
-    if false # 1d
-        boundaries = PeriodicBox(-10 .. 10)
-        D = MixtureModel([Normal(-5, 0.5), Normal(0, 0.5), Normal(5, 0.5)])
-        D = Density(D)
-        u0 = [-3.0]
-    else # 2d
-        boundaries = PeriodicBox(-10 .. 10, -10 .. 10)
+    begin # 2d
+        boundaries = PeriodicBox(-8 .. 8, -8 .. 8)
 
-        Δx = 5 # Controls spacing between wells
+        s = 0.4
+        Δx = 4 # Controls spacing between wells
         Ng = 3
         phis = range(0, stop = 2π, length = Ng + 1)[1:Ng]
         centers = Δx .* exp.(im * phis)
-        d = MixtureModel([MvNormal([real(c), imag(c)], I(2)) for c in centers])
+        d = MixtureModel([MvNormal([real(c), imag(c)], s^2 .* I(2)) for c in centers])
         D = Density(d)
 
         u0 = [-2.0, -2.0]
     end
 
-    τ_d = 100.0
-    A = AdaptiveWalkSampler(kernel, 1000;
-                            tspan = 200.0,
-                            γ = 0.1,
+    τ_d = 50.0
+    A = AdaptiveLevySampler(kernel, 500;
+                            tspan = 100.0,
+                            α = 1.4,
+                            γ = 0.3,
                             τ_d,
-                            τ_r = τ_d / 60,
+                            τ_r = τ_d / 100,
                             u0,
                             boundaries,
                             𝜋 = D)
 
-    sol = solve(A, EM(); dt = 0.01)
+    sol = solve(A, EM(); dt = 0.1)
+    @info "Adaptive walk solved"
 end
 
 begin # * Plot
@@ -84,24 +82,57 @@ begin # * Plot adaptive potential
 end
 begin
     begin # * Animation. On the left, the distribution and trajectory. On the right, the adaptive potential
-        xy = Observable([Point2f([NaN, NaN])])
+        tail = 100
+        xy = Observable(Point2f.(fill(sol[1].x[1], tail)))
+        color = Observable(zeros(length(xy[])))
         K = Observable(first(Ks))
 
         limits = FractionalNeuralSampling.domain(boundaries) .|> extrema |> Tuple
 
         f = Figure(size = (400, 400))
-        ax = Axis(f[1, 1]; xlabel = "Position x", ylabel = "Position y", aspect = 1, limits)
+        ax = Axis(f[1, 1]; xlabel = "Position x", ylabel = "Position y", limits,
+                  xaxisposition = :top, xticksvisible = true, yticksvisible = true,
+                  xticklabelsvisible = false, yticklabelsvisible = false, xtickalign = 1,
+                  ytickalign = 1, xticksmirrored = true, yticksmirrored = true,
+                  xgridvisible = false, ygridvisible = false)
         heatmap!(ax, xs, ys, K, colormap = seethrough(:turbo), colorrange = clims)
         contour!(ax, xs, ys, map((D), xys), colormap = seethrough(:turbo))
-        lines!(ax, xy, color = :black)
+        lines!(ax, xy; color, colorrange = (0, 1), colormap = seethrough(:binary))
         # f
     end
-    begin
-        # ax = Axis(f[1, 2]; xlabel = "Position x", ylabel = "Position y", aspect = 1, limits)
+    dosides = true
+    if dosides # * Add an axis below showing the x trace
+        xtrace = getindex.(sol.u, 1)
+        ytrace = getindex.(sol.u, 2)
+        xt = Observable([Point2f([first(sol.t), first(xtrace)])])
+        yt = Observable([Point2f([first(ytrace), first(sol.t)])])
+
+        ax = Axis(f[2, 1]; xlabel = "Time", limits = (extrema(sol.t), extrema(xtrace)))
+        colsize!(f.layout, 1, Relative(0.8))
+        rowsize!(f.layout, 2, Relative(0.2))
+        lines!(ax, xt, color = :black)
+        hidedecorations!(ax)
+
+        ax = Axis(f[1, 2]; ylabel = "Time", limits = (extrema(ytrace), extrema(sol.t)))
+        colsize!(f.layout, 2, Relative(0.2))
+        rowsize!(f.layout, 1, Relative(0.8))
+        colgap!(f.layout, 1, Relative(0.0))
+        rowgap!(f.layout, 1, Relative(0.0))
+        lines!(ax, yt, color = :black)
+        hidedecorations!(ax)
     end
     begin# * Animate
+        tau = tail / 10
+        w(i0) = i -> exp(-(i0 - i) / tau)
+        ws = map(Float32 ∘ w(tail), 1:tail)
+        color[] = ws
         record(f, "adaptive_walk.mp4", enumerate(is); framerate = 30) do (n, i)
-            xy[] = push!(xy[], Point2f(sol[i].x[1]))
+            xy[][1:(end - 1)] .= xy[][2:end]
+            xy[][end] = Point2f(sol[i].x[1])
+
+            xt[] = push!(xt[], Point2f(sol.t[i], xtrace[i]))
+            yt[] = push!(yt[], Point2f(ytrace[i], sol.t[i]))
+
             K[] = Ks[n]
         end
     end
