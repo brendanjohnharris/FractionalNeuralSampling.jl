@@ -37,7 +37,7 @@ function adaptive_walk_f!(du, u, p, t)
     end
 
     da_K .= -a_K / τ_d .+ a_k̂ / τ_r
-    dx .= -(∇V(x) + [δK(x) for δK in ∇K])
+    dx .= -γ * (∇V(x) + [δK(x) for δK in ∇K])
 end
 function adaptive_walk_g!(du, u, p, t)
     ps, 𝜋 = p
@@ -110,7 +110,7 @@ function adaptive_levy_f!(du, u, p, t)
     end
 
     da_K .= -a_K / τ_d .+ a_k̂ / τ_r
-    dx .= -(∇V(x) + [δK(x) for δK in ∇K]) * gamma(α - 1) / (gamma(α / 2) .^ 2)
+    dx .= -γ * (∇V(x) + [δK(x) for δK in ∇K]) * gamma(α - 1) / (gamma(α / 2) .^ 2)
 end
 function adaptive_levy_g!(du, u, p, t)
     ps, 𝜋 = p

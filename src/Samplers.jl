@@ -158,7 +158,7 @@ end
 function levy_flight_g!(du, u, p, t)
     (α, β, γ), 𝜋 = p
     dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= sqrt(2) * γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication
+    dx .= γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication. Do we need a * sqrt(2)?
     dv .= 0.0
 end
 

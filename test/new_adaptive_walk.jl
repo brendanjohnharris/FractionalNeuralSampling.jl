@@ -16,11 +16,11 @@ begin # * Try construction
     # kernel = x -> exp(-sqrt(norm(x)) / σ)
 
     begin # 2d
-        boundaries = PeriodicBox(-8 .. 8, -8 .. 8)
+        boundaries = PeriodicBox(-10 .. 10, -10 .. 10)
 
         s = 0.4
-        Δx = 4 # Controls spacing between wells
-        Ng = 3
+        Δx = 5 # Controls spacing between wells
+        Ng = 4
         phis = range(0, stop = 2π, length = Ng + 1)[1:Ng]
         centers = Δx .* exp.(im * phis)
         d = MixtureModel([MvNormal([real(c), imag(c)], s^2 .* I(2)) for c in centers])
@@ -31,16 +31,16 @@ begin # * Try construction
 
     τ_d = 50.0
     A = AdaptiveLevySampler(kernel, 500;
-                            tspan = 100.0,
-                            α = 1.4,
+                            tspan = 1000.0,
+                            α = 1.6,
                             γ = 0.3,
                             τ_d,
-                            τ_r = τ_d / 100,
+                            τ_r = τ_d / 150,
                             u0,
                             boundaries,
                             𝜋 = D)
 
-    sol = solve(A, EM(); dt = 0.1)
+    sol = solve(A, EM(); dt = 0.01)
     @info "Adaptive walk solved"
 end
 
@@ -66,7 +66,7 @@ if length(u0) == 2
 end
 
 begin # * Plot adaptive potential
-    is = round.(Int, range(1, length(sol), length = 1000))
+    is = round.(Int, range(1, length(sol), length = 2000))
     xs, ys = FractionalNeuralSampling.gridaxes(boundaries, 100)
     xys = FractionalNeuralSampling.grid(boundaries, 100)
 
@@ -89,8 +89,8 @@ begin
 
         limits = FractionalNeuralSampling.domain(boundaries) .|> extrema |> Tuple
 
-        f = Figure(size = (400, 400))
-        ax = Axis(f[1, 1]; xlabel = "Position x", ylabel = "Position y", limits,
+        f = Figure(size = (400, 500))
+        ax = Axis(f[1, 1]; limits,
                   xaxisposition = :top, xticksvisible = true, yticksvisible = true,
                   xticklabelsvisible = false, yticklabelsvisible = false, xtickalign = 1,
                   ytickalign = 1, xticksmirrored = true, yticksmirrored = true,
@@ -104,35 +104,54 @@ begin
     if dosides # * Add an axis below showing the x trace
         xtrace = getindex.(sol.u, 1)
         ytrace = getindex.(sol.u, 2)
+
+        # Get speed
+        dx = xtrace[2:end] - xtrace[1:(end - 1)]
+        dy = ytrace[2:end] - ytrace[1:(end - 1)]
+        vs = sqrt.(dx .^ 2 + dy .^ 2)
+        prepend!(vs, vs[1])
+
         xt = Observable([Point2f([first(sol.t), first(xtrace)])])
         yt = Observable([Point2f([first(ytrace), first(sol.t)])])
+        vt = Observable([Point2f([first(sol.t), first(vs)])])
 
-        ax = Axis(f[2, 1]; xlabel = "Time", limits = (extrema(sol.t), extrema(xtrace)))
+        ax = Axis(f[2, 1]; xlabel = "Time", limits = (extrema(sol.t), extrema(xs)))
         colsize!(f.layout, 1, Relative(0.8))
         rowsize!(f.layout, 2, Relative(0.2))
-        lines!(ax, xt, color = :black)
+        lines!(ax, xt, color = :black, label = "x")
         hidedecorations!(ax)
+        axislegend(ax, position = :rt, framevisible = false)
 
-        ax = Axis(f[1, 2]; ylabel = "Time", limits = (extrema(ytrace), extrema(sol.t)))
+        ax = Axis(f[1, 2]; ylabel = "Time", limits = (extrema(ys), extrema(sol.t)))
         colsize!(f.layout, 2, Relative(0.2))
-        rowsize!(f.layout, 1, Relative(0.8))
+        rowsize!(f.layout, 1, Relative(0.6))
         colgap!(f.layout, 1, Relative(0.0))
         rowgap!(f.layout, 1, Relative(0.0))
-        lines!(ax, yt, color = :black)
+        lines!(ax, yt, color = :black, label = "y")
         hidedecorations!(ax)
+        axislegend(ax, position = :rt, framevisible = false)
+
+        # ax = Axis(f[0, 1]; xlabel = "Speed",
+        #           limits = (extrema(sol.t), (0, abs(-(extrema(xs)...)))),
+        #           xaxisposition = :top)
+        # lines!(ax, vt, color = :black, label = "speed")
+        # hidedecorations!(ax)
+        # axislegend(ax, position = :rt, framevisible = false)
+        # rowsize!(f.layout, 0, Relative(0.2))
+        # rowgap!(f.layout, 1, Relative(0.0))
     end
     begin# * Animate
         tau = tail / 10
         w(i0) = i -> exp(-(i0 - i) / tau)
         ws = map(Float32 ∘ w(tail), 1:tail)
         color[] = ws
-        record(f, "adaptive_walk.mp4", enumerate(is); framerate = 30) do (n, i)
+        record(f, "adaptive_walk.mp4", enumerate(is); framerate = 60) do (n, i)
             xy[][1:(end - 1)] .= xy[][2:end]
             xy[][end] = Point2f(sol[i].x[1])
 
             xt[] = push!(xt[], Point2f(sol.t[i], xtrace[i]))
             yt[] = push!(yt[], Point2f(ytrace[i], sol.t[i]))
-
+            vt[] = push!(vt[], Point2f(sol.t[i], vs[i]))
             K[] = Ks[n]
         end
     end
