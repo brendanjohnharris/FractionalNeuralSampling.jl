@@ -1,12 +1,14 @@
-using RecursiveArrayTools
-import ..NoiseProcesses: LevyProcess!
-import ..Boundaries
 using UnPack
 using ApproxFun
 using CompositionsBase
 using IntervalSets
+
 import ApproxFun.DomainSets
-using SpecialFunctions
+import StaticArraysCore.SVector
+import ..NoiseProcesses: LevyProcess!
+import ..Boundaries
+import RecursiveArrayTools: ArrayPartition
+import SpecialFunctions: gamma
 
 export AdaptiveWalkSampler, AdaptiveLevySampler
 

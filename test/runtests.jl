@@ -4,6 +4,10 @@ using TestItemRunner
 
 @run_package_tests
 
+@testitem "Aqua.jl" begin
+    Aqua.test_all(YourPackage)
+end
+
 @testsnippet Setup begin
     using StatsBase
     using CairoMakie

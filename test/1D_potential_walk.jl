@@ -20,7 +20,7 @@ begin
     α = 1.6
     f = Figure()
     L = LevyWalkSampler(;
-                        u0 = [-Δx / 2 0],
+                        u0 = [-Δx / 2, 0],
                         tspan = 500.0,
                         α = α,
                         β = 0.5,
