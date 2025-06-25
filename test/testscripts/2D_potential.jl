@@ -20,14 +20,14 @@ begin
     f = Figure(size = (900, 300))
     gs = subdivide(f, 1, 3)
     map(αs, gs) do α, g
-        L = LevyFlightSampler(;
-                              u0 = [-Δx / 2 0 0 0],
-                              tspan = 500.0,
-                              α = α,
-                              β = 0.05,
-                              γ = 0.01,
-                              𝜋 = D,
-                              seed = 10)
+        L = FractionalNeuralSampler(;
+                                    u0 = [-Δx / 2 0 0 0],
+                                    tspan = 500.0,
+                                    α = α,
+                                    β = 0.05,
+                                    γ = 0.01,
+                                    𝜋 = D,
+                                    seed = 10)
         sol = solve(L, EM(); dt = 0.0001)
         x, y = eachrow(sol[1:2, :])
 

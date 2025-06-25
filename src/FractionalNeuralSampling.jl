@@ -3,6 +3,8 @@ using Reexport
 using Preferences
 using DifferentiationInterface
 using RecursiveArrayTools
+using ForwardDiff
+@reexport using SciMLBase
 
 function set_ad_backend!(new_backend::Union{DifferentiationInterface.AbstractADType,
                                             AbstractString})

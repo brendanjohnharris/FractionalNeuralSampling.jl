@@ -19,15 +19,15 @@ begin
     boundaries = PeriodicBox(-3 .. -2)
     α = 1.6
     f = Figure()
-    L = LevyWalkSampler(;
-                        u0 = [-Δx / 2, 0],
-                        tspan = 500.0,
-                        α = α,
-                        β = 0.5,
-                        γ = 2.0,
-                        𝜋 = D,
-                        seed = 42,
-                        boundaries = boundaries())
+    L = FractionalHMC(;
+                      u0 = [-Δx / 2, 0],
+                      tspan = 500.0,
+                      α = α,
+                      β = 0.5,
+                      γ = 2.0,
+                      𝜋 = D,
+                      seed = 42,
+                      boundaries = boundaries())
     sol = solve(L, EM(); dt = 0.001)
     x = sol[1, :]
 
@@ -52,15 +52,15 @@ end
 
 begin # * Power spectrum
     u0 = [-Δx / 2, 0]
-    L = LevyWalkSampler(;
-                        u0 = u0,
-                        tspan = 10000.0,
-                        α = 1.6, #α,
-                        β = 2.0,
-                        γ = 3.0,
-                        𝜋 = D,
-                        seed = 42,
-                        noise_rate_prototype = similar(u0))
+    L = FractionalHMC(;
+                      u0 = u0,
+                      tspan = 10000.0,
+                      α = 1.6, #α,
+                      β = 2.0,
+                      γ = 3.0,
+                      𝜋 = D,
+                      seed = 42,
+                      noise_rate_prototype = similar(u0))
     sol = solve(L, EM(); dt = 0.01)
     x = sol[1, :]
     x = TimeseriesTools.TimeSeries(sol.t, x)

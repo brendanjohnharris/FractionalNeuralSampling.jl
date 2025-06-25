@@ -1,4 +1,5 @@
 import SpecialFunctions: gamma
+export FractionalHMCSampler
 
 # * "Stochastic Fractional Hamiltonian Monte Carlo", Nanyang Ye & Zhanxing Zhu
 # * Levy walk sampler (noise on velocity)

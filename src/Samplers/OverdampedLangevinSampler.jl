@@ -1,4 +1,7 @@
+export OverdampedLangevinSampler
+
 # * Overdamped Langevin sampler (Brownian motion)
+
 function overdamped_langevin_f!(dx, x, p, t)
     γ, 𝜋 = p
     b = gradlogdensity(𝜋)(x)

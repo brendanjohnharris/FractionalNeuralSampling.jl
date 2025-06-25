@@ -42,16 +42,16 @@ begin
 
     xmax = 6
     box = ReflectingBox(-xmax .. xmax, -xmax .. xmax)
-    L = LevyWalkSampler(;
-                        u0 = [0 0 0 0],
-                        tspan = 1600.0,
-                        α = 1.5,
-                        β = 0.009,
-                        γ = 0.2,
-                        𝜋 = D,
-                        seed = 28,
-                        boundaries = box())
-    # L = LevyFlightSampler(;
+    L = FractionalHMC(;
+                      u0 = [0 0 0 0],
+                      tspan = 1600.0,
+                      α = 1.5,
+                      β = 0.009,
+                      γ = 0.2,
+                      𝜋 = D,
+                      seed = 28,
+                      boundaries = box())
+    # L = FractionalNeuralSampler(;
     #                       u0 = [0 0 0 0],
     #                       tspan = 1000.0,
     #                       α = 1.5,

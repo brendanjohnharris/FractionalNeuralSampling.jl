@@ -62,20 +62,19 @@ end
 begin # Run simulations
     αs = [2.0, 1.6, 1.2]
     res = map(αs) do α
-        L = LevyFlightSampler(;
-                              u0 = [Δx 0 0 0],
-                              tspan = 500.0,
-                              α = α, # Tail index
-                              β = 0.1, # Momentum strength
-                              γ = 0.05, # Noise strength
-                              𝜋 = D, # The target distribution
-                              seed = 41)
+        L = FractionalNeuralSampler(;
+                                    u0 = [Δx 0 0 0],
+                                    tspan = 500.0,
+                                    α = α, # Tail index
+                                    β = 0.1, # Momentum strength
+                                    γ = 0.05, # Noise strength
+                                    𝜋 = D, # The target distribution
+                                    seed = 41)
 
         sol = solve(L, EM(); dt = 0.001) # Must use EM() (Euler-Maruyama) algorithm
         x, y = eachrow(sol[1:2, :]) # Extract the two position variables
     end
 end
-
 
 # ╔═╡ edeffa19-4eda-4fa8-863d-e59e9e3349ac
 begin # Plot

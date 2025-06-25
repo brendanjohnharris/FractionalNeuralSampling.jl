@@ -30,10 +30,9 @@ Box boundaries have edges that are parallel to the axes. Reflections are easier 
 """
 abstract type AbstractBoxBoundary{D} <: AbstractBoundary{D} end
 function (B::Type{<:AbstractBoxBoundary})(intervals)
-    D = length(intervals)
     B(zip(map(extrema, intervals)...)...)
 end
-function (B::Type{<:AbstractBoxBoundary})(intervals::Interval...)
+function (B::Type{<:AbstractBoxBoundary})(intervals...)
     B(intervals)
 end
 

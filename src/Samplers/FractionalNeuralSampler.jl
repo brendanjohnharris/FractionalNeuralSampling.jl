@@ -1,4 +1,5 @@
 import SpecialFunctions: gamma
+export FractionalNeuralSampler
 
 # * "Fractional neural sampling as a theory of spatiotemporal probabilistic computations in neural circuits", Qi and Gong
 function fns_f!(du, u, p, t)

@@ -5,7 +5,8 @@ using TestItemRunner
 @run_package_tests
 
 @testitem "Aqua.jl" begin
-    Aqua.test_all(YourPackage)
+    using Aqua
+    Aqua.test_all(FractionalNeuralSampling)
 end
 
 @testsnippet Setup begin
@@ -115,7 +116,7 @@ end
     tspan = (0.0, 500.0)
     dt = 0.01
     D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -192,7 +193,7 @@ end
     tspan = (0.0, 500.0)
     dt = 0.01
     D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -214,7 +215,7 @@ if false
     dt = 0.01
     D = FNS.Density(MixtureModel(Laplace, [(-3, 0.3), (3, 0.3)]))
     # D = FNS.Density(Normal(-2, 0.5))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.5, β = 0.0, γ = 0.1, 𝜋 = D)
+    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.5, β = 0.0, γ = 0.1, 𝜋 = D)
 
     sol = solve(S, EM(); dt)
     x = first.(sol.u)
@@ -238,7 +239,7 @@ if false # * Simple potential: power law iqr?
     tspan = (0.0, 1.0)
     dt = 0.00001
     D = FNS.Density(Normal(0, 1))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.2, β = 0.0, γ = 0.1, 𝜋 = D)
+    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.0, γ = 0.1, 𝜋 = D)
     P = EnsembleProblem(S)
     sol = solve(P, EM(); dt, trajectories = 100)
     σ = mapslices(iqr, stack(getindex.(sol.u, 1, :)); dims = 2)[:] .^ 2
@@ -264,7 +265,7 @@ if false # * Unimodal vs bimodal comparison
 
     ax = Axis(g[1, 1]; xlabel = "t", ylabel = "v", title = "Unimodal")
     D = FNS.Density(Laplace(0, 0.5))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
+    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
     x = sol[1, :][idxs]
     lines!(ax, ft(x), color = :cornflowerblue, linewidth = 2)
@@ -278,7 +279,7 @@ if false # * Unimodal vs bimodal comparison
     u0 = [-0.201 0.00]
     ax = Axis(g[2, 1]; xlabel = "t", ylabel = "v", title = "Bimodal")
     D = FNS.Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
+    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
     x = sol[1, :][idxs]
 
@@ -301,7 +302,7 @@ if false # * Fixation simulation: heavy tailed msd??
     tspan = (0.0, 100.0)
     dt = 0.001
     D = FNS.Density(Laplace(0, 1))
-    S = FNS.LevyWalkSampler(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
+    S = FNS.FractionalHMC(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
 
     sol = solve(S, EM(); dt)
     x = first.(sol.u)[1:50:end] # Need heavy oversampling to prevent blowout
@@ -616,7 +617,7 @@ if false # ! Need to fix out-of-place noise
     @test all(z .* 0.01 .^ (1 / DIST.α) .== y)
 end
 
-@testitem "Test that adaptive stepping is disabled for LevyFlightSamplers" setup=[Setup] begin end
+@testitem "Test that adaptive stepping is disabled for FractionalNeuralSamplers" setup=[Setup] begin end
 
 @testitem "FractionalNeuralSampling.jl" setup=[Setup] begin
     include("fractional_sampling.jl")
@@ -775,14 +776,14 @@ if false
     f = Figure(size = (900, 300))
     gs = subdivide(f, 1, 3)
     map(αs, gs) do α, g
-        L = LevyFlightSampler(;
-                              u0 = [-Δx / 2 0 0 0],
-                              tspan = 500.0,
-                              α = α,
-                              β = 0.2,
-                              γ = 0.02,
-                              𝜋 = D,
-                              seed = 42)
+        L = FractionalNeuralSampler(;
+                                    u0 = [-Δx / 2 0 0 0],
+                                    tspan = 500.0,
+                                    α = α,
+                                    β = 0.2,
+                                    γ = 0.02,
+                                    𝜋 = D,
+                                    seed = 42)
         sol = solve(L, EM(); dt = 0.001)
         x, y = eachrow(sol[1:2, :])
 

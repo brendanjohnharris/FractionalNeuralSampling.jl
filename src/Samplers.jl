@@ -18,9 +18,7 @@ import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
                   prepare_initial_state,
                   promote_tspan, warn_paramtype, @add_kwonly
 
-export AbstractSampler, Sampler, parameters,
-       OverdampedLangevinSampler, UnderdampedLangevinSampler,
-       LevyFlightSampler, LevyWalkSampler
+export AbstractSampler, Sampler, parameters
 
 abstract type AbstractSampler{uType, tType, isinplace, ND} <:
               AbstractSDEProblem{uType, tType, isinplace, ND} end
