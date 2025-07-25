@@ -10,7 +10,6 @@ using TestItemRunner
 end
 
 @testsnippet Setup begin
-    using StatsBase
     using CairoMakie
     using Foresight
     using DifferentialEquations
@@ -36,7 +35,9 @@ end
     using SpecialFunctions
     using FileIO
     using StatsBase
+    using Autocorrelations
     using TimeseriesTools
+    import TimeseriesTools.msdist
     using Normalization
     import FractionalNeuralSampling: Density
     set_theme!(foresight(:physics))
@@ -799,3 +800,166 @@ if false
     end
     f
 end
+
+# @testitem "MSD check" setup=[Setup] begin
+begin
+    u0 = [0.0, 0.0]
+    tspan = (0.0, 10000.0)
+    dt = 0.1
+    D = FNS.Density(Normal(0.0, 1.0))
+    S = FNS.Samplers.FractionalHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
+    sol = solve(S, EM(); dt)
+
+    x = sol[1, :]
+    x = TimeseriesTools.Timeseries(sol.t, x)
+    x = rectify(x, dims = 𝑡, tol = 1)
+
+    msd = msdist(x)
+
+    begin
+        f = Figure(size = (1000, 300))
+        ax = Axis(f[1, 1])
+        lines!(ax, x[1:20:20000])
+
+        lu = (-4 * std(x), +4 * std(x))
+        axx = Axis(f[1, 2], limits = (lu, nothing))
+        xs = range(lu..., length = 1000)
+        hist!(axx, x; bins = 100, normalization = :pdf)
+        lines!(axx, xs, D.(xs); color = :red, linewidth = 2)
+
+        axxx = Axis(f[1, 3], xscale = log10, yscale = log10)
+        lines!(axxx, msd[𝑡 = dt .. 1000], label = nothing)
+
+        # * Fit a tail index to msd
+        y = msd[𝑡 = dt .. 1]
+        ts = logrange(extrema(times(y))..., length = 1000)
+        y = y[𝑡 = Near(ts)]
+        taus = times(y)
+        α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+
+        # * Plot line of fitted tail
+        lines!(axxx, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+               label = "Fit: α = $α")
+        axislegend(axxx, position = :lt)
+        display(f)
+    end
+end
+
+begin
+    x = rand(Stable(2.0, 0.0), 10000) |> cumsum
+    x = Timeseries(range(dt, length = length(x), step = dt), x)
+    lines(x)
+    msd = mad(x)
+    f = Figure()
+    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+    lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
+
+    # * Fit a tail index to msd
+    y = msd[𝑡 = dt .. 1]
+    ts = logrange(extrema(times(y))..., length = 1000)
+    y = y[𝑡 = Near(ts)]
+    taus = times(y)
+    α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+
+    # * Plot line of fitted tail
+    lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+           label = "Fit: α = $α")
+    axislegend(ax, position = :lt)
+    display(f)
+end
+
+begin
+    using TimeseriesTools
+    using CairoMakie
+    using StableDistributions
+    using Statistics
+    function mad(x::AbstractVector{T}) where {T <: Real}
+        n = length(x)
+        lags = 1:(n - 1)
+        mads = zeros(T, n - 1)
+        Threads.@threads for lag in lags
+            displacements = abs.(x[(1 + lag):n] .- x[1:(n - lag)])
+            mads[lag] = mean(displacements)
+        end
+        return mads
+    end
+    function mad(x::UnivariateRegular)
+        mads = mad(parent(x))
+        lags = range(step(x), length = length(mads), step = step(x))
+        return Timeseries(lags, mads)
+    end
+    function mssd(x::AbstractVector{T}) where {T <: Real}
+        n = length(x)
+        lags = 1:(n - 1)
+        msds = zeros(T, n - 1)
+        Threads.@threads for lag in lags
+            displacements = (x[(1 + lag):n] .- x[1:(n - lag)]) .^ 2
+            msds[lag] = mean(displacements)
+        end
+        return msds
+    end
+    function mssd(x::UnivariateRegular)
+        mssds = mssd(parent(x))
+        lags = range(step(x), length = length(mssds), step = step(x))
+        return Timeseries(lags, mssds)
+    end
+end
+
+begin
+    x = rand(Stable(1.3, 0.0), 10000) |> cumsum
+    x = Timeseries(range(dt, length = length(x), step = dt), x)
+    lines(x)
+    msd = mad(x)
+    f = Figure()
+    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+    lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
+
+    # * Fit a tail index to msd
+    y = msd[𝑡 = dt .. 1]
+    ts = logrange(extrema(times(y))..., length = 1000)
+    y = y[𝑡 = Near(ts)]
+    taus = times(y)
+    α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+
+    # * Plot line of fitted tail
+    lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+           label = "Fit: α = $α")
+    axislegend(ax, position = :lt)
+    display(f)
+end
+
+begin
+    global estimator = mad
+    repeats = 100
+    dt = 0.01 # Dummy timestep
+    αs = 1.1:0.05:2.0
+
+    ms = progressmap(αs) do α
+        map(1:repeats) do _
+            x = rand(Stable(α, 0.0), 10000) |> cumsum
+            x = Timeseries(range(dt, length = length(x), step = dt), x)
+            m = estimator(x)
+
+            # * Fit a tail index to msd
+            y = m[𝑡 = dt .. 1]
+            ts = logrange(extrema(times(y))..., length = 1000)
+            y = y[𝑡 = Near(ts)]
+            taus = times(y)
+            β, _ = [log10.(taus) ones(length(y))] \ log10.(y)
+            return β
+        end
+    end
+    σs = std.(ms) ./ 2
+    ms = mean.(ms)
+
+    f = Figure()
+    ax = Axis(f[1, 1], xlabel = "α", ylabel = "β", title = "$estimator")
+    band!(ax, αs, ms .- σs, ms .+ σs; color = (:black, 0.3))
+    lines!(ax, αs, ms, color = :black)
+    if estimator === mad
+        # * Plot a line of beta = 1/alpha
+        lines!(ax, αs, 1 ./ αs, color = :red, linestyle = :dash, label = "β = 1/α")
+    end
+    display(f)
+end
+begin end

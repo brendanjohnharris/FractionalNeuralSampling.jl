@@ -5,7 +5,7 @@ export FractionalNeuralSampler
 function fns_f!(du, u, p, t)
     (α, β, γ), 𝜋 = p
     x, v = divide_dims(u, length(u) ÷ 2)
-    b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2) # ? Should this be in-place
+    b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2)
     dx, dv = divide_dims(du, length(du) ÷ 2)
     dx .= γ .* b .+ β .* v
     dv .= β .* b
@@ -13,7 +13,7 @@ end
 function fns_g!(du, u, p, t)
     (α, β, γ), 𝜋 = p
     dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication. Do we need a * sqrt(2)?
+    dx .= γ^(1 / α) # ? × dL in the integrator.
     dv .= 0.0
 end
 

@@ -1,5 +1,5 @@
 import SpecialFunctions: gamma
-export FractionalHMCSampler
+export FractionalHMC
 
 # * "Stochastic Fractional Hamiltonian Monte Carlo", Nanyang Ye & Zhanxing Zhu
 # * Levy walk sampler (noise on velocity)
@@ -19,7 +19,7 @@ function fractional_hmc_g!(du, u, p, t)
     dv .= sqrt(2) * γ^(1 / α) # ? × dL in the integrator.
 end
 
-function FractionalHMCSampler(;
+function FractionalHMC(;
                               tspan, α, β, γ, u0 = [0.0 0.0],
                               boundaries = nothing,
                               noise_rate_prototype = similar(u0),
