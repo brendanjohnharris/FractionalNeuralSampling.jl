@@ -174,15 +174,6 @@ function aFractionalNeuralSampler(;
 	            tspan, p = ((α, β, γ), 𝜋))
 	end
 
-# ╔═╡ 6ac2e340-0e6b-420c-9356-7953b95c0196
-# begin # Generate a distribution to sample
-# 	𝑓 = 0.005 # Hz
-# 	a(t, ϕ) = 1/Ng .+ (sin.(𝑓*t + ϕ)./Ng)
-	
-# 	wells = [MvNormal([real(c), imag(c)], I(2)) for c in centers]
-#     G(t) = MixtureModel(wells, a.(t, ϕs)) |> Density
-# end
-
 # ╔═╡ 38762d7b-6c2c-4f32-8187-39299902bd73
 begin
 	τ_rise = 500
@@ -295,7 +286,6 @@ PlutoUI.LocalResource(file)
 # ╠═3a24c88c-fca5-4643-85c0-2190c4a13b5d
 # ╠═131da237-ca04-4793-b954-12e3c56c47d9
 # ╠═b159f245-f421-4323-8958-c0df43f5b994
-# ╠═6ac2e340-0e6b-420c-9356-7953b95c0196
 # ╠═38762d7b-6c2c-4f32-8187-39299902bd73
 # ╠═26fb7322-af5e-4e9c-8edd-4371f2c61611
 # ╠═ad673030-1b26-492d-aab2-0ca1bf983b0d
