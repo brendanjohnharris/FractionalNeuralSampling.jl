@@ -1,0 +1,11 @@
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Foresight = "c6e1034d-1844-4b96-abf2-c5824a5aa8c3"
+FractionalNeuralSampling = "1a146edb-494d-4c3d-929d-e214933c7497"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+TimeseriesPlots = "5e3e9a77-7bbf-480c-931c-0802e2453f5a"
