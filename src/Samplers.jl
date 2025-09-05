@@ -93,8 +93,7 @@ function Sampler(f, g, args...; kwargs...)
     Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; kwargs...)
 end
 
-include("Samplers/LangevinSampler.jl")
-include("Samplers/OverdampedLangevinSampler.jl")
+include("Samplers/OLE.jl")
 include("Samplers/FractionalHMC.jl")
 include("Samplers/FractionalNeuralSampler.jl")
 include("Samplers/AdaptiveSamplers.jl")

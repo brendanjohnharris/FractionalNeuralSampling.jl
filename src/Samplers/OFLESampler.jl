@@ -1,30 +1,35 @@
-import SpecialFunctions: gamma
+
 export OFLSampler
 
-function fns_f!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
-    x, v = divide_dims(u, length(u) ÷ 2)
-    b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2)
-    dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= γ .* b .+ β .* v
-    dv .= β .* b
+function ofl_f!(du, u, p, t)
+    (β, η), 𝜋 = p
+    x = divide_dims(u, length(u))
+    b = gradlogdensity(𝜋)(x)
+    dx = divide_dims(du, length(du))
+    dx .= η .* b
 end
-function fns_g!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
-    dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= γ^(1 / α) # ? × dL in the integrator.
-    dv .= 0.0
+function ofl_g!(du, u, p, t)
+    (β, η), 𝜋 = p
+    dx = divide_dims(du, length(du))
+    dx .= sqrt(2 * η) # ? × dW in the integrator.
 end
 
 function OFLSampler(;
-                    tspan, α, β, γ, u0 = [0.0 0.0],
+                    tspan,
+                    β, # Tail index of fractional temporal derivative
+                    η, # Noise strength
+                    u0 = [0.0],
                     boundaries = nothing,
                     noise_rate_prototype = similar(u0),
                     𝜋 = Density(default_density(first(u0))),
-                    noise = NoiseProcesses.LevyProcess!(α; ND = 2,
-                                                        W0 = zero(u0)),
+                    noise = WienerProcess!(0.0, zero(u0)),
                     kwargs...)
-    Sampler(fns_f!, fns_g!; callback = boundaries, kwargs..., u0,
-            noise_rate_prototype, noise,
-            tspan, p = ((α, β, γ), 𝜋))
+    Sampler(ofl_f!, ofl_g!;
+            callback = boundaries,
+            u0,
+            noise_rate_prototype,
+            noise,
+            tspan,
+            p = ((β, η), 𝜋),
+            kwargs...)
 end
