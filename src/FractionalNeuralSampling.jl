@@ -5,6 +5,7 @@ using DifferentiationInterface
 using RecursiveArrayTools
 using ForwardDiff
 @reexport using SciMLBase
+@reexport using StochasticDiffEq
 
 function set_ad_backend!(new_backend::Union{DifferentiationInterface.AbstractADType,
                                             AbstractString})
@@ -26,10 +27,12 @@ include("NoiseProcesses.jl")
 include("Densities.jl")
 include("Boundaries.jl")
 include("Samplers.jl")
+include("Utils.jl")
 
 @reexport using .NoiseProcesses
 @reexport using .Densities
 @reexport using .Boundaries
 @reexport using .Samplers
+@reexport using .Utils
 
 end
