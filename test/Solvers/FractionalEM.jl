@@ -30,7 +30,7 @@ end
 
 begin # * Same fractional EM Ok.
     Random.seed!(1234)
-    _sol2 = solve(S, FractionalEM(1.0, 1000); dt)
+    _sol2 = solve(S, CaputoEM(1.0, 1000); dt)
     sol2 = _sol2 |> Timeseries |> eachcol |> only
     ax = Axis(f[1, 2], xlabel = "t", ylabel = "x(t)")
     lines!(ax, sol2, linewidth = 3)
@@ -41,7 +41,7 @@ end
 
 begin # * Stepping cost
     alg = @inferred EM()
-    alg2 = @inferred FractionalEM(0.75f0, 1000)
+    alg2 = @inferred CaputoEM(0.75f0, 1000)
 
     int = StochasticDiffEq.init(S, alg, dt = dt)
     int2 = StochasticDiffEq.init(S, alg2, dt = dt)
@@ -52,7 +52,7 @@ begin # * Stepping cost
     @info "EM"
     @benchmark StochasticDiffEq.perform_step!($int, $int.cache)
 
-    @info "FractionalEM"
+    @info "CaputoEM"
     @benchmark StochasticDiffEq.perform_step!($int2, $int2.cache)
 end
 
@@ -64,12 +64,12 @@ begin # * Check finer timestep using NoiseGrid
     S2 = OLE(; η, u0, 𝜋, tspan, noise = W)
 
     dt2 = 0.01  # Vary and see we get rougher path, but not different overall. Dont drop it below 0.01
-    alg = @inferred FractionalEM(0.6, Int(100 ÷ dt2))
+    alg = @inferred CaputoEM(0.6, Int(100 ÷ dt2))
     _sol2 = solve(S2, alg; dt = dt2)
     sol2 = _sol2 |> Timeseries |> eachcol |> only
 
     dt2 = 0.1  # Vary and see we get rougher path, but not different overall. Dont drop it below 0.01
-    alg = @inferred FractionalEM(0.6, Int(100 ÷ dt2))
+    alg = @inferred CaputoEM(0.6, Int(100 ÷ dt2))
     _sol3 = solve(S2, alg; dt = dt2)
     sol3 = _sol3 |> Timeseries |> eachcol |> only
 
@@ -105,7 +105,7 @@ begin # * 2D example
     tspan = 10.0
     S = OLE(; η, u0, 𝜋, tspan)
 
-    alg = @inferred FractionalEM(0.5, 1000)
+    alg = @inferred CaputoEM(0.5, 1000)
     _sol2 = solve(S, alg; dt)
     sol2 = _sol2 |> Timeseries
 

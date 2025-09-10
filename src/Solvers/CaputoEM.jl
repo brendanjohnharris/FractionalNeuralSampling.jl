@@ -1,17 +1,3 @@
-module Utils
-import ..Window
-import StochasticDiffEq: StochasticDiffEqAlgorithm,
-                         StochasticDiffEqMutableCache,
-                         alg_cache, full_cache, jac_iter, rand_cache, ratenoise_cache,
-                         perform_step!, is_split_step, is_diagonal_noise,
-                         alg_compatible, DiffEqBase, SVector,
-                         @cache, @muladd, @unpack, @..
-
-import SpecialFunctions: gamma
-using LinearAlgebra
-
-export FractionalEM
-
 """
 Solves the Caputo differential equation for fractional order 0 < β ≤ 1 with the L1 EM-based
 approximation.
@@ -22,21 +8,21 @@ where ξ(t) is some noise process?
 
 For β = 1 this reduces to the standard Euler-Maruyama method.
 """
-struct FractionalEM{T} <: StochasticDiffEqAlgorithm
+struct CaputoEM{T} <: FractionalAlgorithm
     β::T
     nhist::Int
-    function FractionalEM{T}(β::T, nhist::Int) where {T}
+    function CaputoEM{T}(β::T, nhist::Int) where {T}
         if !(0 < β <= 1)
             throw(ArgumentError("Fractional order β must be in (0, 1]"))
         end
         new{T}(β, nhist)
     end
 end # No split steps for now since we think noise is just additive.
-function FractionalEM(β::T, nhist::Int) where {T <: AbstractFloat}
-    FractionalEM{T}(β, nhist)
+function CaputoEM(β::T, nhist::Int) where {T <: AbstractFloat}
+    CaputoEM{T}(β, nhist)
 end
 
-struct FractionalEMCache{T, uType <: AbstractArray{<:T}, rateType, rateNoiseType} <:
+struct CaputoEMCache{T, uType <: AbstractArray{<:T}, rateType, rateNoiseType} <:
        StochasticDiffEqMutableCache
     u::uType # Current state
     uhist::Window{uType} # Circular buffer for history
@@ -46,13 +32,13 @@ struct FractionalEMCache{T, uType <: AbstractArray{<:T}, rateType, rateNoiseType
     rtmp1::rateType
     rtmp2::rateNoiseType
 end
-nhist(C::FractionalEM) = C.nhist
-nhist(C::FractionalEMCache) = length(C.uhist)
+nhist(C::CaputoEM) = C.nhist
+nhist(C::CaputoEMCache) = length(C.uhist)
 
-full_cache(c::FractionalEM) = tuple(c.u, c.uhist, c.tmp, c.rtmp1)
-jac_iter(c::FractionalEM) = tuple()
-rand_cache(c::FractionalEM) = tuple()
-ratenoise_cache(c::FractionalEM) = tuple(c.rtmp2)
+full_cache(c::CaputoEM) = tuple(c.u, c.uhist, c.weights, c.correction, c.tmp, c.rtmp1)
+jac_iter(c::CaputoEM) = tuple()
+rand_cache(c::CaputoEM) = tuple()
+ratenoise_cache(c::CaputoEM) = tuple(c.rtmp2)
 
 caputo_factor(β::AbstractFloat, Δt::AbstractFloat) = gamma(2 - β) * Δt^(β - 1)
 
@@ -67,7 +53,7 @@ function caputo_weights(β::AbstractFloat, n::Int)
     @. (w + 1)^(1 - β) - w^(1 - β)
 end
 
-function alg_cache(alg::FractionalEM, prob, u, ΔW, ΔZ, p,
+function alg_cache(alg::CaputoEM, prob, u, ΔW, ΔZ, p,
                    rate_prototype,
                    noise_rate_prototype,
                    jump_rate_prototype,
@@ -90,10 +76,10 @@ function alg_cache(alg::FractionalEM, prob, u, ΔW, ΔZ, p,
     β = convert(eltype(u), alg.β)
     correction = caputo_factor(β, dt)
     weights = caputo_weights(β, nhist(alg))
-    FractionalEMCache(u, uhist, weights, correction, tmp, rtmp1, rtmp2)
+    CaputoEMCache(u, uhist, weights, correction, tmp, rtmp1, rtmp2)
 end
 
-@muladd function perform_step!(integrator, cache::FractionalEMCache)
+@muladd function perform_step!(integrator, cache::CaputoEMCache)
     @unpack uhist, weights, correction, tmp, rtmp1, rtmp2 = cache # cache.u gets updated somewhere
     @unpack t, dt, uprev, u, W, P, c, p = integrator
 
@@ -158,6 +144,4 @@ end
 end
 
 # * Traits
-alg_compatible(prob::DiffEqBase.AbstractSDEProblem, alg::FractionalEM) = true
-
-end
+alg_compatible(prob::DiffEqBase.AbstractSDEProblem, alg::CaputoEM) = true

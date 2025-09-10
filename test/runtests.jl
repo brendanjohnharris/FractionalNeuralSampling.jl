@@ -963,6 +963,6 @@ begin
     display(f)
 end
 
-@testitem "FractionalEM" begin
-    include("./Solvers/FractionalEM.jl")
+@testitem "CaputoEM" begin
+    include("./Solvers/CaputoEM.jl")
 end

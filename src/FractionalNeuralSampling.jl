@@ -28,12 +28,12 @@ include("Densities.jl")
 include("Boundaries.jl")
 include("Samplers.jl")
 include("Window.jl")
-include("Utils.jl")
+include("Solvers.jl")
 
 @reexport using .NoiseProcesses
 @reexport using .Densities
 @reexport using .Boundaries
 @reexport using .Samplers
-@reexport using .Utils
+@reexport using .Solvers
 
 end
