@@ -962,4 +962,7 @@ begin
     end
     display(f)
 end
-begin end
+
+@testitem "FractionalEM" begin
+    include("./Solvers/FractionalEM.jl")
+end

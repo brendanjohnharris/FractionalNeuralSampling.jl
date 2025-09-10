@@ -27,6 +27,7 @@ include("NoiseProcesses.jl")
 include("Densities.jl")
 include("Boundaries.jl")
 include("Samplers.jl")
+include("Window.jl")
 include("Utils.jl")
 
 @reexport using .NoiseProcesses

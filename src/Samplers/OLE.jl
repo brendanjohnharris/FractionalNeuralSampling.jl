@@ -8,7 +8,7 @@ function ole_f!(du, u, p, t)
 end
 function ole_g!(du, u, p, t)
     (η,), 𝜋 = p
-    du .= sqrt(2 * η) # ? × dW in the integrator.
+    du .= sqrt(2 * only(η)) # ? × dW in the integrator.
 end
 
 """
