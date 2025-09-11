@@ -1,6 +1,5 @@
 using UnPack
 using ApproxFun
-using CompositionsBase
 using IntervalSets
 
 import ApproxFun.DomainSets

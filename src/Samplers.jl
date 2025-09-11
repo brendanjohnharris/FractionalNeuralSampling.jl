@@ -9,6 +9,9 @@ using SciMLBase
 using LogDensityProblems
 using Distributions
 using LinearAlgebra
+using LabelledArrays
+using UnPack
+using Accessors
 
 import ..NoiseProcesses
 import ..FractionalNeuralSampling.divide_dims
@@ -22,11 +25,20 @@ export AbstractSampler, Sampler, parameters
 
 abstract type AbstractSampler{uType, tType, isinplace, ND} <:
               AbstractSDEProblem{uType, tType, isinplace, ND} end
+
+const compatible_solvers = (:EM, :CaputoEM)
+
 function SciMLBase.solve(P::AbstractSampler; kwargs...)
-    SciMLBase.solve(P, EM(); kwargs...)
+    if haskey(P.kwargs, :alg)
+        solve(P, P.kwargs[:alg]; kwargs...)
+    else
+        throw(ArgumentError("Use `solve(S::Sampler, alg; kwargs...)`. Compatible algorithms: $(join(compatible_solvers, ", "))"))
+    end
 end
-mutable struct Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D} <:
-               AbstractSampler{uType, tType, isinplace, ND}
+
+struct Sampler{uType, tType, isinplace, P <: SLArray, NP, F, G, K, ND,
+               D <: AbstractDensity} <:
+       AbstractSampler{uType, tType, isinplace, ND}
     f::F
     g::G
     u0::uType
@@ -36,6 +48,23 @@ mutable struct Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D} <:
     kwargs::K
     noise_rate_prototype::ND
     seed::UInt64
+end
+function Sampler{isinplace}(f::F, g::G, u0::uType, # For @set
+                            tspan::tType,
+                            p::Tuple{P, D},
+                            noise::NP, kwargs::K,
+                            noise_rate_prototype::ND,
+                            seed::UInt64) where {uType,
+                                                 tType,
+                                                 isinplace,
+                                                 P <:
+                                                 SLArray,
+                                                 NP, F,
+                                                 G, K,
+                                                 ND, D}
+    Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D}(f, g, u0, tspan, p, noise,
+                                                            kwargs, noise_rate_prototype,
+                                                            seed)
 end
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
@@ -55,26 +84,28 @@ function default_density(u0::Real)
     Normal(0.0, 1.0) |> Density
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}, u0, tspan,
-                      p = (NullParameters(), Density(default_density(first(u0)))); # Assume momentum term
+                      p::Tuple{SLArray, D} = (NullParameters(),
+                                              (default_density ∘ first)(u0));
                       noise_rate_prototype = nothing,
                       noise = nothing,
                       seed = UInt64(0),
-                      kwargs...) where {iip}
+                      kwargs...) where {iip, D <: AbstractDensity}
     _u0 = prepare_initial_state(u0)
     _tspan = promote_tspan(tspan)
     warn_paramtype(p)
     Sampler{typeof(_u0), typeof(_tspan),
             isinplace(f), typeof(first(p)),
             typeof(noise), typeof(f), typeof(f.g), typeof(kwargs),
-            typeof(noise_rate_prototype), typeof(last(p))}(f, f.g, _u0, _tspan, p,
-                                                           noise,
-                                                           kwargs,
-                                                           noise_rate_prototype, seed)
+            typeof(noise_rate_prototype), D}(f, f.g, _u0, _tspan, p,
+                                             noise,
+                                             kwargs,
+                                             noise_rate_prototype, seed)
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan,
-                      p = (NullParameters(), Density(default_density(first(u0)))),
+                      p = NullParameters(),
+                      𝜋 = (default_density ∘ first)(u0),
                       kwargs...) where {iip}
-    Sampler{iip}(f, u0, tspan, p; kwargs...)
+    Sampler{iip}(f, u0, tspan, (p, 𝜋); kwargs...)
 end
 function Sampler{iip}(; f, g = nothing, kwargs...) where {iip}
     if f isa AbstractSDEFunction
@@ -91,6 +122,34 @@ function Sampler(f::AbstractSDEFunction, args...;
 end
 function Sampler(f, g, args...; kwargs...)
     Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; kwargs...)
+end
+
+function (S::AbstractSampler)(; kwargs...)
+    # First update any direct fields of the sampler
+    for k in filter(k -> k ∈ propertynames(S), keys(kwargs))
+        S = set(S, PropertyLens(k), kwargs[k])
+    end
+
+    # * Deepcopy parameters
+    if haskey(kwargs, :p)
+        return @set S.p = kwargs[:p]
+    end
+
+    if haskey(kwargs, :𝜋)
+        𝜋 = kwargs[:𝜋]
+    else
+        𝜋 = Density(S)
+    end
+
+    ps = parameters(S)
+    pkeys = filter(k -> k in keys(ps), keys(kwargs))
+    if !isempty(pkeys)
+        ps = deepcopy(ps)
+        ps = SLVector(ps; kwargs[pkeys]...)
+    end
+
+    S = set(S, PropertyLens(:p), (ps, 𝜋))
+    return S
 end
 
 include("Samplers/OLE.jl")

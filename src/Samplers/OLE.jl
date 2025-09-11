@@ -1,13 +1,15 @@
 export OLE
 
 function ole_f!(du, u, p, t)
-    (η,), 𝜋 = p
+    ps, 𝜋 = p
+    @unpack η = ps
     x = divide_dims(u, length(u))
     b = gradlogdensity(𝜋)(x)
     du .= only(η .* b)
 end
 function ole_g!(du, u, p, t)
-    (η,), 𝜋 = p
+    ps, 𝜋 = p
+    @unpack η = ps
     du .= sqrt(2 * only(η)) # ? × dW in the integrator.
 end
 
@@ -20,7 +22,6 @@ function OLE(;
              u0 = [0.0],
              boundaries = nothing,
              noise_rate_prototype = similar(u0),
-             𝜋 = Density(default_density(first(u0))),
              noise = WienerProcess!(0.0, zero(u0)),
              callback = (),
              kwargs...)
@@ -30,6 +31,6 @@ function OLE(;
             noise_rate_prototype,
             noise,
             tspan,
-            p = ((η,), 𝜋),
+            p = SLVector(; η),
             kwargs...)
 end

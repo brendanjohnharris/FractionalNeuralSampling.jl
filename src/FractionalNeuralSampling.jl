@@ -36,4 +36,9 @@ include("Solvers.jl")
 @reexport using .Samplers
 @reexport using .Solvers
 
+# * Extension placeholders
+function samplingpower end
+function samplingaccuracy end
+
+export samplingpower, samplingaccuracy
 end

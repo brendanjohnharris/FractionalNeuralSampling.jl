@@ -39,6 +39,23 @@ begin # * Same fractional EM Ok.
     @test sol == sol2
 end
 
+begin # * Other exponent
+    Random.seed!(1234)
+    _sol2 = solve(S, CaputoEM(0.6, 1000); dt)
+    sol2 = _sol2 |> Timeseries |> eachcol |> only
+end
+
+begin # * Plot power spectrum
+    s = spectrum(rectify(sol, dims = 𝑡; tol = 1), 1)[10:end]
+    s2 = spectrum(rectify(sol2, dims = 𝑡; tol = 1), 1)[10:end]
+
+    s2 = (s2 ./ first(s2)) .* first(s)
+
+    plotspectrum(s)
+    plotspectrum!(current_axis(), s2)
+    display(current_figure())
+end
+
 begin # * Stepping cost
     alg = @inferred EM()
     alg2 = @inferred CaputoEM(0.75f0, 1000)
@@ -50,10 +67,10 @@ begin # * Stepping cost
 
     # * Benchmark
     @info "EM"
-    @benchmark StochasticDiffEq.perform_step!($int, $int.cache)
+    display(@benchmark StochasticDiffEq.perform_step!($int, $int.cache))
 
     @info "CaputoEM"
-    @benchmark StochasticDiffEq.perform_step!($int2, $int2.cache)
+    display(@benchmark StochasticDiffEq.perform_step!($int2, $int2.cache))
 end
 
 begin # * Check finer timestep using NoiseGrid
@@ -83,15 +100,6 @@ begin # * Check finer timestep using NoiseGrid
     ax = Axis(f[1, 2], xlabel = "t", ylabel = "x(t)")
     lines!(ax, sol3, linewidth = 3)
     display(f)
-end
-
-begin # * Plot power spectrum
-    s = spectrum(rectify(sol, dims = 𝑡; tol = 1), 1)[10:end]
-    s2 = spectrum(rectify(sol2, dims = 𝑡; tol = 1), 1)[10:end]
-
-    plotspectrum(s)
-    plotspectrum!(current_axis(), s2)
-    display(current_figure())
 end
 
 begin # * 2D example

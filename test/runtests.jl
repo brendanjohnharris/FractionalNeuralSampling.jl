@@ -478,10 +478,32 @@ end
           LogDensityProblems.logdensity_and_gradient(D, 0.1)
 end
 
+@testitem "Overdamped Langevin Sampler" setup=[Setup] begin
+    u0 = [0.0]
+    tspan = (0.0, 100.0)
+    S = FNS.OLE(; u0, tspan, η = 1)
+
+    sol = @test_nowarn solve(S, EM(); dt = 0.001, saveat = 0.01)
+    x = first.(sol.u)
+    plot(x)
+    density(x)
+
+    # * Try setting parameters
+    s = S(η = 0.1)
+    @test s.p[1][:η] == 0.1
+
+    D = FNS.Density(Normal(0, 10.0))
+    s = S(; η = 10.0, tspan = 1000.0, 𝜋 = D)
+    @test s.p[1][:η] == 10.0
+    @test s.p[2] == D
+    @test s.tspan == 1000.0
+end
+
 @testitem "Langevin Sampler" setup=[Setup] begin
     u0 = [0.0 0.0]
     tspan = (0.0, 100.0)
     S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 10.0)
+
     D = FNS.Density(Normal(0, 1))
     a = @benchmark Density($S) # Can this be made faster?
     @test a.allocs == a.memory == 0
@@ -491,7 +513,11 @@ end
     x = first.(sol.u)
     plot(x)
     density(x)
+
+    # * Try setting parameters
+
 end
+
 @testitem "Box boundaries" setup=[Setup] begin
     box = ReflectingBox(-5 .. 5)
     # box = FNS.NoBoundary()

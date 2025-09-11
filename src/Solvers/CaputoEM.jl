@@ -131,7 +131,7 @@ end
     end
 
     # * Apply history update
-    # * Each element of the history can be a vector or the like
+    # * Each element of the history can be a vector or similar
     # * We are here assuming all derivatives are of the same fractional order
     for (dx, w) in zip(uhist, weights)
         @. u -= w .* dx

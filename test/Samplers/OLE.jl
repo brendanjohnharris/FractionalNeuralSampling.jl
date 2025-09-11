@@ -12,49 +12,6 @@ Foresight.set_theme!(Foresight.foresight(:physics))
 
 import FractionalNeuralSampling: Density
 
-export samplingpower, samplingaccuracy
-
-"""
-This is just the variance of difference, normalized by the timestep
-"""
-function samplingpower(x, dt)
-    dx² = map(norm, diff(x))  # Assumes input is stationary
-    return var(dx²) / (dt * 2)
-end
-
-samplingpower(x::RegularTimeseries) = samplingpower(x, step(x))
-
-function samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 1)
-    P = map(logdensity(𝜋), x)
-
-    S = Base.Fix1(information, Kraskov(Shannon(; base = ℯ); k = 3))
-
-    map(τs) do τ
-
-        # * KL divergence can be estimated from cross entropy and sample entropy of
-        # * trajectory segments
-
-        # * Calculate the cross-entropy part, which is independent of any windowing
-        CE = -map(mean, window(P, τ, p))
-
-        # ** Estimate the differential entropy of each window
-        DE = map(S, window(x, τ, p))
-
-        # * Approximate the final KL divergence
-        ΔI = CE - DE
-
-        # * Finally, the accuracy is the eponential of the KL divergence.
-        # * Bounded between 0 - and 1 since kl is 0 to Inf
-        exp.(-ΔI)
-    end
-end
-
-function samplingaccuracy(x::RegularTimeseries, 𝜋::AbstractDensity, τs::AbstractVector;
-                          dt = step(x), kwargs...)
-    y = samplingaccuracy(parent(x), 𝜋, τs; kwargs...)
-    return ToolsArray(y, 𝑡(τs .* step(x)))
-end
-
 begin
     etas = 0.2:0.2:2.0
     dt = 0.1
