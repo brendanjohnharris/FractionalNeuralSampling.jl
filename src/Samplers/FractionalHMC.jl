@@ -5,7 +5,7 @@ export FractionalHMC
 # * Levy walk sampler (noise on velocity)
 function fractional_hmc_f!(du, u, p, t) # Eq. 15
     (α, β, γ), 𝜋 = p
-    x, v = divide_dims(u, length(u) ÷ 2)
+    x, v = divide_dims(u, dimension(𝜋))
     c_α = gamma(α + 1) / (gamma(α / 2 + 1) .^ 2)
     ∇V = -gradlogdensity(𝜋)(x) # ? Should this be in-place
     dx, dv = divide_dims(du, length(du) ÷ 2)
@@ -20,13 +20,13 @@ function fractional_hmc_g!(du, u, p, t)
 end
 
 function FractionalHMC(;
-                              tspan, α, β, γ, u0 = [0.0 0.0],
-                              boundaries = nothing,
-                              noise_rate_prototype = similar(u0),
-                              𝜋 = Density(default_density(first(u0))),
-                              noise = NoiseProcesses.LevyProcess!(α; ND = 2,
-                                                                  W0 = zero(u0)),
-                              kwargs...)
+                       tspan, α, β, γ, u0 = [0.0 0.0],
+                       boundaries = nothing,
+                       noise_rate_prototype = similar(u0),
+                       𝜋 = Density(default_density(first(u0))),
+                       noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
+                                                           W0 = zero(u0)),
+                       kwargs...)
     Sampler(fractional_hmc_f!, fractional_hmc_g!; callback = boundaries, kwargs..., u0,
             noise_rate_prototype, noise,
             tspan, p = ((α, β, γ), 𝜋))

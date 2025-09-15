@@ -6,6 +6,7 @@ version = "1.0.0-DEV"
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 ApproxFun = "28f2ccd6-bb30-5033-b560-165f7b14dc2f"
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 DiffEqNoiseProcess = "77a26b50-5914-5dd7-bc55-306e6241c503"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -29,24 +30,25 @@ StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [weakdeps]
+ComplexityMeasures = "ab4b797d-85ee-42ba-b621-05d793b346a2"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-TimeseriesTools = "380cddd1-6ef2-46ca-b087-e7151fb095ff"
-ComplexityMeasures = "ab4b797d-85ee-42ba-b621-05d793b346a2"
 TimeseriesBase = "c2aba7f5-82a4-4c45-a741-402bb41ee238"
+TimeseriesTools = "380cddd1-6ef2-46ca-b087-e7151fb095ff"
 
 [extensions]
+ComplexityMeasuresExt = ["ComplexityMeasures", "TimeseriesBase"]
 DistancesExt = ["Distances", "StatsBase"]
 InterpolationsExt = ["Interpolations"]
 MakieExt = ["Makie"]
 TimeseriesToolsExt = ["TimeseriesTools"]
-ComplexityMeasuresExt = ["ComplexityMeasures", "TimeseriesBase"]
 
 [compat]
 Accessors = "0.1.42"
 ApproxFun = "0.13.28"
+ComponentArrays = "0.15.29"
 DiffEqNoiseProcess = "5.20.1"
 DifferentiationInterface = "0.6.30, 0.7"
 Distances = "0.10.10"

@@ -4,7 +4,7 @@ export FractionalNeuralSampler
 # * Aiden
 function fns_f!(du, u, p, t)
     (α, β, γ), 𝜋 = p
-    x, v = divide_dims(u, length(u) ÷ 2)
+    x, v = divide_dims(u, dimension(𝜋))
     b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2)
     dx, dv = divide_dims(du, length(du) ÷ 2)
     dx .= γ .* b .+ β .* v
@@ -22,7 +22,7 @@ function BifractionalNeuralSampler(;
                                    boundaries = nothing,
                                    noise_rate_prototype = similar(u0),
                                    𝜋 = Density(default_density(first(u0))),
-                                   noise = NoiseProcesses.LevyProcess!(α; ND = 2,
+                                   noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
                                                                        W0 = zero(u0)),
                                    kwargs...)
     Sampler(fns_f!, fns_g!; callback = boundaries, kwargs..., u0,
