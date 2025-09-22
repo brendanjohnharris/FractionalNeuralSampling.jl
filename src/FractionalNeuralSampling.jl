@@ -47,6 +47,8 @@ include("Solvers.jl")
 # * Extension placeholders
 function samplingpower end
 function samplingaccuracy end
+function samplingefficiency end
+function _samplingaccuracy end
 
-export samplingpower, samplingaccuracy
+export samplingpower, samplingaccuracy, samplingefficiency
 end

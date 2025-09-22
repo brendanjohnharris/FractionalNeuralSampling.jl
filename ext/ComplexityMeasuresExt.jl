@@ -3,7 +3,7 @@ using Statistics
 using ComplexityMeasures
 using TimeseriesBase # For windowing
 using FractionalNeuralSampling
-import FractionalNeuralSampling: samplingpower, samplingaccuracy
+import FractionalNeuralSampling: samplingpower, samplingaccuracy, _samplingaccuracy
 
 """
 This is just the variance of difference, normalized by the timestep
@@ -13,7 +13,7 @@ function samplingpower(x, dt)
     return var(dx²) / (dt * 2)
 end
 
-function samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 10)
+function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 10)
     P = map(logdensity(𝜋), x)
 
     S = Base.Fix1(information, Kraskov(Shannon(; base = ℯ); k = 3))
@@ -31,11 +31,12 @@ function samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100;
 
         # * Approximate the final KL divergence
         ΔI = CE - DE
-
-        # * Finally, the accuracy is the exponential of the KL divergence.
-        # * Bounded between 0 - and 1 since kl is 0 to Inf
-        exp.(-ΔI)
     end
+end
+
+function samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; kwargs...)
+    ΔI = _samplingaccuracy(x, 𝜋, τs; kwargs...)
+    return map(x -> exp.(-x), ΔI)
 end
 
 end

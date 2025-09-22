@@ -13,7 +13,7 @@ Foresight.set_theme!(Foresight.foresight(:physics))
 import FractionalNeuralSampling: Density
 
 begin
-    etas = 0.2:0.2:2.0
+    etas = 0.2:0.4:2.0
     dt = 0.1
     τs = round.(Int, logrange(1, 1000, 10)) .÷ dt .|> Int
     𝜋 = MixtureModel([Normal(-2, 0.5), Normal(2, 0.5)]) |> Density
@@ -31,12 +31,20 @@ begin
         ToolsArray(y, 𝑡(τs))
     end |> stack
     accuracy = map(mean, accuracy)
+
+    _τs = τs * dt # For efficiency
+    efficiency = map(Chart(Threaded(), ProgressLogger()), xs) do x
+        y = samplingefficiency(x, 𝜋, _τs)
+        ToolsArray(y, 𝑡(_τs))
+    end |> stack
+    efficiency = map(mean, efficiency)
 end
 
 begin
     f = Figure()
     ax = Axis(f[1, 1]; xlabel = "Time lag", ylabel = "Accuracy", xscale = log10)
     p = traces!(ax, accuracy, linewidth = 2)
+    hlines!(ax, [1.0]; color = :gray, linestyle = :dash)
     Colorbar(f[1, 2], p; label = "η")
     display(f)
 end
