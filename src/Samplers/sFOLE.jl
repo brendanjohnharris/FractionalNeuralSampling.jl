@@ -12,7 +12,7 @@ end
 function sfole_g!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η, α = ps
-    du .= sqrt(2) * only(η)^(1 / α) # ? × dW in the integrator. ! WHy sqrt(2)???
+    du .= only(η)^(1 / α) # ? × dW in the integrator. ! WHy sqrt(2)???
 end
 
 function maybeLaplacian(S::ApproxFunBase.DirectSumSpace) # * If the space is 1D, use regular second derivative

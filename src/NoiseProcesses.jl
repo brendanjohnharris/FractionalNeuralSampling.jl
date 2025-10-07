@@ -46,12 +46,12 @@ function (L!::LevyNoise{true})(rand_mat, W, dt, u, p, t, rng)
     @fastmath rand_mat .*= abs(dt)^(1 / L!.α)
 end
 
-function LevyProcess(α, β = 0.0, σ = 1 / sqrt(2); μ = 0.0, t0 = 0.0, W0 = 0.0, Z0 = nothing,
+function LevyProcess(α, β = 0.0, σ = 1; μ = 0.0, t0 = 0.0, W0 = 0.0, Z0 = nothing,
                      ND = 1,
                      kwargs...)
     NoiseProcess{false}(t0, W0, Z0, LevyNoise{false}(α, β, σ, μ, ND), nothing; kwargs...)
 end
-function LevyProcess!(α, β = 0.0, σ = 1 / sqrt(2); μ = 0.0, t0 = 0.0, W0 = [0.0],
+function LevyProcess!(α, β = 0.0, σ = 1; μ = 0.0, t0 = 0.0, W0 = [0.0],
                       Z0 = nothing, ND = 1,
                       kwargs...)
     NoiseProcess{true}(t0, W0, Z0, LevyNoise{true}(α, β, σ, μ, ND), nothing; kwargs...)
