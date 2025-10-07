@@ -5,7 +5,7 @@ using IntervalSets
 using Statistics
 using LinearAlgebra
 using LogDensityProblems
-import ..FractionalNeuralSampling.divide_dims
+import ..FractionalNeuralSampling: divide_dims, Densities.AbstractDensity
 
 export AbstractBoundary, AbstractContinuousBoundary, AbstractBoxBoundary, ReflectingBox,
        NoBoundary, PeriodicBox, ReentrantBox, domain, gridaxes, grid
@@ -86,16 +86,15 @@ function corners(R::AbstractBoxBoundary)
     sort!(cs, by = c -> -acos((c .- O)[1] ./ norm(c .- O)))
     return cs
 end
-function getaffect(R::ReflectingBox)
+function getaffect(R::ReflectingBox{D}) where {D}
     function affect!(integrator)
-        D = last(integrator.p)
-        x, v = divide_dims(integrator.u, LogDensityProblems.dimension(D))
+        x, v = divide_dims(integrator.u, D)
         reflectvelocity!(v, x, _corners(R)...)
     end
 end
-function getcondition(R::AbstractBoxBoundary)
+function getcondition(R::AbstractBoxBoundary{D}) where {D}
     function condition(u, t, integrator)
-        x, _ = divide_dims(u, LogDensityProblems.dimension(last(integrator.p)))
+        x = divide_dims(u, D) |> first
         d = boxdist(x, _corners(R)...)
         d < 0
     end
@@ -123,8 +122,7 @@ function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
 end
 function getaffect(R::PeriodicBox{D, Re}) where {D, Re}
     function affect!(integrator)
-        𝜋 = last(integrator.p)
-        x, v = divide_dims(integrator.u, LogDensityProblems.dimension(𝜋))
+        x, v = divide_dims(integrator.u, D)
         reenterbox!(v, x, _corners(R)...; reset = Re)
     end
 end
@@ -163,24 +161,22 @@ reentrances(R::ReentrantBox) = R.reentrance
 function getaffect(R::ReentrantBox{D, Re}) where {D, Re}
     reentrance = reentrances(R)
     function affect!(integrator)
-        𝜋 = last(integrator.p)
-        x, v = divide_dims(integrator.u, LogDensityProblems.dimension(𝜋))
+        vars = divide_dims(integrator.u, D)
+        x = first(vars)
         for i in eachindex(x)
             x[i] = reentrance[i]
         end
-        if Re
-            v .= 0.0
+        if Re && length(vars) > 1
+            vars[2] .= 0.0
         end
     end
 end
-function getcondition(R::ReentrantBox)
+function getcondition(R::ReentrantBox{D}) where {D}
     # Pre-compute values outside the inner function
     reentrance, exit = _corners(R)
     relpos = R.relpos
-
     function condition(u, t, integrator)
-        𝜋 = last(integrator.p)
-        x, _ = divide_dims(u, LogDensityProblems.dimension(𝜋))
+        x = divide_dims(u, D) |> first
 
         for i in 1:length(x)
             y = x[i]

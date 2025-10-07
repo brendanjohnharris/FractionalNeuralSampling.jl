@@ -3,13 +3,17 @@ using CairoMakie
 using DifferentiationInterface
 using ForwardDiff
 using Foresight
+using TimeseriesTools
 set_theme!(foresight(:physics))
 
 begin # * Choose a test function
-    # V(x; σ = 2) = (1 - exp(-σ * (x)^2))
-    function V(x; σ = 50)
-        (1 - exp(-σ * (x + 1)^2)) + (1 - exp(-σ * (x - 1)^2)) + (1 - exp(-σ * (x)^2))
-    end
+    # # V(x; σ = 2) = (1 - exp(-σ * (x)^2))
+    # function V(x; σ = 50)
+    #     (1 - exp(-σ * (x + 1)^2)) + (1 - exp(-σ * (x - 1)^2)) + (1 - exp(-σ * (x)^2))
+    # end
+    V(x) = (x^2 - 1)^2
+
+    𝜋(x; kwargs...) = exp(-V(x; kwargs...))
 
     dV(x) = derivative(V, AutoForwardDiff(), x)
     ddV(x) = derivative(dV, AutoForwardDiff(), x)
@@ -18,8 +22,9 @@ end
 begin # * Represent spectrally
     approx_n_modes = 1000
     domain = Interval(-5.0, 5.0)
-    S = Fourier(domain)
+    S = Laurent(domain)
     Vs = Fun(V, S, approx_n_modes)
+    𝜋s = Fun(𝜋, S, approx_n_modes)
 end
 begin # * Compare
     f = Figure()
@@ -27,6 +32,14 @@ begin # * Compare
     xs = LinRange(-5, 5, 1000)
     lines!(ax, xs, V.(xs), color = :blue, label = "true")
     lines!(ax, xs, Vs.(xs), color = :red, linestyle = :dash, label = "approx")
+    display(f)
+end
+begin # * Compare
+    f = Figure()
+    ax = Axis(f[1, 1], xlabel = "x", ylabel = "𝜋(x)")
+    xs = LinRange(-5, 5, 1000)
+    lines!(ax, xs, 𝜋.(xs), color = :blue, label = "true")
+    lines!(ax, xs, 𝜋s.(xs), color = :red, linestyle = :dash, label = "approx")
     display(f)
 end
 
@@ -101,10 +114,11 @@ function Base.getindex(p::ConcretePower{T, BT, P}, k::Integer, j::Integer) where
 end
 
 begin # * Effective potential defined through fractional laplacian
-    αs = Dim{:α}(1.0:0.2:2.0)
+    αs = Dim{:α}(0.0:0.25:2.0)
     Δ = maybeLaplacian(S)
     Veffs = map(αs) do α
                 FΔ = Power(-Δ, (α / 2) - 1)  # Negative for power consistency. For alpha = 2, this is -Δ
+                # *
                 Veff = FΔ * Vs
                 f = Figure()
                 ax = Axis(f[1, 1], xlabel = "x", ylabel = "V(x)")
@@ -117,6 +131,32 @@ begin # * Effective potential defined through fractional laplacian
     ax = Axis(f[1, 1], xlabel = L"x", ylabel = L"\tilde{V}(x)",
               title = "Effective potential for different α")
     p = traces!(ax, reverse(Veffs, dims = 2); colormap = sunrise, linewidth = 2)
+    Colorbar(f[1, 2], p; label = L"\alpha")
+    display(f)
+end
+
+begin # * Drift defined through fractional laplacian
+    αs = Dim{:α}(1.0:0.25:2.0)
+    Δ = maybeLaplacian(S)
+    drifts = map(αs) do α
+                 FΔ = Power(-Δ, (α / 2) - 1)  # Negative for power consistency. For alpha = 2, this is -Δ
+                 # * We keep the frac laplacian well behaved by multiplying and dividing the
+                 #   target distribution, like in fhmc paper
+                 drift = (D * (FΔ * 𝜋s)) / 𝜋s # FΔ * 𝜋s
+                 f = Figure()
+                 ax = Axis(f[1, 1], xlabel = "x", ylabel = "V(x)")
+                 xs = X(LinRange(-2.0, 2.0, 100))
+                 V = drift.(xs)
+                 # * Integrate to get 'potential'
+                 V = -cumsum(V) * (xs[2] - xs[1])
+                 return V
+             end |> stack |> ToolsArray
+
+    drifts = drifts .- minimum(drifts, dims = 1)
+    f = Figure()
+    ax = Axis(f[1, 1], xlabel = L"x", ylabel = L"\tilde{V}(x)",
+              title = "Drift for different α", limits = (nothing, (0, 1)))
+    p = traces!(ax, reverse(drifts, dims = 2); colormap = sunrise, linewidth = 2)
     Colorbar(f[1, 2], p; label = L"\alpha")
     display(f)
 end

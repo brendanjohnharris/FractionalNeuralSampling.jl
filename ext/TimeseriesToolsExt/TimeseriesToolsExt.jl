@@ -20,13 +20,13 @@ Taus in time units
 """
 function samplingefficiency(x::RegularTimeseries, 𝜋::AbstractDensity,
                             τs::AbstractVector = samplingperiod(x) .* (2:100);
+                            downsample = 10,
                             kwargs...)
     dt = samplingperiod(x)
     _τs = round.(Int, τs ./ dt)
-    Main.@infiltrate
-    ΔI = _samplingaccuracy(x, 𝜋, _τs; kwargs...)
+    ΔI = _samplingaccuracy(x[1:downsample:end], 𝜋, _τs; kwargs...)
     vd = samplingpower(x, dt)
-    se = map(x -> exp.(-x ./ vd), ΔI)
+    se = map(x -> exp.(-x .* vd), ΔI)
     return ToolsArray(se, 𝑡(τs))
 end
 

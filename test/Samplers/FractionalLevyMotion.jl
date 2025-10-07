@@ -136,12 +136,6 @@ end
 
 fLM = FractionalLM(H, α, dt = dt, tspan = tspan, μ = 1.0, maxStep = nothing, ND = ND)
 
-# fLNoise = getIncrements(fLM)
-# # stepSizeDist(fLNoise, "fLNoise", xmax=10, sym=true)
-# plotNoise(fLNoise, ND, "Fractional Levy Noise", H=H, α=α, dt=dt, tspan=tspan)
-# fLNoise = levyNoise(α, dt, tspan, ND=ND, max=nothing)
-# plotNoise(fLNoise, ND, "Levy Noise",α=α, dt=dt, tspan=tspan)
-# println(size(fLNoise))
 
 begin # * Plot
     x = fLM[:, 1]

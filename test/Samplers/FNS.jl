@@ -13,15 +13,18 @@ Foresight.set_theme!(Foresight.foresight(:physics))
 import FractionalNeuralSampling: Density
 
 begin
-    etas = 0.2:0.4:2.0
+    alphas = 1.5:0.1:2
+    γ = 0.5
     dt = 0.01
     τs = round.(Int, logrange(1, 1000, 10)) .÷ dt .|> Int
     𝜋 = MixtureModel([Normal(-2, 0.5), Normal(2, 0.5)]) |> Density
-    u0 = [0.0]
+    u0 = [0.0, 0.0]
+    α = 1.6
+    β = 0.4
     tspan = 5000.00
 
-    xs = map(Dim{:η}(etas)) do η
-        S = OLE(; η, u0, 𝜋, tspan)
+    xs = map(Dim{:α}(alphas)) do α
+        S = FNS(; γ, β, α, u0, 𝜋, tspan)
         sol = solve(S, EM(); dt) |> Timeseries |> eachcol |> first
         return rectify(sol, dims = 𝑡; tol = 1)
     end
@@ -45,7 +48,7 @@ begin
     ax = Axis(f[1, 1]; xlabel = "Time lag", ylabel = "Accuracy", xscale = log10)
     p = traces!(ax, accuracy, linewidth = 2)
     hlines!(ax, [1.0]; color = :gray, linestyle = :dash)
-    Colorbar(f[1, 2], p; label = "η")
+    Colorbar(f[1, 2], p; label = "α")
     display(f)
 end
 begin
@@ -60,7 +63,7 @@ begin
     f = Figure()
     ax = Axis(f[1, 1]; xlabel = "Time step", ylabel = "Sampling power", xscale = log10)
     p = traces!(ax, vd, linewidth = 2)
-    Colorbar(f[1, 2], p; label = "η")
+    Colorbar(f[1, 2], p; label = "α")
     display(f)
 end
 
@@ -69,6 +72,6 @@ begin
     ax = Axis(f[1, 1]; xlabel = "Time lag", ylabel = "Efficiency", xscale = log10)
     p = traces!(ax, efficiency, linewidth = 2)
     hlines!(ax, [1.0]; color = :gray, linestyle = :dash)
-    Colorbar(f[1, 2], p; label = "η")
+    Colorbar(f[1, 2], p; label = "α")
     display(f)
 end

@@ -30,6 +30,7 @@ function divide_dims(rand_vec::ComponentArray, ND) # ND unused
     return map(Base.Fix1(view, rand_vec), ComponentArrays.valkeys(rand_vec))
 end
 
+include("PowerOperator.jl")
 include("Probabilities.jl")
 include("NoiseProcesses.jl")
 include("Densities.jl")

@@ -18,6 +18,7 @@ begin # * Distribution densities; supply a Distributions.Distribution, get a den
     density(D::DistributionDensity) = Base.Fix1(pdf, distribution(D))
     logdensity(D::DistributionDensity) = Base.Fix1(logpdf, distribution(D))
     gradlogpdf(D::DistributionDensity) = Base.Fix1(gradlogpdf, distribution(D))
+    gradpdf(D::DistributionDensity) = Base.Fix1(gradpdf, distribution(D))
     # function _gradlogdensity(d::DistributionDensity{D, N, false},
     #                          x::AbstractVector{T}) where {D, N, T <: Real}
     #     gradlogpdf(D)(x)
@@ -28,6 +29,9 @@ begin # * Distribution densities; supply a Distributions.Distribution, get a den
     # end
     function _gradlogdensity(d::DistributionDensity{D, N, false}, x) where {D, N}
         gradlogpdf(d)(x)
+    end
+    function _graddensity(d::DistributionDensity{D, N, false}, x) where {D, N}
+        gradpdf(d)(x)
     end
 end
 
@@ -74,3 +78,8 @@ function DistributionDensity(d::D) where {D <: MixtureModel}
     DistributionDensity{D, N, doAd}(d)
 end
 Random.rand(rng::AbstractRNG, d::DistributionDensity) = rand(rng, distribution(d))
+
+# * Define gradients for common densities
+function gradpdf(d::Distributions.Normal, x::Real)
+    -(x - d.μ) * pdf(d, x) / d.σ^2
+end

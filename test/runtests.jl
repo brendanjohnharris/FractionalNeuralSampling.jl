@@ -303,7 +303,7 @@ if false # * Fixation simulation: heavy tailed msd??
     tspan = (0.0, 100.0)
     dt = 0.001
     D = FNS.Density(Laplace(0, 1))
-    S = FNS.FractionalHMC(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
+    S = FNS.FHMC(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
 
     sol = solve(S, EM(); dt)
     x = first.(sol.u)[1:50:end] # Need heavy oversampling to prevent blowout
@@ -833,7 +833,7 @@ begin
     tspan = (0.0, 10000.0)
     dt = 0.1
     D = FNS.Density(Normal(0.0, 1.0))
-    S = FNS.Samplers.FractionalHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
+    S = FNS.Samplers.FHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
     sol = solve(S, EM(); dt)
 
     x = sol[1, :]

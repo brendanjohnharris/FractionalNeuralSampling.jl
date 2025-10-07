@@ -1,5 +1,3 @@
-export OLE
-
 function ole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η = ps
@@ -34,3 +32,6 @@ function OLE(;
             p = SLVector(; η),
             kwargs...)
 end
+
+const OverdampedLangevinEquation = OLE
+export OLE, OverdampedLangevinEquation

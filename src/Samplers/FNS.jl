@@ -1,5 +1,4 @@
 import SpecialFunctions: gamma
-export FractionalNeuralSampler
 
 # * "Fractional neural sampling as a theory of spatiotemporal probabilistic computations in neural circuits", Qi and Gong
 function fns_f!(du, u, p, t)
@@ -17,15 +16,19 @@ function fns_g!(du, u, p, t)
     dv .= 0.0
 end
 
-function FractionalNeuralSampler(;
-                                 tspan, α, β, γ, u0 = [0.0, 0.0],
-                                 boundaries = nothing,
-                                 noise_rate_prototype = similar(u0),
-                                 𝜋 = Density(default_density(first(u0))),
-                                 noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
-                                                                     W0 = zero(u0)),
-                                 kwargs...)
+function FNS(;
+             tspan, α, β, γ, u0 = [0.0, 0.0],
+             boundaries = nothing,
+             noise_rate_prototype = similar(u0),
+             𝜋 = Density(default_density(first(u0))),
+             noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
+                                                 W0 = zero(u0)),
+             kwargs...)
+    assert_dimension(u0; order = 2, dimension = dimension(𝜋))
     Sampler(fns_f!, fns_g!; callback = boundaries, kwargs..., u0,
             noise_rate_prototype, noise,
             tspan, p = SLVector(; α, β, γ), 𝜋)
 end
+
+const FractionalNeuralSampler = FNS
+export FNS, FractionalNeuralSampler
