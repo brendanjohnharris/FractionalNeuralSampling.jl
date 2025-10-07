@@ -15,7 +15,7 @@ struct LevyNoise{inplace, T}
     μ::T
     ND::Integer # ? The number of dimensions to the noise process
 end
-function LevyNoise{inplace}(α, β = 0.0, σ = 1 / sqrt(2), μ = 0.0, ND = 1) where {inplace}
+function LevyNoise{inplace}(α, β = 0.0, σ = 1, μ = 0.0, ND = 1) where {inplace}
     Stable(α, β, σ, μ) # Check values
     LevyNoise{inplace, typeof(α)}(α, β, σ, μ, ND)
 end
