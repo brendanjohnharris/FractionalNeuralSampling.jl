@@ -64,4 +64,5 @@ LevyProblem = RODEProblem{A, B, C, D,
 
 # ! Will want to throw an error to solve if anything other than EM() is used.
 
+include("LFSM.jl")
 end # module

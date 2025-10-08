@@ -88,8 +88,15 @@ function corners(R::AbstractBoxBoundary)
 end
 function getaffect(R::ReflectingBox{D}) where {D}
     function affect!(integrator)
-        x, v = divide_dims(integrator.u, D)
-        reflectvelocity!(v, x, _corners(R)...)
+        vars = divide_dims(integrator.u, D)
+        if length(vars) == 1
+            x = vars[1]
+            reflectvelocity!(similar(x), x, _corners(R)...)
+        else
+            x = vars[1]
+            v = vars[2]
+            reflectvelocity!(v, x, _corners(R)...)
+        end
     end
 end
 function getcondition(R::AbstractBoxBoundary{D}) where {D}
@@ -122,8 +129,15 @@ function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
 end
 function getaffect(R::PeriodicBox{D, Re}) where {D, Re}
     function affect!(integrator)
-        x, v = divide_dims(integrator.u, D)
-        reenterbox!(v, x, _corners(R)...; reset = Re)
+        vars = divide_dims(integrator.u, D)
+        if length(vars) == 1
+            x = vars[1]
+            reenterbox!(similar(x), x, _corners(R)...; reset = Re)
+        else
+            x = vars[1]
+            v = vars[2]
+            reenterbox!(v, x, _corners(R)...; reset = Re)
+        end
     end
 end
 
