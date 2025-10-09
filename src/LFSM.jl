@@ -6,40 +6,15 @@ using StableDistributions
 
 export lfsn, lfsm
 
-"""
-    a_tilda(N, m, M, α, H)
-
-Compute the kernel coefficients for LFSM generation.
-Based on the discretization of (t-s)₊^(H-1/α).
-"""
-function a_tilda(N::Int, m::Int, M::Int, α::Float64, H::Float64)
-    # Create vector with zeros padding
-    a = zeros(Float64, m * (M + N))
-
-    X2 = m^(-1 / α)
-    Ha = H - 1 / α
-
-    # First m coefficients
-    m_inv_Ha = (1 / m)^Ha
-    scale = m_inv_Ha * X2
-    @inbounds for j in 1:m
-        a[j] = j^Ha * scale
-    end
-
-    # Remaining coefficients up to m*M
-    @inbounds for j in (m + 1):(m * M)
-        a[j] = (j^Ha - (j - m)^Ha) * scale
-    end
-
-    return a
-end
-
 const FLSN_SCALE = 4 * erfinv(0.5) # Gives a variance of sqrt(2) for the Gaussian case, since IQR of a standard Normal is 2*sqrt(2)*erfinv(0.5)
+
+lfsm(args...; kwargs...) = cumsum(lfsn(args...; kwargs...))
 
 """
     lfsn(N, m, M, α, H; sigma=1.0, rng=Random.default_rng())
 
-Generate Linear Fractional Stable Noise (LFSN) .
+Generate Linear Fractional Stable Noise (LFSN). The resulting process has a `scale` of 1 dot
+`dt=1`, meaning for β=1 it corresponds to draws from a Levy distribution with σ=1
 
 # Arguments
 - `N::Int`: Number of points of the LFSM
@@ -49,76 +24,11 @@ Generate Linear Fractional Stable Noise (LFSN) .
 - `H::Float64`: Hurst parameter ∈ (0, 1)
 - `sigma::Float64=1.0`: Scale parameter
 - `rng`: Random number generator (default: `Random.default_rng()`)
-
 """
-# function lfsn(N::Int, α::Float64, H::Float64; m::Int = 128, M::Int = 1000,
-#               sigma::Float64 = 1.0, rng = Random.default_rng(),
-#               dt = 1)
-
-#     # * Choose faster parameters based on inputs
-#     total_length = m * (N + M)
-#     next_pow_2 = 2^ceil(Int, log2(total_length))
-
-#     # * Choose even m
-#     m = iseven(m) ? m : m + 1
-
-#     # * Choose N to make pow2 samples
-#     _N = N
-#     N = next_pow_2 ÷ m - M
-#     total_length = m * (N + M)
-#     @assert ispow2(total_length)
-#     @assert next_pow_2 == total_length
-
-#     # Validate parameters
-#     @assert 0<α<=2 "α must be in (0, 2]"
-#     @assert 0<H<1 "H must be in (0, 1)"
-#     @assert sigma>0 "sigma must be positive"
-#     @assert N > 0&&m > 0 && M > 0 "N, m, M must be positive"
-
-#     # Generate stable random variables (Lévy increments)
-#     # Stable(α, β, scale, location) with β=0 for symmetric
-#     d = Stable(α, 0.0, 1.0, 0.0)
-#     Ẑ = rand(rng, d, total_length) |> complex
-#     ℱ = plan_fft!(Ẑ)
-#     ℱ * Ẑ  # In-place FFT of Ẑ
-
-#     # Compute kernel coefficients
-#     â = a_tilda(N, m, M, α, H) |> complex
-#     â .*= sigma
-#     ℱ * â
-
-#     # Multiply in frequency domain
-#     @. â *= Ẑ
-
-#     # Apply inverse FFT (ifft already includes normalization)
-#     ifft!(â)
-
-#     # Extract the relevant portion (skip first m*M points)
-#     W = view(â, (m * M + 1):(m * M + m * N))
-
-#     # Sample at every m-th point
-#     index_m = m:m:length(W)
-#     Z = map(real, view(W, index_m))
-
-#     m = median(Z)
-#     iqr = quantile(Z, 0.75) - quantile(Z, 0.25)
-#     @. Z = FLSN_SCALE * (Z - m) / iqr  # Robust std
-
-#     # Get middle _N samples
-#     idxs = ((N - _N) ÷ 2):(length(Z) - (N - _N) ÷ 2 - 1)
-#     Z = view(Z, idxs)
-
-#     @assert length(Z) == _N
-
-#     Z .*= dt^(H)
-#     return Z
-# end
-
-lfsm(args...; kwargs...) = cumsum(lfsn(args...; kwargs...))
-
 function lfsn(N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
               sigma = 1.0, rng = Random.default_rng(),
               dt = 1) where {A <: Real, B <: Real}
+
     T = promote_type(A, B)
     total_length = m * (N + M)
     next_pow_2 = 2^ceil(Int, log2(total_length))

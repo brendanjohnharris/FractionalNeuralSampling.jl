@@ -5,8 +5,7 @@ function sfole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η, α, ∇𝒟𝜋, λ = ps
     x = divide_dims(u, length(u)) |> only
-    b = ∇𝒟𝜋(only(x)) / (𝜋(x) + λ) # For 1D atm !! Seems to diverge for alpha < 2??
-    # b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2)
+    b = ∇𝒟𝜋(only(x)) / (𝜋(x) + λ)
     du .= only(η .* b)
 end
 function sfole_g!(du, u, p, t)
@@ -26,20 +25,21 @@ end
 Space fractional overdamped langevin equation
 """
 function sFOLE(;
-    tspan,
-    η, # Noise strength
-    α, # Fractional order
-    𝜋, # Target distribution
-    λ=0.001, # Regularization to avoid overflow in low-prob regions
-    u0=[0.0],
-    boundaries=nothing,
-    noise_rate_prototype=similar(u0),
-    noise=NoiseProcesses.LevyProcess!(α; ND=dimension(𝜋),
-        W0=zero(u0)),
-    callback=(),
-    approx_n_modes=10000,
-    domain, # An Interval
-    kwargs...)
+               tspan,
+               η, # Noise strength
+               α, # Fractional order
+               𝜋, # Target distribution
+               domain, # An Interval
+               λ = 0.001, # Regularization to avoid overflow in low-prob regions
+               u0 = [0.0],
+               boundaries = nothing,
+               noise_rate_prototype = similar(u0),
+               noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
+                                                   W0 = zero(u0)),
+               approx_n_modes = 10000,
+               alg = EM(),
+               callback = (),
+               kwargs...)
     S = Fourier(domain) # Could use Laurent for complex functions
     D = Derivative(S, 1)
     Δ = maybeLaplacian(S)
@@ -50,14 +50,15 @@ function sFOLE(;
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
 
     Sampler(sfole_f!, sfole_g!;
-        callback=CallbackSet(boundaries, callback...),
-        u0,
-        noise_rate_prototype,
-        noise,
-        tspan,
-        p=(; η, α, ∇𝒟𝜋, λ),
-        𝜋,
-        kwargs...)
+            callback = CallbackSet(boundaries, callback...),
+            u0,
+            noise_rate_prototype,
+            noise,
+            tspan,
+            p = (; η, α, ∇𝒟𝜋, λ),
+            𝜋,
+            alg,
+            kwargs...)
 end
 
 const SpaceFractionalOverdampedLangevinEquation = sFOLE

@@ -992,3 +992,6 @@ end
 @testitem "CaputoEM" begin
     include("./Solvers/CaputoEM.jl")
 end
+@testitem "LFSM" begin
+    include("./LFSM.jl")
+end

@@ -21,6 +21,8 @@ import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
                   prepare_initial_state,
                   promote_tspan, warn_paramtype, @add_kwonly
 
+import StochasticDiffEq: EM
+
 export AbstractSampler, Sampler, parameters
 
 abstract type AbstractSampler{uType, tType, isinplace, ND} <:
@@ -160,8 +162,11 @@ function assert_dimension(u0; order, dimension)
 end
 
 include("Samplers/OLE.jl")
+include("Samplers/tFOLE.jl")
 include("Samplers/sFOLE.jl")
+include("Samplers/bFOLE.jl")
 include("Samplers/FHMC.jl")
 include("Samplers/FNS.jl")
+include("Samplers/bFNS.jl")
 include("Samplers/AdaptiveSamplers.jl")
 end # module

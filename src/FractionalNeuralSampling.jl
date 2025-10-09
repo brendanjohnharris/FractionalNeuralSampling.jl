@@ -35,9 +35,9 @@ include("Probabilities.jl")
 include("NoiseProcesses.jl")
 include("Densities.jl")
 include("Boundaries.jl")
+include("Solvers.jl")
 include("Samplers.jl")
 include("Window.jl")
-include("Solvers.jl")
 
 @reexport using .NoiseProcesses
 @reexport using .Densities
