@@ -12,7 +12,6 @@ end
 @testsnippet Setup begin
     using CairoMakie
     using Foresight
-    using DifferentialEquations
     using FractionalNeuralSampling
     import FractionalNeuralSampling as FNS
     using Random
@@ -113,7 +112,7 @@ end
 end
 
 @testitem "Levy sampler bias" setup=[Setup] begin
-    u0 = [0.0 0.0]
+    u0 = [0.0, 0.0]
     tspan = (0.0, 500.0)
     dt = 0.01
     D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
@@ -127,7 +126,7 @@ end
     @test W.f == S.f
     @test W.g == S.g
 
-    sol = solve(S, EM(); dt)
+    sol = solve(S; dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
     density(x)

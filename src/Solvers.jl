@@ -1,5 +1,5 @@
 module Solvers
-import ..Window
+import ..FractionalNeuralSampling: Window
 import StochasticDiffEq: StochasticDiffEqAlgorithm,
                          StochasticDiffEqMutableCache,
                          alg_cache, full_cache, jac_iter, rand_cache, ratenoise_cache,
@@ -10,7 +10,7 @@ import StochasticDiffEq: StochasticDiffEqAlgorithm,
 import SpecialFunctions: gamma
 using LinearAlgebra
 
-export CaputoEM, RLEM
+export CaputoEM
 
 abstract type FractionalAlgorithm <: StochasticDiffEqAlgorithm end
 

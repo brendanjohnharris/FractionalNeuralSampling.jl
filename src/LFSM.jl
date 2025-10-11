@@ -28,7 +28,6 @@ Generate Linear Fractional Stable Noise (LFSN). The resulting process has a `sca
 function lfsn(N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
               sigma = 1.0, rng = Random.default_rng(),
               dt = 1) where {A <: Real, B <: Real}
-
     T = promote_type(A, B)
     total_length = m * (N + M)
     next_pow_2 = 2^ceil(Int, log2(total_length))

@@ -165,6 +165,9 @@ end
 function ReentrantBox(exitreenter; kwargs...) # Prevent careless inputs by forcing pairs
     throw(ArgumentError("Must provide pairs of enter=>reentrance values for each dimension, where all pairs have the same type."))
 end
+function ReentrantBox(exitreenter::AbstractInterval; kwargs...) # Prevent careless inputs by forcing pairs
+    throw(ArgumentError("Must provide pairs of enter=>reentrance values for each dimension, where all pairs have the same type."))
+end
 function ReentrantBox(exitreenter::Pair{<:NTuple{D}, <:NTuple{D}};
                       kwargs...) where {D}
     ReentrantBox(exitreenter.second, exitreenter.first; kwargs...)

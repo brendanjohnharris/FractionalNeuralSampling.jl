@@ -23,11 +23,13 @@ function FNS(;
              𝜋 = Density(default_density(first(u0))),
              noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
                                                  W0 = zero(u0)),
+             alg = EM(),
              kwargs...)
     assert_dimension(u0; order = 2, dimension = dimension(𝜋))
+    p = SLVector(; α, β, γ)
     Sampler(fns_f!, fns_g!; callback = boundaries, kwargs..., u0,
             noise_rate_prototype, noise,
-            tspan, p = SLVector(; α, β, γ), 𝜋)
+            tspan, p, 𝜋, alg)
 end
 
 const FractionalNeuralSampler = FNS

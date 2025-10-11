@@ -11,7 +11,7 @@ struct Window{T} <: AbstractVector{T}
         new{T}(data, length(data), Ref(0))
     end
 end
-Window(data::NTuple{N, T}) where {N, T} = Window(collect(data))
+Window(data::NTuple) = Window(collect(data))
 Window(u::T, len::Int) where {T} = Window(ntuple(_ -> zero(u), len))
 
 # Core functionality

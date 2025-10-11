@@ -14,7 +14,9 @@ using UnPack
 using Accessors
 
 import ..NoiseProcesses
-import ..FractionalNeuralSampling.divide_dims
+import ..FractionalNeuralSampling: divide_dims
+import ..NoiseProcesses: lfsn
+import ..Solvers: CaputoEM
 using ..Densities
 import ..Densities.Density
 import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
@@ -105,10 +107,9 @@ function Sampler{iip}(f::AbstractSDEFunction{iip}, u0, tspan,
                                              noise_rate_prototype, seed)
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan,
-                      p = NullParameters(),
-                      𝜋 = (default_density ∘ first)(u0),
+                      p,
                       kwargs...) where {iip}
-    Sampler{iip}(f, u0, tspan, (p, 𝜋); kwargs...)
+    Sampler{iip}(f, u0, tspan, p; kwargs...)
 end
 function Sampler{iip}(; f, g = nothing, kwargs...) where {iip}
     if f isa AbstractSDEFunction
@@ -123,8 +124,12 @@ function Sampler(f::AbstractSDEFunction, args...;
                  kwargs...)
     Sampler{isinplace(f)}(f, args...; kwargs...)
 end
-function Sampler(f, g, args...; kwargs...)
-    Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; kwargs...)
+# function Sampler(f, g, args...; p, kwargs...)
+#     Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
+# end
+function Sampler(f, g, args...; p, 𝜋, kwargs...)
+    p = (p, 𝜋)
+    Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
 end
 
 function (S::AbstractSampler)(; kwargs...)
