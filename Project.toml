@@ -1,7 +1,7 @@
 name = "FractionalNeuralSampling"
 uuid = "1a146edb-494d-4c3d-929d-e214933c7497"
 authors = ["brendanjohnharris <bhar9988@uni.sydney.edu.au> and contributors"]
-version = "1.0.0-DEV"
+version = "0.1.0"
 
 [deps]
 DiffEqNoiseProcess = "77a26b50-5914-5dd7-bc55-306e6241c503"
