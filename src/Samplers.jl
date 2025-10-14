@@ -12,6 +12,7 @@ using LinearAlgebra
 using LabelledArrays
 using UnPack
 using Accessors
+using Random
 
 import ..NoiseProcesses
 import ..FractionalNeuralSampling: divide_dims

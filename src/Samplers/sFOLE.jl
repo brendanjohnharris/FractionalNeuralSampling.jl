@@ -50,7 +50,7 @@ function sFOLE(;
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
 
     Sampler(sfole_f!, sfole_g!;
-            callback = CallbackSet(boundaries, callback...),
+            callback = CallbackSet(boundaries(), callback...),
             u0,
             noise_rate_prototype,
             noise,

@@ -22,14 +22,16 @@ function OLE(;
              noise_rate_prototype = similar(u0),
              noise = WienerProcess!(0.0, zero(u0)),
              callback = (),
+             alg = EM(),
              kwargs...)
     Sampler(ole_f!, ole_g!;
-            callback = CallbackSet(boundaries, callback...),
+            callback = CallbackSet(boundaries(), callback...),
             u0,
             noise_rate_prototype,
             noise,
             tspan,
             p = SLVector(; η),
+            alg,
             kwargs...)
 end
 

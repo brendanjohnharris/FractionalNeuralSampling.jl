@@ -1,11 +1,10 @@
 
-function gen_lfsm(α, β; u0, tspan, dt) # * 1d for now
+function gen_lfsm(α, β; u0, tspan, dt, seed) # * 1d for now
     tmin = length(tspan) == 2 ? minimum(tspan) : 0
     tmax = maximum(tspan)
-    # H = 1 - β / 2
     H = 1 / 2 - β / 2 + 1 / α
     N = Int(tspan / dt) + 1
-    x = cumsum(lfsn(N, α, H; dt))
+    x = cumsum(lfsn(N, α, H; dt, rng = Xoshiro(seed)))
     ts = range(tmin, step = dt, length = N)
     @assert last(ts) == tmax
     return NoiseGrid(ts, x)
@@ -26,7 +25,8 @@ function bFOLE(;
                u0 = [0.0],
                boundaries = nothing,
                noise_rate_prototype = similar(u0),
-               noise = gen_lfsm(α, β; u0, tspan, dt),
+               seed = nothing,
+               noise = gen_lfsm(α, β; u0, tspan, dt, seed),
                approx_n_modes = 10000,
                alg = CaputoEM(β, 1000), # Should match the order of the noise
                callback = (),
@@ -41,7 +41,7 @@ function bFOLE(;
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
 
     Sampler(sfole_f!, sfole_g!;
-            callback = CallbackSet(boundaries, callback...),
+            callback = CallbackSet(boundaries(), callback...),
             u0,
             noise_rate_prototype,
             noise,
@@ -49,6 +49,7 @@ function bFOLE(;
             dt,
             p = (; η, α, β, ∇𝒟𝜋, λ),
             𝜋,
+            seed = rand(Xoshiro(seed), UInt),
             alg,
             kwargs...)
 end

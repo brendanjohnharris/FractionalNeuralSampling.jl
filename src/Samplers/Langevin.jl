@@ -24,7 +24,7 @@
 #                   callback = (),
 #                   kwargs...)
 #     Sampler(ole_f!, ole_g!;
-#             callback = CallbackSet(boundaries, callback...),
+#             callback = CallbackSet(boundaries(), callback...),
 #             u0,
 #             noise_rate_prototype,
 #             noise,
