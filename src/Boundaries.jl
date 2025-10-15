@@ -3,6 +3,7 @@ using SciMLBase
 import SciMLBase: DECallback
 using IntervalSets
 using Statistics
+using Distributions
 using LinearAlgebra
 using LogDensityProblems
 import ..FractionalNeuralSampling: divide_dims, Densities.AbstractDensity
@@ -232,6 +233,13 @@ end
 function grid(R::AbstractBoxBoundary, n)
     r = gridaxes(R, n)
     Iterators.product(r...)
+end
+
+function (Base.in)(point, R::AbstractBoxBoundary)
+    inside = map(point, R.min_corner, R.max_corner) do p, min_c, max_c
+        (p >= min_c) && (p <= max_c)
+    end
+    all(inside)
 end
 
 end # module

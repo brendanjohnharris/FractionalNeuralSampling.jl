@@ -13,7 +13,7 @@ Foresight.set_theme!(Foresight.foresight(:physics))
 import FractionalNeuralSampling: Density
 
 begin
-    α = 1.2
+    α = 2.0
     β = 1.0
     γ = 0.0
     η = 0.2
@@ -29,8 +29,8 @@ begin
     sol = rectify(sol, dims = 𝑡; tol = 1)
     hist(sol; normalization = :pdf, bins = -3:0.1:3)
     lines!(-3:0.1:3, 𝜋.(-3:0.1:3), color = :red, linewidth = 2)
-    current_figure()
-end
+    current_figure() |> display
 
-begin # * Accuracy
+    ws = samplingaccuracy(sol, 𝜋, 100:100:1000; p = 100, domain = domain)
+    lines(mean.(ws))
 end

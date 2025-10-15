@@ -716,258 +716,258 @@ if false # ! Need to fix out-of-place noise
 end
 
 # @testitem "Benchmark LevyNoise" setup=[Setup] begin
-if false # ! Need to fix out-of-place noise
-    import FractionalNeuralSampling.NoiseProcesses.LevyNoise
-    import FractionalNeuralSampling.NoiseProcesses.LevyNoise!
-    import DiffEqNoiseProcess.WHITE_NOISE_DIST as W
-    import DiffEqNoiseProcess.INPLACE_WHITE_NOISE_DIST as W!
-    L = LevyNoise(2.0, 0.0, 1 / sqrt(2), 0.0)
-    L! = LevyNoise!(2.0, 0.0, 1 / sqrt(2), 0.0)
-    rng = Random.default_rng()
+# if false # ! Need to fix out-of-place noise
+#     import FractionalNeuralSampling.NoiseProcesses.LevyNoise
+#     import FractionalNeuralSampling.NoiseProcesses.LevyNoise!
+#     import DiffEqNoiseProcess.WHITE_NOISE_DIST as W
+#     import DiffEqNoiseProcess.INPLACE_WHITE_NOISE_DIST as W!
+#     L = LevyNoise(2.0, 0.0, 1 / sqrt(2), 0.0)
+#     L! = LevyNoise!(2.0, 0.0, 1 / sqrt(2), 0.0)
+#     rng = Random.default_rng()
 
-    X = zeros(100, 100)
-    _L = Stable(2.0, 0.0, 1 / sqrt(2), 0.0)
-    a = @benchmark randn(size($X))
-    c = @benchmark $L($rng, $X)
-    @test a.memory≈c.memory atol=10
-    @test a.allocs == c.allocs == 2
+#     X = zeros(100, 100)
+#     _L = Stable(2.0, 0.0, 1 / sqrt(2), 0.0)
+#     a = @benchmark randn(size($X))
+#     c = @benchmark $L($rng, $X)
+#     @test a.memory≈c.memory atol=10
+#     @test a.allocs == c.allocs == 2
 
-    a = @benchmark $W($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-    b = @benchmark $L($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-    c = @benchmark $W!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-    d = @benchmark $L!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-    @test c.allocs == d.allocs == 0
-    @test c.memory≈d.memory atol=10
-    @test a.allocs == b.allocs == 4
-    @test a.memory≈b.memory atol=10
+#     a = @benchmark $W($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
+#     b = @benchmark $L($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
+#     c = @benchmark $W!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
+#     d = @benchmark $L!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
+#     @test c.allocs == d.allocs == 0
+#     @test c.memory≈d.memory atol=10
+#     @test a.allocs == b.allocs == 4
+#     @test a.memory≈b.memory atol=10
 
-    a = @benchmark rand!($rng, Stable(2.0, 0.0, 1 / sqrt(2), 0.0), $X)
-    a = @benchmark $L!($rng, $X)
-    @test a.allocs == a.memory == 0
+#     a = @benchmark rand!($rng, Stable(2.0, 0.0, 1 / sqrt(2), 0.0), $X)
+#     a = @benchmark $L!($rng, $X)
+#     @test a.allocs == a.memory == 0
 
-    @benchmark Stable(2.0, 0.0, 1 / sqrt(2), 0.0) # * Super cheap
-end
+#     @benchmark Stable(2.0, 0.0, 1 / sqrt(2), 0.0) # * Super cheap
+# end
 
-if CUDA.functional(true)
-    @testitem "GPU Benchmark" setup=[Setup] begin
-        using DiffEqGPU
-        function f3!(u0, u, p, t, W)
-            u0[1] = 2u[1] * sin(W[1])
-        end
-        u0 = [1.00]
-        tspan = (0.0, 5.0)
-        dt = 0.01
-        L = LevyProcess!(2.0)
-        prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
-        ensemble = EnsembleProblem(prob)
-        @test_nowarn @benchmark solve($ensemble, RandomEM(), EnsembleSerial();
-                                      trajectories = 5,
-                                      dt = $dt)
-        @test_throws "MethodError" solve(ensemble, RandomEM(),
-                                         EnsembleGPUArray(CUDA.CUDABackend());
-                                         trajectories = 5, dt)
-    end
-end
+# if CUDA.functional(true)
+#     @testitem "GPU Benchmark" setup=[Setup] begin
+#         using DiffEqGPU
+#         function f3!(u0, u, p, t, W)
+#             u0[1] = 2u[1] * sin(W[1])
+#         end
+#         u0 = [1.00]
+#         tspan = (0.0, 5.0)
+#         dt = 0.01
+#         L = LevyProcess!(2.0)
+#         prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
+#         ensemble = EnsembleProblem(prob)
+#         @test_nowarn @benchmark solve($ensemble, RandomEM(), EnsembleSerial();
+#                                       trajectories = 5,
+#                                       dt = $dt)
+#         @test_throws "MethodError" solve(ensemble, RandomEM(),
+#                                          EnsembleGPUArray(CUDA.CUDABackend());
+#                                          trajectories = 5, dt)
+#     end
+# end
 
 # @testitem "2D potential" setup=[Setup] begin
-if false
-    using DifferentialEquations
-    Δx = 5
-    d = MixtureModel([
-                         MvNormal([-Δx / 2, 0], [1 0; 0 1]),
-                         MvNormal([Δx / 2, 0], [1 0; 0 1])
-                     ])
-    D = Density(d)
+# if false
+#     using DifferentialEquations
+#     Δx = 5
+#     d = MixtureModel([
+#                          MvNormal([-Δx / 2, 0], [1 0; 0 1]),
+#                          MvNormal([Δx / 2, 0], [1 0; 0 1])
+#                      ])
+#     D = Density(d)
 
-    αs = [2.0, 1.6, 1.2]
-    f = Figure(size = (900, 300))
-    gs = subdivide(f, 1, 3)
-    map(αs, gs) do α, g
-        L = FractionalNeuralSampler(;
-                                    u0 = [-Δx / 2 0 0 0],
-                                    tspan = 500.0,
-                                    α = α,
-                                    β = 0.2,
-                                    γ = 0.02,
-                                    𝜋 = D,
-                                    seed = 42)
-        sol = solve(L, EM(); dt = 0.001)
-        x, y = eachrow(sol[1:2, :])
+#     αs = [2.0, 1.6, 1.2]
+#     f = Figure(size = (900, 300))
+#     gs = subdivide(f, 1, 3)
+#     map(αs, gs) do α, g
+#         L = FractionalNeuralSampler(;
+#                                     u0 = [-Δx / 2 0 0 0],
+#                                     tspan = 500.0,
+#                                     α = α,
+#                                     β = 0.2,
+#                                     γ = 0.02,
+#                                     𝜋 = D,
+#                                     seed = 42)
+#         sol = solve(L, EM(); dt = 0.001)
+#         x, y = eachrow(sol[1:2, :])
 
-        xmax = maximum(abs.(extrema(vcat(x, y)))) * 1.5
-        xs = range(-xmax, xmax, length = 100)
+#         xmax = maximum(abs.(extrema(vcat(x, y)))) * 1.5
+#         xs = range(-xmax, xmax, length = 100)
 
-        ax = Axis(g[1, 1], title = "α = $α", aspect = DataAspect())
-        # heatmap!(ax, xs, xs, potential(D).(collect.(Iterators.product(xs, xs))), colormap=seethrough(:turbo))
-        heatmap!(ax, xs, xs, D.(collect.(Iterators.product(xs, xs))),
-                 colormap = seethrough(:turbo))
-        lines!(ax, x[1:10:end], y[1:10:end], color = (:black, 0.5), linewidth = 1)
-        hidedecorations!(ax)
-    end
-    f
-end
+#         ax = Axis(g[1, 1], title = "α = $α", aspect = DataAspect())
+#         # heatmap!(ax, xs, xs, potential(D).(collect.(Iterators.product(xs, xs))), colormap=seethrough(:turbo))
+#         heatmap!(ax, xs, xs, D.(collect.(Iterators.product(xs, xs))),
+#                  colormap = seethrough(:turbo))
+#         lines!(ax, x[1:10:end], y[1:10:end], color = (:black, 0.5), linewidth = 1)
+#         hidedecorations!(ax)
+#     end
+#     f
+# end
 
 # @testitem "MSD check" setup=[Setup] begin
-begin
-    u0 = [0.0, 0.0]
-    tspan = (0.0, 10000.0)
-    dt = 0.1
-    D = Density(Normal(0.0, 1.0))
-    S = Samplers.FHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
-    sol = solve(S, EM(); dt)
+# begin
+#     u0 = [0.0, 0.0]
+#     tspan = (0.0, 10000.0)
+#     dt = 0.1
+#     D = Density(Normal(0.0, 1.0))
+#     S = Samplers.FHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
+#     sol = solve(S, EM(); dt)
 
-    x = sol[1, :]
-    x = TimeseriesTools.Timeseries(sol.t, x)
-    x = rectify(x, dims = 𝑡, tol = 1)
+#     x = sol[1, :]
+#     x = TimeseriesTools.Timeseries(sol.t, x)
+#     x = rectify(x, dims = 𝑡, tol = 1)
 
-    msd = msdist(x)
+#     msd = msdist(x)
 
-    begin
-        f = Figure(size = (1000, 300))
-        ax = Axis(f[1, 1])
-        lines!(ax, x[1:20:20000])
+#     begin
+#         f = Figure(size = (1000, 300))
+#         ax = Axis(f[1, 1])
+#         lines!(ax, x[1:20:20000])
 
-        lu = (-4 * std(x), +4 * std(x))
-        axx = Axis(f[1, 2], limits = (lu, nothing))
-        xs = range(lu..., length = 1000)
-        hist!(axx, x; bins = 100, normalization = :pdf)
-        lines!(axx, xs, D.(xs); color = :red, linewidth = 2)
+#         lu = (-4 * std(x), +4 * std(x))
+#         axx = Axis(f[1, 2], limits = (lu, nothing))
+#         xs = range(lu..., length = 1000)
+#         hist!(axx, x; bins = 100, normalization = :pdf)
+#         lines!(axx, xs, D.(xs); color = :red, linewidth = 2)
 
-        axxx = Axis(f[1, 3], xscale = log10, yscale = log10)
-        lines!(axxx, msd[𝑡 = dt .. 1000], label = nothing)
+#         axxx = Axis(f[1, 3], xscale = log10, yscale = log10)
+#         lines!(axxx, msd[𝑡 = dt .. 1000], label = nothing)
 
-        # * Fit a tail index to msd
-        y = msd[𝑡 = dt .. 1]
-        ts = logrange(extrema(times(y))..., length = 1000)
-        y = y[𝑡 = Near(ts)]
-        taus = times(y)
-        α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+#         # * Fit a tail index to msd
+#         y = msd[𝑡 = dt .. 1]
+#         ts = logrange(extrema(times(y))..., length = 1000)
+#         y = y[𝑡 = Near(ts)]
+#         taus = times(y)
+#         α, β = [log10.(taus) ones(length(y))] \ log10.(y)
 
-        # * Plot line of fitted tail
-        lines!(axxx, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
-               label = "Fit: α = $α")
-        axislegend(axxx, position = :lt)
-        display(f)
-    end
-end
+#         # * Plot line of fitted tail
+#         lines!(axxx, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+#                label = "Fit: α = $α")
+#         axislegend(axxx, position = :lt)
+#         display(f)
+#     end
+# end
 
-begin
-    x = rand(Stable(2.0, 0.0), 10000) |> cumsum
-    x = Timeseries(range(dt, length = length(x), step = dt), x)
-    lines(x)
-    msd = mad(x)
-    f = Figure()
-    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
-    lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
+# begin
+#     x = rand(Stable(2.0, 0.0), 10000) |> cumsum
+#     x = Timeseries(range(dt, length = length(x), step = dt), x)
+#     lines(x)
+#     msd = mad(x)
+#     f = Figure()
+#     ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+#     lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
 
-    # * Fit a tail index to msd
-    y = msd[𝑡 = dt .. 1]
-    ts = logrange(extrema(times(y))..., length = 1000)
-    y = y[𝑡 = Near(ts)]
-    taus = times(y)
-    α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+#     # * Fit a tail index to msd
+#     y = msd[𝑡 = dt .. 1]
+#     ts = logrange(extrema(times(y))..., length = 1000)
+#     y = y[𝑡 = Near(ts)]
+#     taus = times(y)
+#     α, β = [log10.(taus) ones(length(y))] \ log10.(y)
 
-    # * Plot line of fitted tail
-    lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
-           label = "Fit: α = $α")
-    axislegend(ax, position = :lt)
-    display(f)
-end
+#     # * Plot line of fitted tail
+#     lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+#            label = "Fit: α = $α")
+#     axislegend(ax, position = :lt)
+#     display(f)
+# end
 
-begin
-    using TimeseriesTools
-    using CairoMakie
-    using StableDistributions
-    using Statistics
-    function mad(x::AbstractVector{T}) where {T <: Real}
-        n = length(x)
-        lags = 1:(n - 1)
-        mads = zeros(T, n - 1)
-        Threads.@threads for lag in lags
-            displacements = abs.(x[(1 + lag):n] .- x[1:(n - lag)])
-            mads[lag] = mean(displacements)
-        end
-        return mads
-    end
-    function mad(x::UnivariateRegular)
-        mads = mad(parent(x))
-        lags = range(step(x), length = length(mads), step = step(x))
-        return Timeseries(lags, mads)
-    end
-    function mssd(x::AbstractVector{T}) where {T <: Real}
-        n = length(x)
-        lags = 1:(n - 1)
-        msds = zeros(T, n - 1)
-        Threads.@threads for lag in lags
-            displacements = (x[(1 + lag):n] .- x[1:(n - lag)]) .^ 2
-            msds[lag] = mean(displacements)
-        end
-        return msds
-    end
-    function mssd(x::UnivariateRegular)
-        mssds = mssd(parent(x))
-        lags = range(step(x), length = length(mssds), step = step(x))
-        return Timeseries(lags, mssds)
-    end
-end
+# begin
+#     using TimeseriesTools
+#     using CairoMakie
+#     using StableDistributions
+#     using Statistics
+#     function mad(x::AbstractVector{T}) where {T <: Real}
+#         n = length(x)
+#         lags = 1:(n - 1)
+#         mads = zeros(T, n - 1)
+#         Threads.@threads for lag in lags
+#             displacements = abs.(x[(1 + lag):n] .- x[1:(n - lag)])
+#             mads[lag] = mean(displacements)
+#         end
+#         return mads
+#     end
+#     function mad(x::UnivariateRegular)
+#         mads = mad(parent(x))
+#         lags = range(step(x), length = length(mads), step = step(x))
+#         return Timeseries(lags, mads)
+#     end
+#     function mssd(x::AbstractVector{T}) where {T <: Real}
+#         n = length(x)
+#         lags = 1:(n - 1)
+#         msds = zeros(T, n - 1)
+#         Threads.@threads for lag in lags
+#             displacements = (x[(1 + lag):n] .- x[1:(n - lag)]) .^ 2
+#             msds[lag] = mean(displacements)
+#         end
+#         return msds
+#     end
+#     function mssd(x::UnivariateRegular)
+#         mssds = mssd(parent(x))
+#         lags = range(step(x), length = length(mssds), step = step(x))
+#         return Timeseries(lags, mssds)
+#     end
+# end
 
-begin
-    x = rand(Stable(1.3, 0.0), 10000) |> cumsum
-    x = Timeseries(range(dt, length = length(x), step = dt), x)
-    lines(x)
-    msd = mad(x)
-    f = Figure()
-    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
-    lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
+# begin
+#     x = rand(Stable(1.3, 0.0), 10000) |> cumsum
+#     x = Timeseries(range(dt, length = length(x), step = dt), x)
+#     lines(x)
+#     msd = mad(x)
+#     f = Figure()
+#     ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+#     lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
 
-    # * Fit a tail index to msd
-    y = msd[𝑡 = dt .. 1]
-    ts = logrange(extrema(times(y))..., length = 1000)
-    y = y[𝑡 = Near(ts)]
-    taus = times(y)
-    α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+#     # * Fit a tail index to msd
+#     y = msd[𝑡 = dt .. 1]
+#     ts = logrange(extrema(times(y))..., length = 1000)
+#     y = y[𝑡 = Near(ts)]
+#     taus = times(y)
+#     α, β = [log10.(taus) ones(length(y))] \ log10.(y)
 
-    # * Plot line of fitted tail
-    lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
-           label = "Fit: α = $α")
-    axislegend(ax, position = :lt)
-    display(f)
-end
+#     # * Plot line of fitted tail
+#     lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+#            label = "Fit: α = $α")
+#     axislegend(ax, position = :lt)
+#     display(f)
+# end
 
-begin
-    global estimator = mad
-    repeats = 100
-    dt = 0.01 # Dummy timestep
-    αs = 1.1:0.05:2.0
+# begin
+#     global estimator = mad
+#     repeats = 100
+#     dt = 0.01 # Dummy timestep
+#     αs = 1.1:0.05:2.0
 
-    ms = progressmap(αs) do α
-        map(1:repeats) do _
-            x = rand(Stable(α, 0.0), 10000) |> cumsum
-            x = Timeseries(range(dt, length = length(x), step = dt), x)
-            m = estimator(x)
+#     ms = progressmap(αs) do α
+#         map(1:repeats) do _
+#             x = rand(Stable(α, 0.0), 10000) |> cumsum
+#             x = Timeseries(range(dt, length = length(x), step = dt), x)
+#             m = estimator(x)
 
-            # * Fit a tail index to msd
-            y = m[𝑡 = dt .. 1]
-            ts = logrange(extrema(times(y))..., length = 1000)
-            y = y[𝑡 = Near(ts)]
-            taus = times(y)
-            β, _ = [log10.(taus) ones(length(y))] \ log10.(y)
-            return β
-        end
-    end
-    σs = std.(ms) ./ 2
-    ms = mean.(ms)
+#             # * Fit a tail index to msd
+#             y = m[𝑡 = dt .. 1]
+#             ts = logrange(extrema(times(y))..., length = 1000)
+#             y = y[𝑡 = Near(ts)]
+#             taus = times(y)
+#             β, _ = [log10.(taus) ones(length(y))] \ log10.(y)
+#             return β
+#         end
+#     end
+#     σs = std.(ms) ./ 2
+#     ms = mean.(ms)
 
-    f = Figure()
-    ax = Axis(f[1, 1], xlabel = "α", ylabel = "β", title = "$estimator")
-    band!(ax, αs, ms .- σs, ms .+ σs; color = (:black, 0.3))
-    lines!(ax, αs, ms, color = :black)
-    if estimator === mad
-        # * Plot a line of beta = 1/alpha
-        lines!(ax, αs, 1 ./ αs, color = :red, linestyle = :dash, label = "β = 1/α")
-    end
-    display(f)
-end
+#     f = Figure()
+#     ax = Axis(f[1, 1], xlabel = "α", ylabel = "β", title = "$estimator")
+#     band!(ax, αs, ms .- σs, ms .+ σs; color = (:black, 0.3))
+#     lines!(ax, αs, ms, color = :black)
+#     if estimator === mad
+#         # * Plot a line of beta = 1/alpha
+#         lines!(ax, αs, 1 ./ αs, color = :red, linestyle = :dash, label = "β = 1/α")
+#     end
+#     display(f)
+# end
 
 @testitem "CaputoEM" begin
     include("./Solvers/CaputoEM.jl")
