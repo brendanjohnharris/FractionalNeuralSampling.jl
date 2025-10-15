@@ -3,7 +3,6 @@ using StochasticDiffEq
 using Distributions
 using TimeseriesTools
 using LinearAlgebra
-using ComplexityMeasures
 using MoreMaps
 using TimeseriesMakie
 using CairoMakie
@@ -55,12 +54,15 @@ begin
 end
 
 begin # * Plot distribution for long time lag
-    S = FNS(; γ, β, α = 1.5, u0, 𝜋, tspan, boundaries)
+    S = FNS(; γ, β, α = 1.8, u0, 𝜋, tspan, boundaries)
     sol = solve(S, EM(); dt) |> Timeseries |> eachcol |> first
     sol = rectify(sol, dims = 𝑡; tol = 1)
     hist(sol; normalization = :pdf, bins = -3:0.1:3)
     lines!(-3:0.1:3, 𝜋.(-3:0.1:3), color = :red, linewidth = 2)
-    current_figure()
+    current_figure() |> display
+
+    ws = samplingaccuracy(sol, 𝜋, 1000:1000:50000; domain = domain)
+    lines(mean.(ws); axis = (; xscale = log10, yscale = log10))
 end
 # begin
 #     ts = 1:100

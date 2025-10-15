@@ -4,7 +4,6 @@ using Distributions
 using Optim
 using TimeseriesTools
 using LinearAlgebra
-using ComplexityMeasures
 using MoreMaps
 using TimeseriesMakie
 using CairoMakie

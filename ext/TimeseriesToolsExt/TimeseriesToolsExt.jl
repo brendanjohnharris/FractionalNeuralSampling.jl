@@ -40,7 +40,7 @@ function samplingpower(x, dt; p = 2)
     return (p_var / T)^(1 / p)
 end
 
-function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 10,
+function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 0, # No overlap by default
                            domain = nothing)
     if minimum(τs) < 2
         error("Minimum τ (samples) must be at least 2")
@@ -48,7 +48,7 @@ function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100
 
     map(τs) do τ
         # * Calculate wasserstein distance
-        samples = window(x, τ, p)
+        samples = buffer(x, τ, p)
         quantiles = cdf_quantiles(τ, distribution(𝜋))
         ws = map(samples) do s
             wasserstein(s, quantiles, domain)

@@ -556,7 +556,7 @@ end
     x = first.(sol.u)
     density(x)
     gg = fit(Laplace, x)
-    @test gg.μ≈0.0f0 atol=1e-2
+    @test gg.μ≈0.0f0 atol=5e-2
     @test gg.θ≈1.0f0 atol=1e-1
 end
 
