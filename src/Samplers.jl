@@ -183,6 +183,7 @@ include("Samplers/sFOLE.jl")
 include("Samplers/bFOLE.jl")
 include("Samplers/FHMC.jl")
 include("Samplers/FNS.jl")
+include("Samplers/sFNS.jl")
 include("Samplers/bFNS.jl")
 include("Samplers/AdaptiveSamplers.jl")
 end # module

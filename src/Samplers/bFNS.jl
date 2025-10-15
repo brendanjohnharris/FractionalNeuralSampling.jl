@@ -39,24 +39,16 @@ function bFNS(;
               η, # Noise strength
               𝜋, # Target distribution
               domain, # An Interval
+              approx_n_modes = 10000,
               λ = 0.001, # Regularization to avoid overflow in low-prob regions
               u0 = [0.0, 0.0],
               boundaries = nothing,
               noise_rate_prototype = similar(u0),
               noise = gen_lfsm_fns(α, β; u0, tspan, dt),
-              approx_n_modes = 10000,
               alg = CaputoEM(β, 1000), # Should match the order of the noise
               callback = (),
               kwargs...)
-    S = Fourier(domain) # Could use Laurent for complex functions
-    D = Derivative(S, 1)
-    Δ = maybeLaplacian(S)
-    @assert isdiag(Δ)
-    @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
-    𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
-    𝜋s = Fun(𝜋, S, approx_n_modes)
-    ∇𝒟𝜋 = D * 𝒟 * 𝜋s
-
+    ∇𝒟𝜋 = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     Sampler(bfns_f!, bfns_g!;
             callback = CallbackSet(init(boundaries), callback...),
             u0,

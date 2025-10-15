@@ -1,6 +1,17 @@
 import ApproxFun: Operator, Derivative, Fun, Fourier, Laplacian, ApproxFunBase
 import ..FractionalNeuralSampling: Power
 
+function space_fractional_drift(𝜋; α, domain, approx_n_modes = 1000)
+    S = Fourier(domain) # Could use Laurent for complex functions
+    D = Derivative(S, 1)
+    Δ = maybeLaplacian(S)
+    @assert isdiag(Δ)
+    @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
+    𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
+    𝜋s = Fun(𝜋, S, approx_n_modes)
+    ∇𝒟𝜋 = D * 𝒟 * 𝜋s
+end
+
 function sfole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η, α, ∇𝒟𝜋, λ = ps
@@ -40,15 +51,7 @@ function sFOLE(;
                alg = EM(),
                callback = (),
                kwargs...)
-    S = Fourier(domain) # Could use Laurent for complex functions
-    D = Derivative(S, 1)
-    Δ = maybeLaplacian(S)
-    @assert isdiag(Δ)
-    @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
-    𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
-    𝜋s = Fun(𝜋, S, approx_n_modes)
-    ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
-
+    ∇𝒟𝜋 = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     Sampler(sfole_f!, sfole_g!;
             callback = CallbackSet(init(boundaries), callback...),
             u0,
