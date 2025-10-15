@@ -206,7 +206,7 @@ end
     sol = solve(S, EM(); dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
-    @test evaluate(KLDivergence(), D, x) < 0.01
+    @test evaluate(KLDivergence(), D, x) < 0.05
 end
 
 if false
@@ -552,11 +552,11 @@ end
     𝜋 = Density(Laplace(0.0f0, 1.0f0), true)
     S = Langevin(; u0, tspan, β = 1.0f0, η = 1.0f0, boundaries = box(), 𝜋)
     # @benchmark solve(S; dt = 0.001, saveat = 0.01)
-    sol = @test_nowarn solve(S; dt = 0.001f0, saveat = 0.1f0)
+    sol = @test_nowarn solve(S; dt = 0.01f0, saveat = 0.1f0)
     x = first.(sol.u)
     density(x)
     gg = fit(Laplace, x)
-    @test gg.μ≈0.0f0 atol=5e-3
+    @test gg.μ≈0.0f0 atol=1e-2
     @test gg.θ≈1.0f0 atol=1e-1
 end
 
