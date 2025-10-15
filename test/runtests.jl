@@ -113,10 +113,10 @@ end
 
 @testitem "Levy sampler bias" setup=[Setup] begin
     u0 = [0.0, 0.0]
-    tspan = (0.0, 500.0)
+    tspan = (0.0, 1000.0)
     dt = 0.01
     D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
-    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 0.1, γ = 0.5, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)

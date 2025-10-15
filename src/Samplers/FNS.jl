@@ -24,9 +24,13 @@ function FNS(;
              noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
                                                  W0 = zero(u0)),
              alg = EM(),
+             callback = (),
              kwargs...)
     p = SLVector(; α, β, γ)
-    Sampler(fns_f!, fns_g!; callback = boundaries, kwargs..., u0,
+    Sampler(fns_f!, fns_g!;
+            callback = CallbackSet(init(boundaries), callback...),
+            kwargs...,
+            u0,
             noise_rate_prototype, noise,
             tspan, p, 𝜋, alg) |> assert_dimension(; order = 2)
 end

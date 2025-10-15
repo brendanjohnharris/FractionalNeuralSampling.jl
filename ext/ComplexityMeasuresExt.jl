@@ -11,7 +11,7 @@ The variance of differences scaled by the time step.
 Also known as the quadratic variation divided by the number of samples
 For p != 2, this uses other norms of the increments (generalized variation).
 """
-function samplingpower(x, dt; p=2)
+function samplingpower(x, dt; p = 2)
     # # # Compute squared increments
     # # dx² = map(Base.Fix1(sum, abs2), diff(x))
 
@@ -25,14 +25,14 @@ function samplingpower(x, dt; p=2)
     return (p_var / T)^(1 / p)
 end
 
-function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector=2:100; p=10)
+function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 10)
     if minimum(τs) < 2
         error("Minimum τ (samples) must be at least 2")
     end
 
     P = map(logdensity(𝜋), x)
 
-    S = Base.Fix1(information, Kraskov(Shannon(; base=ℯ); k=3))
+    S = Base.Fix1(information, Kraskov(Shannon(; base = ℯ); k = 3))
 
     map(τs) do τ
 
@@ -50,7 +50,7 @@ function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector=2:100; 
     end
 end
 
-function samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector=2:100; kwargs...)
+function samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; kwargs...)
     ΔI = _samplingaccuracy(x, 𝜋, τs; kwargs...)
     return map(x -> exp.(-x), ΔI)
 end

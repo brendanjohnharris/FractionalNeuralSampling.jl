@@ -30,7 +30,7 @@ function Langevin(;
                   alg = EM(),
                   kwargs...)
     Sampler(langevin_f!, langevin_g!;
-            callback = CallbackSet(boundaries, callback...),
+            callback = CallbackSet(init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,
