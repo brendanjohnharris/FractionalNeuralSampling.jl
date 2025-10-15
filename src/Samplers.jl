@@ -20,6 +20,7 @@ import ..NoiseProcesses: lfsn
 import ..Solvers: CaputoEM
 using ..Densities
 import ..Densities.Density
+import ..Boundaries: init
 import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
                   prepare_initial_state,
                   promote_tspan, warn_paramtype, @add_kwonly
