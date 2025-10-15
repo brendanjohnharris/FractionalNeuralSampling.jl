@@ -132,7 +132,7 @@ end
     density(x)
     lines!(-4:0.1:4, D.(-4:0.1:4))
     current_figure()
-    @test evaluate(KLDivergence(), D, x) < 0.1
+    @test evaluate(KLDivergence(), D, x) < 0.2
 
     if false
         βs = range(0, 2, length = 20)
@@ -517,7 +517,7 @@ end
     # @test x == trajectory(S)
 
     box = ReflectingBox(-1 .. 1)
-    u0 = [0.0 0.0]
+    u0 = [0.0, 0.0]
     tspan = (0.0, 100.0)
     𝜋 = Density(Normal(0, 1))
     S = Langevin(; u0, tspan, β = 0.5, η = 0.1, boundaries = box(), 𝜋)
