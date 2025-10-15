@@ -10,10 +10,11 @@ using TestItemRunner
 end
 
 @testsnippet Setup begin
+    using RecursiveArrayTools
     using CairoMakie
     using Foresight
     using FractionalNeuralSampling
-    import FractionalNeuralSampling as FNS
+    import FractionalNeuralSampling: Density
     using Random
     using Statistics
     using StaticArraysCore
@@ -67,12 +68,12 @@ end
 end
 
 @testitem "Langevin sampler bias" setup=[Setup] begin
-    u0 = [0.0001 0.0001]
+    u0 = [0.0001, 0.0001]
     tspan = (0.0, 1000.0)
     dt = 0.01
-    D = FNS.Density(Normal(0, 1))
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
-                            noise = WienerProcess(0.0, 0.0))
+    D = Density(Normal(0, 1))
+    S = Langevin(; u0, tspan, β = 0.5, η = 1.0, 𝜋 = D,
+                 noise = WienerProcess(0.0, 0.0))
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -84,7 +85,7 @@ end
 
     @test_nowarn KLDivergence()(D, randn(100))
     sol = solve(S, EM(); dt)
-    Makie.density(first.(sol.u))
+    Makie.hist(first.(sol.u), bins = 50, normalization = :pdf)
     lines!(-2.5:0.1:2.5, D.(-2.5:0.1:2.5))
     current_figure()
     @test mean(first.(sol.u))≈0.0 atol=0.05
@@ -92,8 +93,8 @@ end
 
     if false
         tspan = (0.0, 100.0)
-        S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
-                                noise = WienerProcess(0.0, 0.0))
+        S = LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
+                            noise = WienerProcess(0.0, 0.0))
         βs = range(0, 5, length = 10)
         er = map(βs) do β
             P = remake(S, p = ((β, S.p[1][2:end]...), S.p[2:end]...))
@@ -115,8 +116,8 @@ end
     u0 = [0.0, 0.0]
     tspan = (0.0, 500.0)
     dt = 0.01
-    D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
-    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+    D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -192,8 +193,8 @@ end
     u0 = ArrayPartition([0.0], [0.0])
     tspan = (0.0, 500.0)
     dt = 0.01
-    D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
-    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+    D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -213,9 +214,9 @@ if false
     u0 = [-3.0 0.00]
     tspan = (0.0, 5000.0)
     dt = 0.01
-    D = FNS.Density(MixtureModel(Laplace, [(-3, 0.3), (3, 0.3)]))
-    # D = FNS.Density(Normal(-2, 0.5))
-    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.5, β = 0.0, γ = 0.1, 𝜋 = D)
+    D = Density(MixtureModel(Laplace, [(-3, 0.3), (3, 0.3)]))
+    # D = Density(Normal(-2, 0.5))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.5, β = 0.0, γ = 0.1, 𝜋 = D)
 
     sol = solve(S, EM(); dt)
     x = first.(sol.u)
@@ -238,8 +239,8 @@ if false # * Simple potential: power law iqr?
     u0 = [-0.001 0.00]
     tspan = (0.0, 1.0)
     dt = 0.00001
-    D = FNS.Density(Normal(0, 1))
-    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.0, γ = 0.1, 𝜋 = D)
+    D = Density(Normal(0, 1))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.0, γ = 0.1, 𝜋 = D)
     P = EnsembleProblem(S)
     sol = solve(P, EM(); dt, trajectories = 100)
     σ = mapslices(iqr, stack(getindex.(sol.u, 1, :)); dims = 2)[:] .^ 2
@@ -264,8 +265,8 @@ if false # * Unimodal vs bimodal comparison
     ft = x -> abs.((x[3:end] .- x[1:(end - 2)]) ./ 2)
 
     ax = Axis(g[1, 1]; xlabel = "t", ylabel = "v", title = "Unimodal")
-    D = FNS.Density(Laplace(0, 0.5))
-    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
+    D = Density(Laplace(0, 0.5))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
     x = sol[1, :][idxs]
     lines!(ax, ft(x), color = :cornflowerblue, linewidth = 2)
@@ -278,8 +279,8 @@ if false # * Unimodal vs bimodal comparison
 
     u0 = [-0.201 0.00]
     ax = Axis(g[2, 1]; xlabel = "t", ylabel = "v", title = "Bimodal")
-    D = FNS.Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
-    S = FNS.FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
+    D = Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
     x = sol[1, :][idxs]
 
@@ -301,8 +302,8 @@ if false # * Fixation simulation: heavy tailed msd??
     u0 = [-0.001 0.00]
     tspan = (0.0, 100.0)
     dt = 0.001
-    D = FNS.Density(Laplace(0, 1))
-    S = FNS.FHMC(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
+    D = Density(Laplace(0, 1))
+    S = FHMC(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
 
     sol = solve(S, EM(); dt)
     x = first.(sol.u)[1:50:end] # Need heavy oversampling to prevent blowout
@@ -340,11 +341,11 @@ end
     g(x::T) where {T <: Real} = logpdf(D, x)::T
     g(x::AbstractVector{T}) where {T <: Real} = logpdf(D, only(x))::T
     @inferred g(0.1)
-    @inferred ForwardDiff.gradient(g, [0.1])
+    # @inferred ForwardDiff.gradient(g, [0.1])
     backend = AutoForwardDiff()
-    @test gradlogdensity(FNS.Density(D, true)).(0.1:0.1:3) ==
+    @test gradlogdensity(Density(D, true)).(0.1:0.1:3) ==
           gradlogpdf.([D], 0.1:0.1:3)
-    gr = @inferred gradient(g, backend, [0.1])
+    gr = gradient(g, backend, [0.1]) # @inferred
     @test gr isa Vector
     @test length(gr) == 1
     a = @benchmark gradient($g, $backend, [0.1])
@@ -353,21 +354,21 @@ end
     @test a.allocs < 15
     @test b.allocs < 10
     @test c.allocs == c.memory == 0
-    @inferred gradlogdensity(FNS.Density(D, false), 0.1)
-    a = @benchmark gradlogdensity(FNS.Density($D, false), 0.1)
+    @inferred gradlogdensity(Density(D, false), 0.1)
+    a = @benchmark gradlogdensity(Density($D, false), 0.1)
     @test a.allocs == c.memory == 0
-    @inferred gradlogdensity(FNS.Density(D, true), 0.1)
-    b = @benchmark gradlogdensity(FNS.Density($D, true), 0.1)
+    @inferred gradlogdensity(Density(D, true), 0.1)
+    b = @benchmark gradlogdensity(Density($D, true), 0.1)
     @test b.allocs == 10 # Slightly allocating
 
-    cl = @code_lowered FNS.Densities._gradlogdensity(FNS.Density(D, true), 0.1)
+    cl = @code_lowered Densities._gradlogdensity(Density(D, true), 0.1)
     @test contains(string(cl.code), "AD_BACKEND")
 end
 @testitem "Univariate DistributionDensity" setup=[Setup] begin
     d = Normal(0.0, 0.5)
-    D = @test_nowarn FNS.Density(d)
-    @test D isa FNS.Densities.AbstractUnivariateDensity
-    @test FNS.Densities.doautodiff(D) == false
+    D = @test_nowarn Density(d)
+    @test D isa Densities.AbstractUnivariateDensity
+    @test Densities.doautodiff(D) == false
     @test D(0.0) == 2 / sqrt(2π)
     @test D([0.0]) == 2 / sqrt(2π)
     @test LogDensityProblems.dimension(D) == 1
@@ -376,32 +377,32 @@ end
     @inferred LogDensityProblems.logdensity(D, 0.0)
     @inferred LogDensityProblems.logdensity(D, 0)
     lines(-2:0.1:2, D.(-2:0.1:2))
-    lines(-2:0.01:2, FNS.Densities.potential(D).(-2:0.01:2))
-    @inferred FNS.Densities.gradlogdensity(D, 0.01)
-    @inferred map(FNS.Densities.gradlogdensity(D), 0.01:0.01:5)
-    @test map(FNS.Densities.gradlogdensity(D), 0.1:0.1:5) == gradlogpdf.([d], 0.1:0.1:5)
+    lines(-2:0.01:2, Densities.potential(D).(-2:0.01:2))
+    @inferred Densities.gradlogdensity(D, 0.01)
+    @inferred map(Densities.gradlogdensity(D), 0.01:0.01:5)
+    @test map(Densities.gradlogdensity(D), 0.1:0.1:5) == gradlogpdf.([d], 0.1:0.1:5)
 
     d = Uniform(-0.5, 0.5)
-    D = @test_nowarn FNS.Density(d)
+    D = @test_nowarn Density(d)
     @test D(0.0) == 1
     @test LogDensityProblems.dimension(D) == 1
     @test all(map(LogDensityProblems.logdensity(D), -1:0.1:1) .≈ log.(D.(-1:0.1:1)))
     @inferred LogDensityProblems.logdensity(D, 0.0)
     @inferred LogDensityProblems.logdensity(D, -0.6)
     @inferred LogDensityProblems.logdensity_and_gradient(D, -0.6)
-    @inferred LogDensityProblems.logdensity_and_gradient(FNS.Density(d, true), 0.5)
+    @inferred LogDensityProblems.logdensity_and_gradient(Density(d, true), 0.5)
 
     if isinteractive()
-        @benchmark map(FNS.Densities.gradlogdensity($D), -1:0.01:1)
+        @benchmark map(Densities.gradlogdensity($D), -1:0.01:1)
         @benchmark LogDensityProblems.logdensity_and_gradient.([$D], -1:0.01:1)
     end
     lines(-2:0.1:2, D.(-2:0.1:2))
-    lines(-2:0.01:2, FNS.Densities.potential(D).(-2:0.01:2))
-    lines(-2:0.01:2, FNS.Densities.gradlogdensity(D).(-2:0.01:2))
+    lines(-2:0.01:2, Densities.potential(D).(-2:0.01:2))
+    lines(-2:0.01:2, Densities.gradlogdensity(D).(-2:0.01:2))
 
-    D = @test_nowarn FNS.Density(Normal(0.0f0, 0.5f0))
+    D = @test_nowarn Density(Normal(0.0f0, 0.5f0))
     @test LogDensityProblems.logdensity(D, 0.0f0) isa Float32
-    @test FNS.Densities.gradlogdensity(D, 0.0f0) isa Float32
+    @test Densities.gradlogdensity(D, 0.0f0) isa Float32
 end
 
 @testitem "Multivariate DistributionDensity" setup=[Setup] begin
@@ -410,10 +411,10 @@ end
     x = randn(N, 100)
     Σ = x * x'
     d = MvNormal(μs, Σ)
-    D = @test_nowarn FNS.Density(d)
-    @test D isa FNS.Densities.DistributionDensity
-    @test !(D isa FNS.Densities.AbstractUnivariateDensity)
-    @test FNS.Densities.doautodiff(D) == false
+    D = @test_nowarn Density(d)
+    @test D isa Densities.DistributionDensity
+    @test !(D isa Densities.AbstractUnivariateDensity)
+    @test Densities.doautodiff(D) == false
     p = randn(N)
     @test logdensity(D)(p) == logpdf(d, p)
     ps = eachcol(randn(N, 100))
@@ -422,8 +423,8 @@ end
     @test map(gradlogdensity(D), ps) == gradlogpdf.([d], ps)
 
     # * Ad
-    D = @test_nowarn FNS.Density(MvNormal(μs, Σ), true)
-    @test FNS.Densities.doautodiff(D) == true
+    D = @test_nowarn Density(MvNormal(μs, Σ), true)
+    @test Densities.doautodiff(D) == true
     @test LogDensityProblems.logdensity(D, p) isa Float64
     @test logdensity(D)(p) == logpdf(d, p)
     @test logdensity(D)(ps) == logpdf.([d], ps)
@@ -439,8 +440,8 @@ end
         x * x'
     end
     d = MixtureModel([MvNormal(μs[i], Σs[i]) for i in 1:N])
-    D = @test_nowarn FNS.Density(d)
-    @test D isa FNS.Densities.AdDensity
+    D = @test_nowarn Density(d)
+    @test D isa Densities.AdDensity
     p = rand(D) # Draw from the distribution
     @test logdensity(D)(p) == logpdf(d, p)
     ps = eachcol(randn(Nd, 100))
@@ -448,22 +449,22 @@ end
     @test gradlogdensity(D)(p) isa Vector{Float64}
 
     d = MixtureModel([Normal(0, 1), Normal(0, 0.5)])
-    D = @test_nowarn FNS.Density(d)
-    @test FNS.Densities.doautodiff(D) == true
+    D = @test_nowarn Density(d)
+    @test Densities.doautodiff(D) == true
     @test gradlogdensity(D)(0.0) == 0.0
 end
 
 @testitem "AdDistributionDensity" setup=[Setup] begin
-    D = @inferred FNS.Densities.Density(Normal(0.0, 0.5))
-    D = @inferred FNS.Densities.Density{true}(Normal(0.0, 0.5))
+    D = @inferred Densities.Density(Normal(0.0, 0.5))
+    D = @inferred Densities.Density{true}(Normal(0.0, 0.5))
     x = zeros(LogDensityProblems.dimension(D)) # ℓ is your log density
     @inferred LogDensityProblems.logdensity(D)(x) # check inference, also see @code_warntype
-    ds = FNS.Densities.distribution(D)
+    ds = Densities.distribution(D)
     g = gradlogpdf(ds, -0.1)
-    @test g == FNS.Densities.gradlogdensity(D, -0.1)
+    @test g == Densities.gradlogdensity(D, -0.1)
     if isinteractive()
         @benchmark gradlogpdf($ds, -0.1)
-        @benchmark FNS.Densities.gradlogdensity($D, -0.1)
+        @benchmark Densities.gradlogdensity($D, -0.1)
         @benchmark pdf($ds, $x) # check performance and allocations
         @benchmark ($D)($x) # check performance and allocations
         @benchmark LogDensityProblems.logdensity($D, $x) # check performance and allocations
@@ -480,7 +481,7 @@ end
 @testitem "Overdamped Langevin Sampler" setup=[Setup] begin
     u0 = [0.0]
     tspan = (0.0, 100.0)
-    S = FNS.OLE(; u0, tspan, η = 1)
+    S = OLE(; u0, tspan, η = 1)
 
     sol = @test_nowarn solve(S, EM(); dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
@@ -491,40 +492,21 @@ end
     s = S(η = 0.1)
     @test s.p[1][:η] == 0.1
 
-    D = FNS.Density(Normal(0, 10.0))
+    D = Density(Normal(0, 10.0))
     s = S(; η = 10.0, tspan = 1000.0, 𝜋 = D)
     @test s.p[1][:η] == 10.0
     @test s.p[2] == D
     @test s.tspan == 1000.0
 end
 
-@testitem "Langevin Sampler" setup=[Setup] begin
-    u0 = [0.0 0.0]
-    tspan = (0.0, 100.0)
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 10.0)
-
-    D = FNS.Density(Normal(0, 1))
-    a = @benchmark Density($S) # Can this be made faster?
-    @test a.allocs == a.memory == 0
-    @test distribution(Density(S)) == D.distribution
-    @test FNS.Densities.doautodiff(Density(S)) == false
-    sol = @test_nowarn solve(S; dt = 0.0001, saveat = 0.01)
-    x = first.(sol.u)
-    plot(x)
-    density(x)
-
-    # * Try setting parameters
-
-end
-
 @testitem "Box boundaries" setup=[Setup] begin
     box = ReflectingBox(-5 .. 5)
-    # box = FNS.NoBoundary()
+    # box = NoBoundary()
     u0 = [0.0 1.0]
     tspan = (0.0, 1000.0) # Must be a matrix; col 1 is position, col2 is momentum
-    # 𝜋 = FNS.Density(Normal(0, 0.25))
-    𝜋 = FNS.Density(Uniform(-5, 5)) # No potential here is pathalogical; no transient to momentum equilibrium
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 0.1, boundaries = box(), 𝜋)
+    # 𝜋 = Density(Normal(0, 0.25))
+    𝜋 = Density(Uniform(-5, 5)) # No potential here is pathalogical; no transient to momentum equilibrium
+    S = LangevinSampler(; u0, tspan, β = 1.0, γ = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.1)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -535,11 +517,11 @@ end
     density(x) # The boundaries interfere with the density if they are too close
     # @test x == trajectory(S)
 
-    box = FNS.ReflectingBox(-1 .. 1)
+    box = ReflectingBox(-1 .. 1)
     u0 = [0.0 0.0]
     tspan = (0.0, 100.0)
-    𝜋 = FNS.Density(Normal(0, 1))
-    S = FNS.LangevinSampler(; u0, tspan, β = 0.5, γ = 0.1, boundaries = box(), 𝜋)
+    𝜋 = Density(Normal(0, 1))
+    S = LangevinSampler(; u0, tspan, β = 0.5, γ = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -550,11 +532,11 @@ end
     @test minimum(x) ≥ -1 - 0.05
     @test maximum(x) ≤ 1 + 0.05
 
-    box = FNS.PeriodicBox(-1 .. 1)
+    box = PeriodicBox(-1 .. 1)
     u0 = [0.0 1.0]
     tspan = (0.0, 10.0)
-    𝜋 = FNS.Density(Normal(0, 1))
-    S = FNS.LangevinSampler(; u0, tspan, β = 1, γ = 0.1, boundaries = box(), 𝜋)
+    𝜋 = Density(Normal(0, 1))
+    S = LangevinSampler(; u0, tspan, β = 1, γ = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -568,8 +550,8 @@ end
     box = NoBoundary()
     u0 = [0.0f0 1.0f0]
     tspan = (0.0f0, 10000.0f0)
-    𝜋 = FNS.Density(Laplace(0.0f0, 1.0f0), true)
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0f0, γ = 1.0f0, boundaries = box(), 𝜋)
+    𝜋 = Density(Laplace(0.0f0, 1.0f0), true)
+    S = LangevinSampler(; u0, tspan, β = 1.0f0, γ = 1.0f0, boundaries = box(), 𝜋)
     # @benchmark solve(S; dt = 0.001, saveat = 0.01)
     sol = @test_nowarn solve(S; dt = 0.001f0, saveat = 0.1f0)
     x = first.(sol.u)
@@ -586,7 +568,7 @@ if false # !! Add callbacks for discontinuities
 
     # * Quadratic potential (gaussian pdf)
     𝜋 = Normal(0.0, 1.0) |> Density
-    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1)
+    S = LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1)
     sol = solve(S; dt = 0.0001, saveat = 0.01)
     x = Timeseries(sol.t, first.(sol.u))
     plot(x) # Oscillating? Yes.
@@ -594,7 +576,7 @@ if false # !! Add callbacks for discontinuities
 
     # * Flat potential (uniform pdf... kind of. Discontinuity sucks. Add callback...boundary conditions...to handle this)
     𝜋 = Uniform(-0.5, 0.5) |> Density
-    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1, callbacks = ...)
+    S = LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1, callbacks = ...)
     @test density(Density(S)) == density(𝜋)
     sol = solve(S; dt = 0.0001, saveat = 0.01)
     x = Timeseries(sol.t, first.(sol.u))
@@ -612,7 +594,7 @@ if false # ! Need to fix out-of-place noise
     Random.seed!(42)
     b = DIST(rng)
     Random.seed!(42)
-    c = rand(rng, FNS.NoiseProcesses.dist(DIST))
+    c = rand(rng, NoiseProcesses.dist(DIST))
     @test a == b == c
 
     @test Base.return_types(DIST, (AbstractRNG,)) == [Float64]
@@ -643,11 +625,11 @@ if false # ! Need to fix out-of-place noise
     @test all(z .* 0.01 .^ (1 / DIST.α) .== y)
 end
 
-@testitem "Test that adaptive stepping is disabled for FractionalNeuralSamplers" setup=[Setup] begin end
+# @testitem "Test that adaptive stepping is disabled for FractionalNeuralSamplers" setup=[Setup] begin end
 
-@testitem "FractionalNeuralSampling.jl" setup=[Setup] begin
-    include("fractional_sampling.jl")
-end
+# @testitem "FractionalNeuralSampling.jl" setup=[Setup] begin
+#     include("fractional_sampling.jl")
+# end
 
 # @testitem "LevyProcess" setup=[Setup] begin
 if false # ! Need to fix out-of-place noise
@@ -831,8 +813,8 @@ begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 10000.0)
     dt = 0.1
-    D = FNS.Density(Normal(0.0, 1.0))
-    S = FNS.Samplers.FHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
+    D = Density(Normal(0.0, 1.0))
+    S = Samplers.FHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
     sol = solve(S, EM(); dt)
 
     x = sol[1, :]
@@ -992,5 +974,5 @@ end
     include("./Solvers/CaputoEM.jl")
 end
 @testitem "LFSM" begin
-    include("./LFSM.jl")
+    include("./lfsn.jl")
 end

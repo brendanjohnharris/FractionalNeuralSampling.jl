@@ -58,7 +58,7 @@ function bFNS(;
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
 
     Sampler(bfns_f!, bfns_g!;
-            callback = CallbackSet(boundaries(), callback...),
+            callback = CallbackSet(init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,
@@ -67,7 +67,7 @@ function bFNS(;
             p = (; α, β, γ, η, ∇𝒟𝜋, λ),
             𝜋,
             alg,
-            kwargs...)
+            kwargs...) |> assert_dimension(; order = 2)
 end
 
 const BiFractionalNeuralSampler = bFNS

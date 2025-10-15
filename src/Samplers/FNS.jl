@@ -25,11 +25,10 @@ function FNS(;
                                                  W0 = zero(u0)),
              alg = EM(),
              kwargs...)
-    assert_dimension(u0; order = 2, dimension = dimension(𝜋))
     p = SLVector(; α, β, γ)
     Sampler(fns_f!, fns_g!; callback = boundaries, kwargs..., u0,
             noise_rate_prototype, noise,
-            tspan, p, 𝜋, alg)
+            tspan, p, 𝜋, alg) |> assert_dimension(; order = 2)
 end
 
 const FractionalNeuralSampler = FNS

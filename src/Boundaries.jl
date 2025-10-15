@@ -157,7 +157,7 @@ function ReentrantBox(exitreenter::Pair{<:Real, <:Real};
                       kwargs...)
     ReentrantBox((exitreenter.second,), (exitreenter.first,); kwargs...)
 end
-function ReentrantBox(exitreenter::Vararg{<:Pair{<:Real, <:Real}};
+function ReentrantBox(exitreenter::Vararg{Pair{<:Real, <:Real}};
                       kwargs...)
     ReentrantBox(getproperty.(exitreenter, :second),
                  getproperty.(exitreenter, :first); kwargs...)
@@ -214,6 +214,10 @@ function (B::AbstractBoxBoundary)(; kwargs...)
     DiscreteCallback(getcondition(B), getaffect(B); save_positions = (false, false), # ! Will need to think about this more
                      kwargs...)
 end
+
+init(B::AbstractBoxBoundary; kwargs...) = B(; kwargs...)
+init(::Nothing; kwargs...) = nothing
+init(D::DECallback; kwargs...) = D
 
 function domain(R::AbstractBoxBoundary)
     [Interval(is...) for is in zip(R.min_corner, R.max_corner)]

@@ -4,7 +4,7 @@ import ..FractionalNeuralSampling: Power
 function sfole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η, α, ∇𝒟𝜋, λ = ps
-    x = divide_dims(u, length(u)) |> only
+    x = divide_dims(u, dimension(𝜋)) |> only
     b = ∇𝒟𝜋(only(x)) / (𝜋(x) + λ)
     du .= only(η .* b)
 end
@@ -50,7 +50,7 @@ function sFOLE(;
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
 
     Sampler(sfole_f!, sfole_g!;
-            callback = CallbackSet(boundaries(), callback...),
+            callback = CallbackSet(init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,
@@ -58,7 +58,7 @@ function sFOLE(;
             p = (; η, α, ∇𝒟𝜋, λ),
             𝜋,
             alg,
-            kwargs...)
+            kwargs...) |> assert_dimension(; order = 1)
 end
 
 const SpaceFractionalOverdampedLangevinEquation = sFOLE

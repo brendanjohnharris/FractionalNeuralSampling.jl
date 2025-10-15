@@ -2,7 +2,7 @@
 function tfole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η = ps
-    x = divide_dims(u, length(u))
+    x = divide_dims(u, dimension(𝜋))
     b = gradlogdensity(𝜋)(x)
     du .= only(η .* b)
 end
@@ -41,7 +41,7 @@ function tFOLE(;
                alg = CaputoEM(β, 1000),
                kwargs...)
     Sampler(tfole_f!, tfole_g!;
-            callback = CallbackSet(boundaries(), callback...),
+            callback = CallbackSet(init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,
@@ -50,7 +50,7 @@ function tFOLE(;
             dt,
             seed = rand(Xoshiro(seed), UInt),
             alg,
-            kwargs...)
+            kwargs...) |> assert_dimension(; order = 1)
 end
 
 const TemporalFractionalOverdampedLangevinEquation = tFOLE

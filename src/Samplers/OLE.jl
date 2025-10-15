@@ -1,7 +1,7 @@
 function ole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η = ps
-    x = divide_dims(u, length(u))
+    x = divide_dims(u, dimension(𝜋))
     b = gradlogdensity(𝜋)(x)
     du .= only(η .* b)
 end
@@ -25,14 +25,14 @@ function OLE(;
              alg = EM(),
              kwargs...)
     Sampler(ole_f!, ole_g!;
-            callback = CallbackSet(boundaries(), callback...),
+            callback = CallbackSet(init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,
             tspan,
             p = SLVector(; η),
             alg,
-            kwargs...)
+            kwargs...) |> assert_dimension(; order = 1)
 end
 
 const OverdampedLangevinEquation = OLE

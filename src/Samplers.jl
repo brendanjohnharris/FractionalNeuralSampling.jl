@@ -167,6 +167,15 @@ function assert_dimension(u0; order, dimension)
     end
 end
 
+function assert_dimension(S::AbstractSampler; order)
+    u0 = S.u0
+    assert_dimension(u0; order, dimension = dimension(Density(S)))
+    return S
+end
+
+assert_dimension(; order) = x -> assert_dimension(x; order)
+
+include("Samplers/Langevin.jl")
 include("Samplers/OLE.jl")
 include("Samplers/tFOLE.jl")
 include("Samplers/sFOLE.jl")

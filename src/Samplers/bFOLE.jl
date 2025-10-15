@@ -41,7 +41,7 @@ function bFOLE(;
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
 
     Sampler(sfole_f!, sfole_g!;
-            callback = CallbackSet(boundaries(), callback...),
+            callback = CallbackSet(init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,
@@ -51,7 +51,7 @@ function bFOLE(;
             𝜋,
             seed = rand(Xoshiro(seed), UInt),
             alg,
-            kwargs...)
+            kwargs...) |> assert_dimension(; order = 1)
 end
 
 const BiFractionalOverdampedLangevinEquation = bFOLE
