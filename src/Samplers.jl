@@ -6,29 +6,46 @@ module Samplers
 using SciMLBase
 using DiffEqNoiseProcess
 using SciMLBase
-using SpecialFunctions
-using StaticArrays
-using StochasticDiffEq
 using LogDensityProblems
 using Distributions
 using LinearAlgebra
+using LabelledArrays
+using UnPack
+using Accessors
+using Random
+
 import ..NoiseProcesses
-import ..FractionalNeuralSampling.divide_dims
+import ..FractionalNeuralSampling: divide_dims
+import ..NoiseProcesses: lfsn
+import ..Solvers: CaputoEM
 using ..Densities
 import ..Densities.Density
 import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
                   prepare_initial_state,
                   promote_tspan, warn_paramtype, @add_kwonly
-export AbstractSampler, Sampler, parameters,
-       LangevinSampler, LevyFlightSampler, LevyWalkSampler
+
+import StochasticDiffEq: EM
+
+export AbstractSampler, Sampler, parameters
 
 abstract type AbstractSampler{uType, tType, isinplace, ND} <:
               AbstractSDEProblem{uType, tType, isinplace, ND} end
+
+const compatible_solvers = (:EM, :CaputoEM)
+
 function SciMLBase.solve(P::AbstractSampler; kwargs...)
-    SciMLBase.solve(P, EM(); kwargs...)
+    if haskey(P.kwargs, :alg)
+        solve(P, P.kwargs[:alg]; kwargs...)
+    else
+        throw(ArgumentError("Use `solve(S::Sampler, alg; kwargs...)`. Compatible algorithms: $(join(compatible_solvers, ", "))"))
+    end
 end
-mutable struct Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D} <:
-               AbstractSampler{uType, tType, isinplace, ND}
+
+const Labelled = Union{SLArray, LArray, NamedTuple}
+
+struct Sampler{uType, tType, isinplace, P <: Labelled, NP, F, G, K, ND,
+               D <: AbstractDensity} <:
+       AbstractSampler{uType, tType, isinplace, ND}
     f::F
     g::G
     u0::uType
@@ -39,38 +56,59 @@ mutable struct Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D} <:
     noise_rate_prototype::ND
     seed::UInt64
 end
+function Sampler{isinplace}(f::F, g::G, u0::uType, # For @set
+                            tspan::tType,
+                            p::Tuple{P, D},
+                            noise::NP, kwargs::K,
+                            noise_rate_prototype::ND,
+                            seed::UInt64) where {uType,
+                                                 tType,
+                                                 isinplace,
+                                                 P <: Labelled,
+                                                 NP, F,
+                                                 G, K,
+                                                 ND, D}
+    Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D}(f, g, u0, tspan, p, noise,
+                                                            kwargs, noise_rate_prototype,
+                                                            seed)
+end
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
+SciMLBase.is_diagonal_noise(S::Sampler) = true
 
-function default_density(u0::AbstractVector)
+function default_density(u0; dims = length(u0) ÷ 2)
+    u0 = divide_dims(u0, dims) |> first
     if length(u0) == 1
-        return Normal(0.0, 1.0)
+        D = Normal(0.0, 1.0)
     else
-        MvNormal(zeros(length(u0)), I(length(u0)))
+        D = MvNormal(zeros(length(u0)), I(length(u0)))
     end
+    D = Density(D)
+    return D
 end
 function default_density(u0::Real)
-    Normal(0.0, 1.0)
+    Normal(0.0, 1.0) |> Density
 end
-function Sampler{iip}(f::AbstractSDEFunction{iip}, u0::AbstractArray, tspan,
-                      p = (NullParameters(), Density(default_density(first(u0)))); # Assume momentum term
+function Sampler{iip}(f::AbstractSDEFunction{iip}, u0, tspan,
+                      p::Tuple{<:Labelled, D} = (NullParameters(),
+                                                 (default_density ∘ first)(u0));
                       noise_rate_prototype = nothing,
                       noise = nothing,
                       seed = UInt64(0),
-                      kwargs...) where {iip}
+                      kwargs...) where {iip, D <: AbstractDensity}
     _u0 = prepare_initial_state(u0)
     _tspan = promote_tspan(tspan)
     warn_paramtype(p)
     Sampler{typeof(_u0), typeof(_tspan),
             isinplace(f), typeof(first(p)),
             typeof(noise), typeof(f), typeof(f.g), typeof(kwargs),
-            typeof(noise_rate_prototype), typeof(last(p))}(f, f.g, _u0, _tspan, p,
-                                                           noise,
-                                                           kwargs,
-                                                           noise_rate_prototype, seed)
+            typeof(noise_rate_prototype), D}(f, f.g, _u0, _tspan, p,
+                                             noise,
+                                             kwargs,
+                                             noise_rate_prototype, seed)
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan,
-                      p = (NullParameters(), Density(default_density(first(u0)))),
+                      p,
                       kwargs...) where {iip}
     Sampler{iip}(f, u0, tspan, p; kwargs...)
 end
@@ -87,119 +125,63 @@ function Sampler(f::AbstractSDEFunction, args...;
                  kwargs...)
     Sampler{isinplace(f)}(f, args...; kwargs...)
 end
-function Sampler(f, g, args...; kwargs...)
-    Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; kwargs...)
-end
-
-# * Langevin sampler (Brownian motion)
-function langevin_f!(du, u, p, t)
-    (β, γ), 𝜋 = p
-    x, v = eachcol(u)
-    b = gradlogdensity(𝜋)(x) # ? Should this be in-place
-    du[:, 1] .= γ .* b .+ β .* v
-    du[:, 2] .= β .* b
-end
-function langevin_g!(du, u, p, t)
-    (β, γ), 𝜋 = p
-    dx, dv = eachcol(du)
-    dx .= sqrt(2) * γ^(1 // 2) # * dW
-    dv .= 0.0
-end
-
-function LangevinSampler(; tspan, β, γ, u0 = [0.0 0.0], boundaries = nothing,
-                         noise_rate_prototype = nothing,
-                         𝜋 = Density(default_density(first(u0))),
-                         noise = nothing,#WienerProcess(first(tspan), zero(noise_rate_prototype)),
-                         kwargs...)
-    Sampler(langevin_f!, langevin_g!; callback = boundaries, kwargs..., u0,
-            noise_rate_prototype, noise,
-            tspan, p = ((β, γ), 𝜋))
-end
-
-# * Modulated langevin sampler
-# function modulated_langevin_f!(du, u, p, t)
-#     (β, γ), 𝜋 = p
-#     x, v = eachcol(u)
-#     b = gradlogdensity(𝜋)(x) # ? Should this be in-place
-#     du[:, 1] .= γ .* b .+ β .* v
-#     du[:, 2] .= β .* b
+# function Sampler(f, g, args...; p, kwargs...)
+#     Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
 # end
-# function modulated_langevin_g!(du, u, p, t)
-#     (β, γ), 𝜋 = p
-#     dx, dv = eachcol(du)
-#     dx .= sqrt(2) * γ^(1 // 2) # * dW
-#     dv .= 0.0
-# end
-
-# function ModulatedLangevinSampler(; tspan, β, γ, u0 = [0.0 0.0], boundaries = nothing,
-#                                   noise_rate_prototype = nothing,
-#                                   𝜋 = Density(default_density(first(u0))),
-#                                   noise = nothing,#WienerProcess(first(tspan), zero(noise_rate_prototype)),
-#                                   kwargs...)
-#     Sampler(langevin_f!, langevin_g!; callback = boundaries, kwargs..., u0,
-#             noise_rate_prototype, noise,
-#             tspan, p = ((β, γ), 𝜋))
-# end
-
-# * Levy flight sampler (noise on position)
-function levy_flight_f!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
-    x, v = divide_dims(u, length(u) ÷ 2)
-    b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2) # ? Should this be in-place
-    dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= γ .* b .+ β .* v
-    dv .= β .* b
-end
-function levy_flight_g!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
-    dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= sqrt(2) * γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication
-    dv .= 0.0
+function Sampler(f, g, args...; p, 𝜋, kwargs...)
+    p = (p, 𝜋)
+    Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
 end
 
-function LevyFlightSampler(;
-                           tspan, α, β, γ, u0 = [0.0 0.0],
-                           boundaries = nothing,
-                           noise_rate_prototype = zeros(size(u0)),
-                           𝜋 = Density(default_density(first(u0))),
-                           noise = NoiseProcesses.LevyProcess!(α; ND = 2,
-                                                               W0 = Diagonal(zeros(length(u0),
-                                                                                   length(u0)))),
-                           kwargs...)
-    Sampler(levy_flight_f!, levy_flight_g!; callback = boundaries, kwargs..., u0,
-            noise_rate_prototype, noise,
-            tspan, p = ((α, β, γ), 𝜋))
+function (S::AbstractSampler)(; kwargs...)
+    # First update any direct fields of the sampler
+    for k in filter(k -> k ∈ propertynames(S), keys(kwargs))
+        S = set(S, PropertyLens(k), kwargs[k])
+    end
+
+    # * Deepcopy parameters
+    if haskey(kwargs, :p)
+        return @set S.p = kwargs[:p]
+    end
+
+    if haskey(kwargs, :𝜋)
+        𝜋 = kwargs[:𝜋]
+    else
+        𝜋 = Density(S)
+    end
+
+    ps = parameters(S)
+    pkeys = filter(k -> k in keys(ps), keys(kwargs))
+    if !isempty(pkeys)
+        ps = deepcopy(ps)
+        ps = SLVector(ps; kwargs[pkeys]...)
+    end
+
+    S = set(S, PropertyLens(:p), (ps, 𝜋))
+    return S
 end
 
-# !! Need to update equations, and check they are consistent
-# * Levy walk sampler (noise on velocity)
-function levy_walk_f!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
-    x, v = divide_dims(u, length(u) ÷ 2)
-    b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2) # ? Should this be in-place
-    dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= β .* v
-    dv .= β .* b - γ .* v
-end
-function levy_walk_g!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
-    dx, dv = divide_dims(du, length(du) ÷ 2)
-    dx .= 0.0
-    dv .= sqrt(2) * γ^(1 / α) # ? × dL in the integrator. This is matrix multiplication
+function assert_dimension(u0; order, dimension)
+    if length(u0) != order * dimension
+        throw(ArgumentError("Initial condition u0 must have length $(order * dimension) for dimension $dimension and order $order, got length $(length(u0))"))
+    end
 end
 
-function LevyWalkSampler(;
-                         tspan, α, β, γ, u0 = [0.0 0.0],
-                         boundaries = nothing,
-                         noise_rate_prototype = zeros(size(u0)),
-                         𝜋 = Density(default_density(first(u0))),
-                         noise = NoiseProcesses.LevyProcess!(α; ND = 2,
-                                                             W0 = Diagonal(zeros(length(u0),
-                                                                                 length(u0)))),
-                         kwargs...)
-    Sampler(levy_walk_f!, levy_walk_g!; callback = boundaries, kwargs..., u0,
-            noise_rate_prototype, noise,
-            tspan, p = ((α, β, γ), 𝜋))
+function assert_dimension(S::AbstractSampler; order)
+    u0 = S.u0
+    assert_dimension(u0; order, dimension = dimension(Density(S)))
+    return S
 end
 
+assert_dimension(; order) = x -> assert_dimension(x; order)
+
+include("Samplers/Langevin.jl")
+include("Samplers/OLE.jl")
+include("Samplers/tFOLE.jl")
+include("Samplers/sFOLE.jl")
+include("Samplers/bFOLE.jl")
+include("Samplers/FHMC.jl")
+include("Samplers/FNS.jl")
+include("Samplers/bFNS.jl")
+include("Samplers/AdaptiveSamplers.jl")
 end # module

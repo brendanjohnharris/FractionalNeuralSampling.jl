@@ -1,30 +1,31 @@
 module Densities
 using Distributions
 using LogDensityProblems
-using TransformVariables
 using DifferentiationInterface
-using TransformedLogDensities
 import LogDensityProblems: logdensity, logdensity_and_gradient, dimension, capabilities
 import Distributions: gradlogpdf
 import FractionalNeuralSampling.AD_BACKEND
 
-export AbstractDensity, AbstractUnivariateDensity, Density, GradDensity, PotentialDensity
+export AbstractDensity, AbstractUnivariateDensity, Density
 
-export potential, logdensity, gradlogdensity, gradpotential, dimension
+export potential, logdensity, gradlogdensity, graddensity, gradpotential, dimension
 
 abstract type AbstractDensity{D, N, doAd} end
 const AbstractUnivariateDensity{D, doAd} = AbstractDensity{D, 1, doAd} where {D, doAD}
 
 logdensity(D::AbstractDensity, x) = logdensity(D)(x)
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
+graddensity(D::AbstractDensity) = Base.Fix1(graddensity, D)
 
 potential(D::AbstractDensity, x) = -logdensity(D, x)
+potential(D::AbstractDensity, x::Tuple) = potential(D, collect(x))
 potential(D::AbstractDensity) = Base.Fix1(potential, D)
 
 gradpotential(D::AbstractDensity, x) = -gradlogdensity(D, x)
 gradpotential(D::AbstractDensity) = (-) ∘ gradlogdensity(D)
 
 (D::AbstractDensity)(x) = density(D)(x)
+(D::AbstractDensity)(x::Tuple) = D(collect(x))
 (D::AbstractUnivariateDensity)(x::AbstractVector) = D(only(x))
 
 function LogDensityProblems.dimension(d::AbstractDensity{D, N, doAd}) where {D, N,
@@ -69,7 +70,38 @@ function logdensity_and_gradient(D::AbstractDensity, x)
     (logdensity(D, x), gradlogdensity(D, x))
 end
 
-begin # * See here for the Density interface: define these methods and traits. Custom differentiation functions can also be added; see Distributions.jl
+# * Gradient of density
+function _graddensity(D::AdDensity, x::Real)
+    gradient(x -> density(D, only(x)), AD_BACKEND, [x]) |> only
+end
+function _graddensity(D::AdDensity, x::AbstractVector{<:Real})
+    f = density(D)
+    extras = prepare_gradient(f, AD_BACKEND, x)
+    gradient(f, extras, AD_BACKEND, x)
+end
+function _graddensity(D::AdDensity,
+                      x::AbstractVector{<:AbstractVector{T}}) where {T}
+    f = density(D)
+    extras = prepare_gradient(f, AD_BACKEND, first(x))
+    grad = map(similar, x)
+    map(grad, x) do _grad, _x
+        gradient!(f, _grad, extras, AD_BACKEND, _x)
+    end
+    return grad
+end
+
+function graddensity(d::AbstractUnivariateDensity, x::T) where {T <: Real}
+    _graddensity(d, x)::T
+end
+function graddensity(d::AbstractUnivariateDensity,
+                     x::AbstractVector{T}) where {T <: Real} # For 1 element vectors
+    convert(Vector{T}, [_graddensity(d, only(x))])
+end
+function graddensity(d::AbstractDensity, x)
+    _graddensity(d, x)
+end
+
+begin # * See here for the Density interface: define these methods and traits. Custom differentiation functions can also be added; see Densities/Distributions.jl
     struct Density{D, N, doAd} <: AbstractDensity{D, N, doAd}
         density::D
     end
@@ -86,20 +118,7 @@ begin # * See here for the Density interface: define these methods and traits. C
     density(D::Density) = D.density
     logdensity(D::Density) = log ∘ density(D)
 end
-begin # ! PotentialDensity (supply a potential, get a POTENTIALLY NON_NORMALIZED density)
-    struct PotentialDensity{D, N, doAd} <: AbstractDensity{D, N, doAd}
-        potential::D
-    end
-    PotentialDensity{N}(potential::D) where {D, N} = PotentialDensity{D, N, true}(potential)
 
-    capabilities(::Type{<:PotentialDensity}) = LogDensityProblems.LogDensityOrder{1}()
-
-    potential(D::PotentialDensity) = D.potential
-    logdensity(D::PotentialDensity) = (-) ∘ potential(D)
-    gradpotential(D::PotentialDensity) = (.-) ∘ gradlogdensity(D)
-    density(D::PotentialDensity) = exp ∘ (-) ∘ potential(D)
-end
-# ? Density interface: just need to define the following methods and traits. E.g. for
 # ? Densities with supplied gradients:
 # begin # * GradDensity
 #     struct GradDensity{D, G} <: AbstractDensity{D, false} # You are supplying a gradient function, so don't autodiff
@@ -125,9 +144,10 @@ end
 #     end
 # end
 
-begin # * PotentialDensity
-end
+include("Densities/Distributions.jl")
+include("Densities/PotentialDensity.jl")
 
-include("Distributions.jl")
-include("../ext/InterpolationsExt.jl")
+# * Extensions
+function vignette end
+
 end # module

@@ -5,10 +5,10 @@ using IntervalSets
 using Statistics
 using LinearAlgebra
 using LogDensityProblems
-import ..FractionalNeuralSampling.divide_dims
+import ..FractionalNeuralSampling: divide_dims, Densities.AbstractDensity
 
 export AbstractBoundary, AbstractContinuousBoundary, AbstractBoxBoundary, ReflectingBox,
-       NoBoundary, PeriodicBox
+       NoBoundary, PeriodicBox, ReentrantBox, domain, gridaxes, grid
 
 # ? Boundary conditions are just callbacks
 abstract type AbstractBoundary{D} end
@@ -30,11 +30,13 @@ Box boundaries have edges that are parallel to the axes. Reflections are easier 
 """
 abstract type AbstractBoxBoundary{D} <: AbstractBoundary{D} end
 function (B::Type{<:AbstractBoxBoundary})(intervals)
-    D = length(intervals)
     B(zip(map(extrema, intervals)...)...)
 end
-function (B::Type{<:AbstractBoxBoundary})(intervals::Interval...)
+function (B::Type{<:AbstractBoxBoundary})(intervals...)
     B(intervals)
+end
+function (B::Type{<:AbstractBoxBoundary})(interval::AbstractInterval)
+    B(zip(map(extrema, [interval])...)...)
 end
 
 function _boxdist(point, min_corner, max_corner)
@@ -84,25 +86,36 @@ function corners(R::AbstractBoxBoundary)
     sort!(cs, by = c -> -acos((c .- O)[1] ./ norm(c .- O)))
     return cs
 end
-function getaffect(R::ReflectingBox)
+function getaffect(R::ReflectingBox{D}) where {D}
     function affect!(integrator)
-        D = last(integrator.p)
-        x, v = divide_dims(integrator.u, LogDensityProblems.dimension(D))
-        reflectvelocity!(v, x, _corners(R)...)
+        vars = divide_dims(integrator.u, D)
+        if length(vars) == 1
+            x = vars[1]
+            reflectvelocity!(similar(x), x, _corners(R)...)
+        else
+            x = vars[1]
+            v = vars[2]
+            reflectvelocity!(v, x, _corners(R)...)
+        end
     end
 end
-function getcondition(R::AbstractBoxBoundary)
+function getcondition(R::AbstractBoxBoundary{D}) where {D}
     function condition(u, t, integrator)
-        d = boxdist(u, _corners(R)...)
+        x = divide_dims(u, D) |> first
+        d = boxdist(x, _corners(R)...)
         d < 0
     end
 end
 
-struct PeriodicBox{D} <: AbstractBoxBoundary{D}
+struct PeriodicBox{D, Re} <: AbstractBoxBoundary{D}
     min_corner::NTuple{D}
     max_corner::NTuple{D}
+    function PeriodicBox(min_corner::NTuple{D}, max_corner::NTuple{D};
+                         reset = false) where {D}
+        new{D, reset}(min_corner, max_corner)
+    end
 end
-function reenterbox!(velocity, point, min_corner, max_corner)
+function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
     dists = _boxdist(point, min_corner, max_corner)
     _, edge = findmin(dists)
     edge_faces = [min_corner[edge], max_corner[edge]]
@@ -110,18 +123,115 @@ function reenterbox!(velocity, point, min_corner, max_corner)
     _, old_edge = findmin(edgedists)
     _, new_edge = findmax(edgedists)
     point[edge] = edge_faces[new_edge] .+ (point[edge] .- edge_faces[old_edge])
+    if reset
+        velocity .= 0
+    end
 end
-function getaffect(R::PeriodicBox)
+function getaffect(R::PeriodicBox{D, Re}) where {D, Re}
     function affect!(integrator)
-        D = last(integrator.p)
-        x, v = divide_dims(integrator.u, LogDensityProblems.dimension(D))
-        reenterbox!(v, x, _corners(R)...)
+        vars = divide_dims(integrator.u, D)
+        if length(vars) == 1
+            x = vars[1]
+            reenterbox!(similar(x), x, _corners(R)...; reset = Re)
+        else
+            x = vars[1]
+            v = vars[2]
+            reenterbox!(v, x, _corners(R)...; reset = Re)
+        end
+    end
+end
+
+"""
+A 'half-periodic' box where one edge is permeable and one edge is re-entrant.
+"""
+struct ReentrantBox{D, Re} <: AbstractBoxBoundary{D}
+    reentrance::NTuple{D}
+    exit::NTuple{D}
+    relpos::NTuple{D, Bool}
+    function ReentrantBox(reentrance::NTuple{D}, exit::NTuple{D};
+                          reset = true) where {D}
+        new{D, reset}(reentrance, exit, Tuple(exit .> reentrance))
+    end
+end
+function ReentrantBox(exitreenter::Pair{<:Real, <:Real};
+                      kwargs...)
+    ReentrantBox((exitreenter.second,), (exitreenter.first,); kwargs...)
+end
+function ReentrantBox(exitreenter::Vararg{Pair{<:Real, <:Real}};
+                      kwargs...)
+    ReentrantBox(getproperty.(exitreenter, :second),
+                 getproperty.(exitreenter, :first); kwargs...)
+end
+function ReentrantBox(exitreenter; kwargs...) # Prevent careless inputs by forcing pairs
+    throw(ArgumentError("Must provide pairs of enter=>reentrance values for each dimension, where all pairs have the same type."))
+end
+function ReentrantBox(exitreenter::AbstractInterval; kwargs...) # Prevent careless inputs by forcing pairs
+    throw(ArgumentError("Must provide pairs of enter=>reentrance values for each dimension, where all pairs have the same type."))
+end
+function ReentrantBox(exitreenter::Pair{<:NTuple{D}, <:NTuple{D}};
+                      kwargs...) where {D}
+    ReentrantBox(exitreenter.second, exitreenter.first; kwargs...)
+end
+_corners(R::ReentrantBox) = (R.reentrance, R.exit)
+exits(R::ReentrantBox) = R.exit
+reentrances(R::ReentrantBox) = R.reentrance
+function getaffect(R::ReentrantBox{D, Re}) where {D, Re}
+    reentrance = reentrances(R)
+    function affect!(integrator)
+        vars = divide_dims(integrator.u, D)
+        x = first(vars)
+        for i in eachindex(x)
+            x[i] = reentrance[i]
+        end
+        if Re && length(vars) > 1
+            vars[2] .= 0.0
+        end
+    end
+end
+function getcondition(R::ReentrantBox{D}) where {D}
+    # Pre-compute values outside the inner function
+    reentrance, exit = _corners(R)
+    relpos = R.relpos
+    function condition(u, t, integrator)
+        x = divide_dims(u, D) |> first
+
+        for i in 1:length(x)
+            y = x[i]
+            ex = reentrance[i]
+            en = exit[i]
+            rel = relpos[i]
+
+            # Early return once we find a condition match
+            if rel ? (y > en) : (y < en)
+                return true
+            end
+        end
+        return false
     end
 end
 
 function (B::AbstractBoxBoundary)(; kwargs...)
     DiscreteCallback(getcondition(B), getaffect(B); save_positions = (false, false), # ! Will need to think about this more
                      kwargs...)
+end
+
+init(B::AbstractBoxBoundary; kwargs...) = B(; kwargs...)
+init(::Nothing; kwargs...) = nothing
+init(D::DECallback; kwargs...) = D
+
+function domain(R::AbstractBoxBoundary)
+    [Interval(is...) for is in zip(R.min_corner, R.max_corner)]
+end
+
+function gridaxes(R::AbstractBoxBoundary{D}, n::Int) where {D}
+    map(domain(R)) do r
+        range(r, length = n)
+    end
+end
+
+function grid(R::AbstractBoxBoundary, n)
+    r = gridaxes(R, n)
+    Iterators.product(r...)
 end
 
 end # module

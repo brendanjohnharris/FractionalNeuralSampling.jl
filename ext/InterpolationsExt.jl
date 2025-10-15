@@ -1,4 +1,9 @@
+module InterpolationsExt
 import Interpolations
+using FractionalNeuralSampling
+using LogDensityProblems
+import FractionalNeuralSampling.Densities: AbstractDensity, Density,
+                                           gradlogdensity, vignette
 
 const AbstractInterpolationDensity{D, doAd} = AbstractDensity{D,
                                                               doAd} where {
@@ -24,7 +29,7 @@ end
 function LogDensityProblems.logdensity(D::AbstractInterpolationDensity, x)
     D(x) |> log
 end
-function logdensity_and_gradient(D::AbstractInterpolationDensity, x)
+function LogDensityProblems.logdensity_and_gradient(D::AbstractInterpolationDensity, x)
     (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
 end
 
@@ -46,3 +51,5 @@ function vignette(sz::Tuple{Int, Int}, radius = (0.75, 0.75))
 end
 vignette(sz::Tuple{Int, Int}, radius::Number) = vignette(sz, (radius, radius))
 vignette(sz::AbstractMatrix, args...) = vignette(size(sz), args...)
+
+end # module

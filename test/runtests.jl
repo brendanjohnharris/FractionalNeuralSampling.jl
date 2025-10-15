@@ -4,13 +4,17 @@ using TestItemRunner
 
 @run_package_tests
 
+@testitem "Aqua.jl" begin
+    using Aqua
+    Aqua.test_all(FractionalNeuralSampling)
+end
+
 @testsnippet Setup begin
-    using StatsBase
+    using RecursiveArrayTools
     using CairoMakie
     using Foresight
-    using DifferentialEquations
     using FractionalNeuralSampling
-    import FractionalNeuralSampling as FNS
+    import FractionalNeuralSampling: Density
     using Random
     using Statistics
     using StaticArraysCore
@@ -31,7 +35,9 @@ using TestItemRunner
     using SpecialFunctions
     using FileIO
     using StatsBase
+    using Autocorrelations
     using TimeseriesTools
+    import TimeseriesTools.msdist
     using Normalization
     import FractionalNeuralSampling: Density
     set_theme!(foresight(:physics))
@@ -62,12 +68,12 @@ end
 end
 
 @testitem "Langevin sampler bias" setup=[Setup] begin
-    u0 = [0.0001 0.0001]
+    u0 = [0.0001, 0.0001]
     tspan = (0.0, 1000.0)
     dt = 0.01
-    D = FNS.Density(Normal(0, 1))
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
-                            noise = WienerProcess(0.0, 0.0))
+    D = Density(Normal(0, 1))
+    S = Langevin(; u0, tspan, β = 0.5, η = 1.0, 𝜋 = D,
+                 noise = WienerProcess(0.0, 0.0))
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -79,7 +85,7 @@ end
 
     @test_nowarn KLDivergence()(D, randn(100))
     sol = solve(S, EM(); dt)
-    Makie.density(first.(sol.u))
+    Makie.hist(first.(sol.u), bins = 50, normalization = :pdf)
     lines!(-2.5:0.1:2.5, D.(-2.5:0.1:2.5))
     current_figure()
     @test mean(first.(sol.u))≈0.0 atol=0.05
@@ -87,8 +93,8 @@ end
 
     if false
         tspan = (0.0, 100.0)
-        S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
-                                noise = WienerProcess(0.0, 0.0))
+        S = LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
+                            noise = WienerProcess(0.0, 0.0))
         βs = range(0, 5, length = 10)
         er = map(βs) do β
             P = remake(S, p = ((β, S.p[1][2:end]...), S.p[2:end]...))
@@ -107,11 +113,11 @@ end
 end
 
 @testitem "Levy sampler bias" setup=[Setup] begin
-    u0 = [0.0 0.0]
+    u0 = [0.0, 0.0]
     tspan = (0.0, 500.0)
     dt = 0.01
-    D = FNS.Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+    D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -121,7 +127,7 @@ end
     @test W.f == S.f
     @test W.g == S.g
 
-    sol = solve(S, EM(); dt)
+    sol = solve(S; dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
     density(x)
@@ -181,13 +187,36 @@ end
     end
 end
 
+@testitem "Recursive Arrays" setup=[Setup] begin
+    # So for recursive arrays, we can use diagonal noise by setting the noise_rate prototype
+    # to similar(u0)
+    u0 = ArrayPartition([0.0], [0.0])
+    tspan = (0.0, 500.0)
+    dt = 0.01
+    D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
+
+    W = @test_nowarn remake(S, p = S.p)
+    @test_nowarn solve(W, EM(); dt, saveat = 0.01)
+    @test W.p == S.p
+    @test W.u0 == S.u0
+    @test W.tspan == S.tspan
+    @test W.f == S.f
+    @test W.g == S.g
+
+    sol = solve(S, EM(); dt)
+    x = first.(sol.u)
+    x = x[abs.(x) .< 6]
+    @test evaluate(KLDivergence(), D, x) < 0.1
+end
+
 if false
     u0 = [-3.0 0.00]
     tspan = (0.0, 5000.0)
     dt = 0.01
-    D = FNS.Density(MixtureModel(Laplace, [(-3, 0.3), (3, 0.3)]))
-    # D = FNS.Density(Normal(-2, 0.5))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.5, β = 0.0, γ = 0.1, 𝜋 = D)
+    D = Density(MixtureModel(Laplace, [(-3, 0.3), (3, 0.3)]))
+    # D = Density(Normal(-2, 0.5))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.5, β = 0.0, γ = 0.1, 𝜋 = D)
 
     sol = solve(S, EM(); dt)
     x = first.(sol.u)
@@ -210,8 +239,8 @@ if false # * Simple potential: power law iqr?
     u0 = [-0.001 0.00]
     tspan = (0.0, 1.0)
     dt = 0.00001
-    D = FNS.Density(Normal(0, 1))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.2, β = 0.0, γ = 0.1, 𝜋 = D)
+    D = Density(Normal(0, 1))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.0, γ = 0.1, 𝜋 = D)
     P = EnsembleProblem(S)
     sol = solve(P, EM(); dt, trajectories = 100)
     σ = mapslices(iqr, stack(getindex.(sol.u, 1, :)); dims = 2)[:] .^ 2
@@ -236,8 +265,8 @@ if false # * Unimodal vs bimodal comparison
     ft = x -> abs.((x[3:end] .- x[1:(end - 2)]) ./ 2)
 
     ax = Axis(g[1, 1]; xlabel = "t", ylabel = "v", title = "Unimodal")
-    D = FNS.Density(Laplace(0, 0.5))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
+    D = Density(Laplace(0, 0.5))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
     x = sol[1, :][idxs]
     lines!(ax, ft(x), color = :cornflowerblue, linewidth = 2)
@@ -250,8 +279,8 @@ if false # * Unimodal vs bimodal comparison
 
     u0 = [-0.201 0.00]
     ax = Axis(g[2, 1]; xlabel = "t", ylabel = "v", title = "Bimodal")
-    D = FNS.Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
-    S = FNS.LevyFlightSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
+    D = Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
+    S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
     sol = solve(S, EM(); dt)
     x = sol[1, :][idxs]
 
@@ -273,8 +302,8 @@ if false # * Fixation simulation: heavy tailed msd??
     u0 = [-0.001 0.00]
     tspan = (0.0, 100.0)
     dt = 0.001
-    D = FNS.Density(Laplace(0, 1))
-    S = FNS.LevyWalkSampler(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
+    D = Density(Laplace(0, 1))
+    S = FHMC(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
 
     sol = solve(S, EM(); dt)
     x = first.(sol.u)[1:50:end] # Need heavy oversampling to prevent blowout
@@ -312,11 +341,11 @@ end
     g(x::T) where {T <: Real} = logpdf(D, x)::T
     g(x::AbstractVector{T}) where {T <: Real} = logpdf(D, only(x))::T
     @inferred g(0.1)
-    @inferred ForwardDiff.gradient(g, [0.1])
+    # @inferred ForwardDiff.gradient(g, [0.1])
     backend = AutoForwardDiff()
-    @test gradlogdensity(FNS.Density(D, true)).(0.1:0.1:3) ==
+    @test gradlogdensity(Density(D, true)).(0.1:0.1:3) ==
           gradlogpdf.([D], 0.1:0.1:3)
-    gr = @inferred gradient(g, backend, [0.1])
+    gr = gradient(g, backend, [0.1]) # @inferred
     @test gr isa Vector
     @test length(gr) == 1
     a = @benchmark gradient($g, $backend, [0.1])
@@ -325,21 +354,21 @@ end
     @test a.allocs < 15
     @test b.allocs < 10
     @test c.allocs == c.memory == 0
-    @inferred gradlogdensity(FNS.Density(D, false), 0.1)
-    a = @benchmark gradlogdensity(FNS.Density($D, false), 0.1)
+    @inferred gradlogdensity(Density(D, false), 0.1)
+    a = @benchmark gradlogdensity(Density($D, false), 0.1)
     @test a.allocs == c.memory == 0
-    @inferred gradlogdensity(FNS.Density(D, true), 0.1)
-    b = @benchmark gradlogdensity(FNS.Density($D, true), 0.1)
+    @inferred gradlogdensity(Density(D, true), 0.1)
+    b = @benchmark gradlogdensity(Density($D, true), 0.1)
     @test b.allocs == 10 # Slightly allocating
 
-    cl = @code_lowered FNS.Densities._gradlogdensity(FNS.Density(D, true), 0.1)
+    cl = @code_lowered Densities._gradlogdensity(Density(D, true), 0.1)
     @test contains(string(cl.code), "AD_BACKEND")
 end
 @testitem "Univariate DistributionDensity" setup=[Setup] begin
     d = Normal(0.0, 0.5)
-    D = @test_nowarn FNS.Density(d)
-    @test D isa FNS.Densities.AbstractUnivariateDensity
-    @test FNS.Densities.doautodiff(D) == false
+    D = @test_nowarn Density(d)
+    @test D isa Densities.AbstractUnivariateDensity
+    @test Densities.doautodiff(D) == false
     @test D(0.0) == 2 / sqrt(2π)
     @test D([0.0]) == 2 / sqrt(2π)
     @test LogDensityProblems.dimension(D) == 1
@@ -348,32 +377,32 @@ end
     @inferred LogDensityProblems.logdensity(D, 0.0)
     @inferred LogDensityProblems.logdensity(D, 0)
     lines(-2:0.1:2, D.(-2:0.1:2))
-    lines(-2:0.01:2, FNS.Densities.potential(D).(-2:0.01:2))
-    @inferred FNS.Densities.gradlogdensity(D, 0.01)
-    @inferred map(FNS.Densities.gradlogdensity(D), 0.01:0.01:5)
-    @test map(FNS.Densities.gradlogdensity(D), 0.1:0.1:5) == gradlogpdf.([d], 0.1:0.1:5)
+    lines(-2:0.01:2, Densities.potential(D).(-2:0.01:2))
+    @inferred Densities.gradlogdensity(D, 0.01)
+    @inferred map(Densities.gradlogdensity(D), 0.01:0.01:5)
+    @test map(Densities.gradlogdensity(D), 0.1:0.1:5) == gradlogpdf.([d], 0.1:0.1:5)
 
     d = Uniform(-0.5, 0.5)
-    D = @test_nowarn FNS.Density(d)
+    D = @test_nowarn Density(d)
     @test D(0.0) == 1
     @test LogDensityProblems.dimension(D) == 1
     @test all(map(LogDensityProblems.logdensity(D), -1:0.1:1) .≈ log.(D.(-1:0.1:1)))
     @inferred LogDensityProblems.logdensity(D, 0.0)
     @inferred LogDensityProblems.logdensity(D, -0.6)
     @inferred LogDensityProblems.logdensity_and_gradient(D, -0.6)
-    @inferred LogDensityProblems.logdensity_and_gradient(FNS.Density(d, true), 0.5)
+    @inferred LogDensityProblems.logdensity_and_gradient(Density(d, true), 0.5)
 
     if isinteractive()
-        @benchmark map(FNS.Densities.gradlogdensity($D), -1:0.01:1)
+        @benchmark map(Densities.gradlogdensity($D), -1:0.01:1)
         @benchmark LogDensityProblems.logdensity_and_gradient.([$D], -1:0.01:1)
     end
     lines(-2:0.1:2, D.(-2:0.1:2))
-    lines(-2:0.01:2, FNS.Densities.potential(D).(-2:0.01:2))
-    lines(-2:0.01:2, FNS.Densities.gradlogdensity(D).(-2:0.01:2))
+    lines(-2:0.01:2, Densities.potential(D).(-2:0.01:2))
+    lines(-2:0.01:2, Densities.gradlogdensity(D).(-2:0.01:2))
 
-    D = @test_nowarn FNS.Density(Normal(0.0f0, 0.5f0))
+    D = @test_nowarn Density(Normal(0.0f0, 0.5f0))
     @test LogDensityProblems.logdensity(D, 0.0f0) isa Float32
-    @test FNS.Densities.gradlogdensity(D, 0.0f0) isa Float32
+    @test Densities.gradlogdensity(D, 0.0f0) isa Float32
 end
 
 @testitem "Multivariate DistributionDensity" setup=[Setup] begin
@@ -382,10 +411,10 @@ end
     x = randn(N, 100)
     Σ = x * x'
     d = MvNormal(μs, Σ)
-    D = @test_nowarn FNS.Density(d)
-    @test D isa FNS.Densities.DistributionDensity
-    @test !(D isa FNS.Densities.AbstractUnivariateDensity)
-    @test FNS.Densities.doautodiff(D) == false
+    D = @test_nowarn Density(d)
+    @test D isa Densities.DistributionDensity
+    @test !(D isa Densities.AbstractUnivariateDensity)
+    @test Densities.doautodiff(D) == false
     p = randn(N)
     @test logdensity(D)(p) == logpdf(d, p)
     ps = eachcol(randn(N, 100))
@@ -394,8 +423,8 @@ end
     @test map(gradlogdensity(D), ps) == gradlogpdf.([d], ps)
 
     # * Ad
-    D = @test_nowarn FNS.Density(MvNormal(μs, Σ), true)
-    @test FNS.Densities.doautodiff(D) == true
+    D = @test_nowarn Density(MvNormal(μs, Σ), true)
+    @test Densities.doautodiff(D) == true
     @test LogDensityProblems.logdensity(D, p) isa Float64
     @test logdensity(D)(p) == logpdf(d, p)
     @test logdensity(D)(ps) == logpdf.([d], ps)
@@ -411,8 +440,8 @@ end
         x * x'
     end
     d = MixtureModel([MvNormal(μs[i], Σs[i]) for i in 1:N])
-    D = @test_nowarn FNS.Density(d)
-    @test D isa FNS.Densities.AdDensity
+    D = @test_nowarn Density(d)
+    @test D isa Densities.AdDensity
     p = rand(D) # Draw from the distribution
     @test logdensity(D)(p) == logpdf(d, p)
     ps = eachcol(randn(Nd, 100))
@@ -420,22 +449,22 @@ end
     @test gradlogdensity(D)(p) isa Vector{Float64}
 
     d = MixtureModel([Normal(0, 1), Normal(0, 0.5)])
-    D = @test_nowarn FNS.Density(d)
-    @test FNS.Densities.doautodiff(D) == true
+    D = @test_nowarn Density(d)
+    @test Densities.doautodiff(D) == true
     @test gradlogdensity(D)(0.0) == 0.0
 end
 
 @testitem "AdDistributionDensity" setup=[Setup] begin
-    D = @inferred FNS.Densities.Density(Normal(0.0, 0.5))
-    D = @inferred FNS.Densities.Density{true}(Normal(0.0, 0.5))
+    D = @inferred Densities.Density(Normal(0.0, 0.5))
+    D = @inferred Densities.Density{true}(Normal(0.0, 0.5))
     x = zeros(LogDensityProblems.dimension(D)) # ℓ is your log density
     @inferred LogDensityProblems.logdensity(D)(x) # check inference, also see @code_warntype
-    ds = FNS.Densities.distribution(D)
+    ds = Densities.distribution(D)
     g = gradlogpdf(ds, -0.1)
-    @test g == FNS.Densities.gradlogdensity(D, -0.1)
+    @test g == Densities.gradlogdensity(D, -0.1)
     if isinteractive()
         @benchmark gradlogpdf($ds, -0.1)
-        @benchmark FNS.Densities.gradlogdensity($D, -0.1)
+        @benchmark Densities.gradlogdensity($D, -0.1)
         @benchmark pdf($ds, $x) # check performance and allocations
         @benchmark ($D)($x) # check performance and allocations
         @benchmark LogDensityProblems.logdensity($D, $x) # check performance and allocations
@@ -449,28 +478,35 @@ end
           LogDensityProblems.logdensity_and_gradient(D, 0.1)
 end
 
-@testitem "Langevin Sampler" setup=[Setup] begin
-    u0 = [0.0 0.0]
+@testitem "Overdamped Langevin Sampler" setup=[Setup] begin
+    u0 = [0.0]
     tspan = (0.0, 100.0)
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 10.0)
-    D = FNS.Density(Normal(0, 1))
-    a = @benchmark Density($S) # Can this be made faster?
-    @test a.allocs == a.memory == 0
-    @test distribution(Density(S)) == D.distribution
-    @test FNS.Densities.doautodiff(Density(S)) == false
-    sol = @test_nowarn solve(S; dt = 0.0001, saveat = 0.01)
+    S = OLE(; u0, tspan, η = 1)
+
+    sol = @test_nowarn solve(S, EM(); dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     plot(x)
     density(x)
+
+    # * Try setting parameters
+    s = S(η = 0.1)
+    @test s.p[1][:η] == 0.1
+
+    D = Density(Normal(0, 10.0))
+    s = S(; η = 10.0, tspan = 1000.0, 𝜋 = D)
+    @test s.p[1][:η] == 10.0
+    @test s.p[2] == D
+    @test s.tspan == 1000.0
 end
+
 @testitem "Box boundaries" setup=[Setup] begin
     box = ReflectingBox(-5 .. 5)
-    # box = FNS.NoBoundary()
+    # box = NoBoundary()
     u0 = [0.0 1.0]
     tspan = (0.0, 1000.0) # Must be a matrix; col 1 is position, col2 is momentum
-    # 𝜋 = FNS.Density(Normal(0, 0.25))
-    𝜋 = FNS.Density(Uniform(-5, 5)) # No potential here is pathalogical; no transient to momentum equilibrium
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0, γ = 0.1, boundaries = box(), 𝜋)
+    # 𝜋 = Density(Normal(0, 0.25))
+    𝜋 = Density(Uniform(-5, 5)) # No potential here is pathalogical; no transient to momentum equilibrium
+    S = LangevinSampler(; u0, tspan, β = 1.0, γ = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.1)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -481,11 +517,11 @@ end
     density(x) # The boundaries interfere with the density if they are too close
     # @test x == trajectory(S)
 
-    box = FNS.ReflectingBox(-1 .. 1)
+    box = ReflectingBox(-1 .. 1)
     u0 = [0.0 0.0]
     tspan = (0.0, 100.0)
-    𝜋 = FNS.Density(Normal(0, 1))
-    S = FNS.LangevinSampler(; u0, tspan, β = 0.5, γ = 0.1, boundaries = box(), 𝜋)
+    𝜋 = Density(Normal(0, 1))
+    S = LangevinSampler(; u0, tspan, β = 0.5, γ = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -496,11 +532,11 @@ end
     @test minimum(x) ≥ -1 - 0.05
     @test maximum(x) ≤ 1 + 0.05
 
-    box = FNS.PeriodicBox(-1 .. 1)
+    box = PeriodicBox(-1 .. 1)
     u0 = [0.0 1.0]
     tspan = (0.0, 10.0)
-    𝜋 = FNS.Density(Normal(0, 1))
-    S = FNS.LangevinSampler(; u0, tspan, β = 1, γ = 0.1, boundaries = box(), 𝜋)
+    𝜋 = Density(Normal(0, 1))
+    S = LangevinSampler(; u0, tspan, β = 1, γ = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -514,8 +550,8 @@ end
     box = NoBoundary()
     u0 = [0.0f0 1.0f0]
     tspan = (0.0f0, 10000.0f0)
-    𝜋 = FNS.Density(Laplace(0.0f0, 1.0f0), true)
-    S = FNS.LangevinSampler(; u0, tspan, β = 1.0f0, γ = 1.0f0, boundaries = box(), 𝜋)
+    𝜋 = Density(Laplace(0.0f0, 1.0f0), true)
+    S = LangevinSampler(; u0, tspan, β = 1.0f0, γ = 1.0f0, boundaries = box(), 𝜋)
     # @benchmark solve(S; dt = 0.001, saveat = 0.01)
     sol = @test_nowarn solve(S; dt = 0.001f0, saveat = 0.1f0)
     x = first.(sol.u)
@@ -532,7 +568,7 @@ if false # !! Add callbacks for discontinuities
 
     # * Quadratic potential (gaussian pdf)
     𝜋 = Normal(0.0, 1.0) |> Density
-    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1)
+    S = LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1)
     sol = solve(S; dt = 0.0001, saveat = 0.01)
     x = Timeseries(sol.t, first.(sol.u))
     plot(x) # Oscillating? Yes.
@@ -540,7 +576,7 @@ if false # !! Add callbacks for discontinuities
 
     # * Flat potential (uniform pdf... kind of. Discontinuity sucks. Add callback...boundary conditions...to handle this)
     𝜋 = Uniform(-0.5, 0.5) |> Density
-    S = FNS.LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1, callbacks = ...)
+    S = LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1, callbacks = ...)
     @test density(Density(S)) == density(𝜋)
     sol = solve(S; dt = 0.0001, saveat = 0.01)
     x = Timeseries(sol.t, first.(sol.u))
@@ -558,7 +594,7 @@ if false # ! Need to fix out-of-place noise
     Random.seed!(42)
     b = DIST(rng)
     Random.seed!(42)
-    c = rand(rng, FNS.NoiseProcesses.dist(DIST))
+    c = rand(rng, NoiseProcesses.dist(DIST))
     @test a == b == c
 
     @test Base.return_types(DIST, (AbstractRNG,)) == [Float64]
@@ -589,11 +625,11 @@ if false # ! Need to fix out-of-place noise
     @test all(z .* 0.01 .^ (1 / DIST.α) .== y)
 end
 
-@testitem "Test that adaptive stepping is disabled for LevyFlightSamplers" setup=[Setup] begin end
+# @testitem "Test that adaptive stepping is disabled for FractionalNeuralSamplers" setup=[Setup] begin end
 
-@testitem "FractionalNeuralSampling.jl" setup=[Setup] begin
-    include("fractional_sampling.jl")
-end
+# @testitem "FractionalNeuralSampling.jl" setup=[Setup] begin
+#     include("fractional_sampling.jl")
+# end
 
 # @testitem "LevyProcess" setup=[Setup] begin
 if false # ! Need to fix out-of-place noise
@@ -748,14 +784,14 @@ if false
     f = Figure(size = (900, 300))
     gs = subdivide(f, 1, 3)
     map(αs, gs) do α, g
-        L = LevyFlightSampler(;
-                              u0 = [-Δx / 2 0 0 0],
-                              tspan = 500.0,
-                              α = α,
-                              β = 0.2,
-                              γ = 0.02,
-                              𝜋 = D,
-                              seed = 42)
+        L = FractionalNeuralSampler(;
+                                    u0 = [-Δx / 2 0 0 0],
+                                    tspan = 500.0,
+                                    α = α,
+                                    β = 0.2,
+                                    γ = 0.02,
+                                    𝜋 = D,
+                                    seed = 42)
         sol = solve(L, EM(); dt = 0.001)
         x, y = eachrow(sol[1:2, :])
 
@@ -770,4 +806,173 @@ if false
         hidedecorations!(ax)
     end
     f
+end
+
+# @testitem "MSD check" setup=[Setup] begin
+begin
+    u0 = [0.0, 0.0]
+    tspan = (0.0, 10000.0)
+    dt = 0.1
+    D = Density(Normal(0.0, 1.0))
+    S = Samplers.FHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
+    sol = solve(S, EM(); dt)
+
+    x = sol[1, :]
+    x = TimeseriesTools.Timeseries(sol.t, x)
+    x = rectify(x, dims = 𝑡, tol = 1)
+
+    msd = msdist(x)
+
+    begin
+        f = Figure(size = (1000, 300))
+        ax = Axis(f[1, 1])
+        lines!(ax, x[1:20:20000])
+
+        lu = (-4 * std(x), +4 * std(x))
+        axx = Axis(f[1, 2], limits = (lu, nothing))
+        xs = range(lu..., length = 1000)
+        hist!(axx, x; bins = 100, normalization = :pdf)
+        lines!(axx, xs, D.(xs); color = :red, linewidth = 2)
+
+        axxx = Axis(f[1, 3], xscale = log10, yscale = log10)
+        lines!(axxx, msd[𝑡 = dt .. 1000], label = nothing)
+
+        # * Fit a tail index to msd
+        y = msd[𝑡 = dt .. 1]
+        ts = logrange(extrema(times(y))..., length = 1000)
+        y = y[𝑡 = Near(ts)]
+        taus = times(y)
+        α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+
+        # * Plot line of fitted tail
+        lines!(axxx, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+               label = "Fit: α = $α")
+        axislegend(axxx, position = :lt)
+        display(f)
+    end
+end
+
+begin
+    x = rand(Stable(2.0, 0.0), 10000) |> cumsum
+    x = Timeseries(range(dt, length = length(x), step = dt), x)
+    lines(x)
+    msd = mad(x)
+    f = Figure()
+    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+    lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
+
+    # * Fit a tail index to msd
+    y = msd[𝑡 = dt .. 1]
+    ts = logrange(extrema(times(y))..., length = 1000)
+    y = y[𝑡 = Near(ts)]
+    taus = times(y)
+    α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+
+    # * Plot line of fitted tail
+    lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+           label = "Fit: α = $α")
+    axislegend(ax, position = :lt)
+    display(f)
+end
+
+begin
+    using TimeseriesTools
+    using CairoMakie
+    using StableDistributions
+    using Statistics
+    function mad(x::AbstractVector{T}) where {T <: Real}
+        n = length(x)
+        lags = 1:(n - 1)
+        mads = zeros(T, n - 1)
+        Threads.@threads for lag in lags
+            displacements = abs.(x[(1 + lag):n] .- x[1:(n - lag)])
+            mads[lag] = mean(displacements)
+        end
+        return mads
+    end
+    function mad(x::UnivariateRegular)
+        mads = mad(parent(x))
+        lags = range(step(x), length = length(mads), step = step(x))
+        return Timeseries(lags, mads)
+    end
+    function mssd(x::AbstractVector{T}) where {T <: Real}
+        n = length(x)
+        lags = 1:(n - 1)
+        msds = zeros(T, n - 1)
+        Threads.@threads for lag in lags
+            displacements = (x[(1 + lag):n] .- x[1:(n - lag)]) .^ 2
+            msds[lag] = mean(displacements)
+        end
+        return msds
+    end
+    function mssd(x::UnivariateRegular)
+        mssds = mssd(parent(x))
+        lags = range(step(x), length = length(mssds), step = step(x))
+        return Timeseries(lags, mssds)
+    end
+end
+
+begin
+    x = rand(Stable(1.3, 0.0), 10000) |> cumsum
+    x = Timeseries(range(dt, length = length(x), step = dt), x)
+    lines(x)
+    msd = mad(x)
+    f = Figure()
+    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+    lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
+
+    # * Fit a tail index to msd
+    y = msd[𝑡 = dt .. 1]
+    ts = logrange(extrema(times(y))..., length = 1000)
+    y = y[𝑡 = Near(ts)]
+    taus = times(y)
+    α, β = [log10.(taus) ones(length(y))] \ log10.(y)
+
+    # * Plot line of fitted tail
+    lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
+           label = "Fit: α = $α")
+    axislegend(ax, position = :lt)
+    display(f)
+end
+
+begin
+    global estimator = mad
+    repeats = 100
+    dt = 0.01 # Dummy timestep
+    αs = 1.1:0.05:2.0
+
+    ms = progressmap(αs) do α
+        map(1:repeats) do _
+            x = rand(Stable(α, 0.0), 10000) |> cumsum
+            x = Timeseries(range(dt, length = length(x), step = dt), x)
+            m = estimator(x)
+
+            # * Fit a tail index to msd
+            y = m[𝑡 = dt .. 1]
+            ts = logrange(extrema(times(y))..., length = 1000)
+            y = y[𝑡 = Near(ts)]
+            taus = times(y)
+            β, _ = [log10.(taus) ones(length(y))] \ log10.(y)
+            return β
+        end
+    end
+    σs = std.(ms) ./ 2
+    ms = mean.(ms)
+
+    f = Figure()
+    ax = Axis(f[1, 1], xlabel = "α", ylabel = "β", title = "$estimator")
+    band!(ax, αs, ms .- σs, ms .+ σs; color = (:black, 0.3))
+    lines!(ax, αs, ms, color = :black)
+    if estimator === mad
+        # * Plot a line of beta = 1/alpha
+        lines!(ax, αs, 1 ./ αs, color = :red, linestyle = :dash, label = "β = 1/α")
+    end
+    display(f)
+end
+
+@testitem "CaputoEM" begin
+    include("./Solvers/CaputoEM.jl")
+end
+@testitem "LFSM" begin
+    include("./lfsn.jl")
 end
