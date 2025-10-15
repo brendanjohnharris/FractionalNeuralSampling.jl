@@ -69,10 +69,10 @@ end
 
 @testitem "Langevin sampler bias" setup=[Setup] begin
     u0 = [0.0001, 0.0001]
-    tspan = (0.0, 5000.0)
+    tspan = (0.0, 10000.0)
     dt = 0.01
     D = Density(Normal(0, 1))
-    S = Langevin(; u0, tspan, β = 0.5, η = 1.0, 𝜋 = D)
+    S = Langevin(; u0, tspan, β = 0.25, η = 1.0, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -92,8 +92,8 @@ end
 
     if false
         tspan = (0.0, 100.0)
-        S = LangevinSampler(; u0, tspan, β = 1.0, γ = 1.0, 𝜋 = D,
-                            noise = WienerProcess(0.0, 0.0))
+        S = Langevin(; u0, tspan, β = 1.0, η = 1.0, 𝜋 = D,
+                     noise = WienerProcess(0.0, 0.0))
         βs = range(0, 5, length = 10)
         er = map(βs) do β
             P = remake(S, p = ((β, S.p[1][2:end]...), S.p[2:end]...))
@@ -501,11 +501,11 @@ end
 @testitem "Box boundaries" setup=[Setup] begin
     box = ReflectingBox(-5 .. 5)
     # box = NoBoundary()
-    u0 = [0.0 1.0]
+    u0 = [0.0, 1.0]
     tspan = (0.0, 1000.0) # Must be a matrix; col 1 is position, col2 is momentum
     # 𝜋 = Density(Normal(0, 0.25))
     𝜋 = Density(Uniform(-5, 5)) # No potential here is pathalogical; no transient to momentum equilibrium
-    S = LangevinSampler(; u0, tspan, β = 1.0, γ = 0.1, boundaries = box(), 𝜋)
+    S = Langevin(; u0, tspan, β = 1.0, η = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.1)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -520,7 +520,7 @@ end
     u0 = [0.0 0.0]
     tspan = (0.0, 100.0)
     𝜋 = Density(Normal(0, 1))
-    S = LangevinSampler(; u0, tspan, β = 0.5, γ = 0.1, boundaries = box(), 𝜋)
+    S = Langevin(; u0, tspan, β = 0.5, η = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -532,10 +532,10 @@ end
     @test maximum(x) ≤ 1 + 0.05
 
     box = PeriodicBox(-1 .. 1)
-    u0 = [0.0 1.0]
+    u0 = [0.0, 1.0]
     tspan = (0.0, 10.0)
     𝜋 = Density(Normal(0, 1))
-    S = LangevinSampler(; u0, tspan, β = 1, γ = 0.1, boundaries = box(), 𝜋)
+    S = Langevin(; u0, tspan, β = 1, η = 0.1, boundaries = box(), 𝜋)
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
     y = last.(sol.u)
@@ -547,10 +547,10 @@ end
     @test maximum(x) ≤ 1 + 0.02
 
     box = NoBoundary()
-    u0 = [0.0f0 1.0f0]
+    u0 = [0.0f0, 1.0f0]
     tspan = (0.0f0, 10000.0f0)
     𝜋 = Density(Laplace(0.0f0, 1.0f0), true)
-    S = LangevinSampler(; u0, tspan, β = 1.0f0, γ = 1.0f0, boundaries = box(), 𝜋)
+    S = Langevin(; u0, tspan, β = 1.0f0, η = 1.0f0, boundaries = box(), 𝜋)
     # @benchmark solve(S; dt = 0.001, saveat = 0.01)
     sol = @test_nowarn solve(S; dt = 0.001f0, saveat = 0.1f0)
     x = first.(sol.u)
@@ -561,27 +561,27 @@ end
 end
 
 # @testitem "Oscillations under flat potential?" setup=[Setup] begin
-if false # !! Add callbacks for discontinuities
-    u0 = [0.0 0.0]
-    tspan = (0.0, 100.0)
+# if false # !! Add callbacks for discontinuities
+#     u0 = [0.0 0.0]
+#     tspan = (0.0, 100.0)
 
-    # * Quadratic potential (gaussian pdf)
-    𝜋 = Normal(0.0, 1.0) |> Density
-    S = LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1)
-    sol = solve(S; dt = 0.0001, saveat = 0.01)
-    x = Timeseries(sol.t, first.(sol.u))
-    plot(x) # Oscillating? Yes.
-    hill(collect(x))
+#     # * Quadratic potential (gaussian pdf)
+#     𝜋 = Normal(0.0, 1.0) |> Density
+#     S = Langevin(; u0, tspan, 𝜋, β = 1.0, η = 0.1)
+#     sol = solve(S; dt = 0.0001, saveat = 0.01)
+#     x = Timeseries(sol.t, first.(sol.u))
+#     plot(x) # Oscillating? Yes.
+#     hill(collect(x))
 
-    # * Flat potential (uniform pdf... kind of. Discontinuity sucks. Add callback...boundary conditions...to handle this)
-    𝜋 = Uniform(-0.5, 0.5) |> Density
-    S = LangevinSampler(; u0, tspan, 𝜋, β = 1.0, γ = 0.1, callbacks = ...)
-    @test density(Density(S)) == density(𝜋)
-    sol = solve(S; dt = 0.0001, saveat = 0.01)
-    x = Timeseries(sol.t, first.(sol.u))
-    plot(x) # Oscillating? No; divergent. Can't really handle delta gradient
-    hill(collect(x))
-end
+#     # * Flat potential (uniform pdf... kind of. Discontinuity sucks. Add callback...boundary conditions...to handle this)
+#     𝜋 = Uniform(-0.5, 0.5) |> Density
+#     S = Langevin(; u0, tspan, 𝜋, β = 1.0, η = 0.1, callbacks = ...)
+#     @test density(Density(S)) == density(𝜋)
+#     sol = solve(S; dt = 0.0001, saveat = 0.01)
+#     x = Timeseries(sol.t, first.(sol.u))
+#     plot(x) # Oscillating? No; divergent. Can't really handle delta gradient
+#     hill(collect(x))
+# end
 
 # @testitem "LevyNoise" setup=[Setup] begin
 if false # ! Need to fix out-of-place noise
