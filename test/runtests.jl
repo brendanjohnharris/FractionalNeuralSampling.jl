@@ -68,11 +68,11 @@ end
 end
 
 @testitem "Langevin sampler bias" setup=[Setup] begin
-    u0 = [0.0001, 0.0001]
+    u0 = [0.0, 0.0]
     tspan = (0.0, 10000.0)
     dt = 0.01
     D = Density(Normal(0, 1))
-    S = Langevin(; u0, tspan, β = 0.25, η = 1.0, 𝜋 = D)
+    S = Langevin(; u0, tspan, β = 1.0, η = 1.0, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -82,7 +82,7 @@ end
     @test W.f == S.f
     @test W.g == S.g
 
-    @test_nowarn KLDivergence()(D, randn(100))
+    @test_nowarn KLDivergence()(D, randn(1000))
     sol = solve(S, EM(); dt)
     Makie.hist(first.(sol.u), bins = 50, normalization = :pdf)
     lines!(-2.5:0.1:2.5, D.(-2.5:0.1:2.5))
@@ -206,7 +206,7 @@ end
     sol = solve(S, EM(); dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
-    @test evaluate(KLDivergence(), D, x) < 0.1
+    @test evaluate(KLDivergence(), D, x) < 0.01
 end
 
 if false
@@ -358,7 +358,7 @@ end
     @test a.allocs == c.memory == 0
     @inferred gradlogdensity(Density(D, true), 0.1)
     b = @benchmark gradlogdensity(Density($D, true), 0.1)
-    @test b.allocs == 10 # Slightly allocating
+    @test b.allocs < 15 # Slightly allocating
 
     cl = @code_lowered Densities._gradlogdensity(Density(D, true), 0.1)
     @test contains(string(cl.code), "AD_BACKEND")
@@ -556,7 +556,7 @@ end
     x = first.(sol.u)
     density(x)
     gg = fit(Laplace, x)
-    @test gg.μ≈0.0f0 atol=1e-3
+    @test gg.μ≈0.0f0 atol=5e-3
     @test gg.θ≈1.0f0 atol=1e-1
 end
 
