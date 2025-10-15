@@ -25,7 +25,7 @@ function Langevin(;
                   u0 = [0.0],
                   boundaries = nothing,
                   noise_rate_prototype = similar(u0),
-                  noise = WienerProcess!(0.0, zero(u0)),
+                  noise = WienerProcess!(zero(u0), zero(u0)),
                   callback = (),
                   alg = EM(),
                   kwargs...)

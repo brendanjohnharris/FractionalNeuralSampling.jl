@@ -69,11 +69,10 @@ end
 
 @testitem "Langevin sampler bias" setup=[Setup] begin
     u0 = [0.0001, 0.0001]
-    tspan = (0.0, 1000.0)
+    tspan = (0.0, 5000.0)
     dt = 0.01
     D = Density(Normal(0, 1))
-    S = Langevin(; u0, tspan, β = 0.5, η = 1.0, 𝜋 = D,
-                 noise = WienerProcess(0.0, 0.0))
+    S = Langevin(; u0, tspan, β = 0.5, η = 1.0, 𝜋 = D)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -481,7 +480,8 @@ end
 @testitem "Overdamped Langevin Sampler" setup=[Setup] begin
     u0 = [0.0]
     tspan = (0.0, 100.0)
-    S = OLE(; u0, tspan, η = 1)
+    D = Density(Normal(0, 10.0))
+    S = OLE(; u0, tspan, η = 1, 𝜋 = D)
 
     sol = @test_nowarn solve(S, EM(); dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
@@ -492,7 +492,6 @@ end
     s = S(η = 0.1)
     @test s.p[1][:η] == 0.1
 
-    D = Density(Normal(0, 10.0))
     s = S(; η = 10.0, tspan = 1000.0, 𝜋 = D)
     @test s.p[1][:η] == 10.0
     @test s.p[2] == D
