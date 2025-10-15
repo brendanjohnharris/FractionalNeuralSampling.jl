@@ -2,7 +2,8 @@ import SpecialFunctions: gamma
 
 # * "Fractional neural sampling as a theory of spatiotemporal probabilistic computations in neural circuits", Qi and Gong
 function fns_f!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
+    ps, 𝜋 = p
+    @unpack α, β, γ = ps
     x, v = divide_dims(u, dimension(𝜋))
     b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2)
     dx, dv = divide_dims(du, length(du) ÷ 2)
@@ -10,7 +11,8 @@ function fns_f!(du, u, p, t)
     dv .= β .* b
 end
 function fns_g!(du, u, p, t)
-    (α, β, γ), 𝜋 = p
+    ps, 𝜋 = p
+    @unpack α, γ = ps
     dx, dv = divide_dims(du, dimension(𝜋))
     dx .= γ^(1 / α) # ? × dL in the integrator.
     dv .= 0.0

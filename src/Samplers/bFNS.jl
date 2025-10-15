@@ -55,7 +55,7 @@ function bFNS(;
     @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
     𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
     𝜋s = Fun(𝜋, S, approx_n_modes)
-    ∇𝒟𝜋 = D * 𝒟 * 𝜋s # ! Check!!
+    ∇𝒟𝜋 = D * 𝒟 * 𝜋s
 
     Sampler(bfns_f!, bfns_g!;
             callback = CallbackSet(init(boundaries), callback...),
