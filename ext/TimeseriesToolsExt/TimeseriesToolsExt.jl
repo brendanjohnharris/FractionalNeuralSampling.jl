@@ -5,18 +5,14 @@ using Distributions
 import FractionalNeuralSampling: samplingpower, samplingaccuracy, samplingefficiency,
                                  _samplingaccuracy
 
-function wasserstein(samples, dist::UnivariateDistribution; p::Int = 1)
-    n = length(samples)
+function cdf_quantiles(n, dist::UnivariateDistribution)
+    map(Base.Fix1(quantile, dist), (0.5:n) ./ n)
+end
+function wasserstein(samples, quantiles, domain; p::Int = 1)
     sorted_samples = sort(samples)
-
-    # Quantile levels (use midpoint adjustment for better accuracy)
-    quantile_levels = (0.5:n) ./ n
-
-    # Expected quantiles from target distribution
-    expected_quantiles = map(Base.Fix1(quantile, dist), quantile_levels)
-
-    # Compute Wasserstein distance
-    differences = abs.(sorted_samples .- expected_quantiles)
+    idxs = map(∈(domain), sorted_samples)
+    differences = abs.(sorted_samples .- quantiles)
+    differences = differences[idxs] # Only in-domain samples
 
     if p == 1
         return mean(differences)
@@ -53,9 +49,9 @@ function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100
     map(τs) do τ
         # * Calculate wasserstein distance
         samples = window(x, τ, p)
+        quantiles = cdf_quantiles(τ, distribution(𝜋))
         ws = map(samples) do s
-            s = s[s .∈ [domain]] # Remove samples out of domain
-            wasserstein(s, distribution(𝜋))
+            wasserstein(s, quantiles, domain)
         end
     end
 end

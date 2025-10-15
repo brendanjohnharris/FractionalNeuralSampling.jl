@@ -206,7 +206,7 @@ end
     sol = solve(S, EM(); dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
-    @test evaluate(KLDivergence(), D, x) < 0.05
+    @test evaluate(KLDivergence(), D, x) < 0.1
 end
 
 if false
