@@ -1,8 +1,8 @@
 function bfns_f!(du, u, p, t)
     ps, 𝜋 = p
-    @unpack α, η, γ, ∇𝒟𝜋, λ = ps
+    @unpack α, η, γ, ∇𝒟𝜋, 𝜋s, λ = ps
     x, v = divide_dims(u, dimension(𝜋))
-    b = ∇𝒟𝜋(only(x)) / (𝜋(x) + λ)
+    b = ∇𝒟𝜋(only(x)) / (𝜋s(only(x)) + λ)
     dx, dv = divide_dims(du, dimension(𝜋))
     dx .= η .* b .+ γ .* v
     dv .= γ .* b
@@ -39,7 +39,7 @@ function bFNS(;
               η, # Noise strength
               𝜋, # Target distribution
               domain, # An Interval
-              approx_n_modes = 10000,
+              approx_n_modes = 1000,
               λ = 0.001, # Regularization to avoid overflow in low-prob regions
               u0 = [0.0, 0.0],
               boundaries = nothing,
@@ -48,7 +48,7 @@ function bFNS(;
               alg = CaputoEM(β, 1000), # Should match the order of the noise
               callback = (),
               kwargs...)
-    ∇𝒟𝜋 = space_fractional_drift(𝜋; α, domain, approx_n_modes)
+    ∇𝒟𝜋, 𝜋s = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     Sampler(bfns_f!, bfns_g!;
             callback = CallbackSet(init(boundaries), callback...),
             u0,
@@ -56,7 +56,7 @@ function bFNS(;
             noise,
             tspan,
             dt,
-            p = (; α, β, γ, η, ∇𝒟𝜋, λ),
+            p = (; α, β, γ, η, ∇𝒟𝜋, 𝜋s, λ),
             𝜋,
             alg,
             kwargs...) |> assert_dimension(; order = 2)

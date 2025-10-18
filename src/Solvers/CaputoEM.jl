@@ -4,7 +4,7 @@ approximation.
 
 Dᵝₜx(t) = f(x) + g(x) ξ(t)
 
-where ξ(t) is some noise process?
+where ξ(t) is some noise process.
 
 For β = 1 this reduces to the standard Euler-Maruyama method.
 """
@@ -136,7 +136,6 @@ end
     for (dx, w) in zip(uhist, weights)
         @. u -= w .* dx
     end
-
     # * Roll history
     push!(uhist, u - uprev)
 

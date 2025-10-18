@@ -27,11 +27,11 @@ function bFOLE(;
                noise_rate_prototype = similar(u0),
                seed = nothing,
                noise = gen_lfsm(α, β; u0, tspan, dt, seed),
-               approx_n_modes = 10000,
+               approx_n_modes = 1000,
                alg = CaputoEM(β, 1000), # Should match the order of the noise
                callback = (),
                kwargs...)
-    ∇𝒟𝜋 = space_fractional_drift(𝜋; α, domain, approx_n_modes)
+    ∇𝒟𝜋, 𝜋s = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     Sampler(sfole_f!, sfole_g!;
             callback = CallbackSet(init(boundaries), callback...),
             u0,
@@ -39,7 +39,7 @@ function bFOLE(;
             noise,
             tspan,
             dt,
-            p = (; η, α, β, ∇𝒟𝜋, λ),
+            p = (; η, α, β, ∇𝒟𝜋, 𝜋s, λ),
             𝜋,
             seed = rand(Xoshiro(seed), UInt),
             alg,

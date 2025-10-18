@@ -1,7 +1,7 @@
 import ApproxFun: Operator, Derivative, Fun, Fourier, Laplacian, ApproxFunBase
 import ..FractionalNeuralSampling: Power
 
-function space_fractional_drift(𝜋; α, domain, approx_n_modes = 1000)
+function space_fractional_drift(𝜋; α, domain, approx_n_modes = 10000)
     S = Fourier(domain) # Could use Laurent for complex functions
     D = Derivative(S, 1)
     Δ = maybeLaplacian(S)
@@ -10,13 +10,14 @@ function space_fractional_drift(𝜋; α, domain, approx_n_modes = 1000)
     𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
     𝜋s = Fun(𝜋, S, approx_n_modes)
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s
+    return ∇𝒟𝜋, 𝜋s
 end
 
 function sfole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η, α, ∇𝒟𝜋, λ = ps
     x = divide_dims(u, dimension(𝜋)) |> only
-    b = ∇𝒟𝜋(only(x)) / (𝜋(x) + λ)
+    b = ∇𝒟𝜋(only(x)) / (𝜋s(only(x)) + λ)
     du .= only(η .* b)
 end
 function sfole_g!(du, u, p, t)
@@ -47,18 +48,18 @@ function sFOLE(;
                noise_rate_prototype = similar(u0),
                noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
                                                    W0 = zero(u0)),
-               approx_n_modes = 10000,
+               approx_n_modes = 1000,
                alg = EM(),
                callback = (),
                kwargs...)
-    ∇𝒟𝜋 = space_fractional_drift(𝜋; α, domain, approx_n_modes)
+    ∇𝒟𝜋, 𝜋s = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     Sampler(sfole_f!, sfole_g!;
             callback = CallbackSet(init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,
             tspan,
-            p = (; η, α, ∇𝒟𝜋, λ),
+            p = (; η, α, ∇𝒟𝜋, 𝜋s, λ),
             𝜋,
             alg,
             kwargs...) |> assert_dimension(; order = 1)

@@ -13,7 +13,6 @@ function wasserstein(samples, quantiles, domain; p::Int = 1)
     idxs = map(∈(domain), sorted_samples)
     differences = abs.(sorted_samples .- quantiles)
     differences = differences[idxs] # Only in-domain samples
-
     if p == 1
         return mean(differences)
     else
@@ -23,7 +22,7 @@ end
 
 """
 The variance of differences scaled by the time step.
-Also known as the quadratic variation divided by the number of samples
+Also known as rate of quadratic variation.
 For p != 2, this uses other norms of the increments (generalized variation).
 """
 function samplingpower(x, dt; p = 2)
@@ -37,7 +36,7 @@ function samplingpower(x, dt; p = 2)
     Δx = diff(x)
     p_var = sum(abs.(Δx) .^ p)
     T = length(x) * dt
-    return (p_var / T)^(1 / p)
+    return (p_var)^(1 / p) / T
 end
 
 function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 0, # No overlap by default

@@ -34,9 +34,9 @@ function Base.getindex(p::ConcretePower{T, BT, P}, k::Integer, j::Integer) where
             # ! We can't raise zero to a negative power
             # ! For potentials, the 0-frequency offset doesn't matter, but make sure the
             # fractional operator is applied PRIOR to the regular gradient operator.
-            return zero(T)
+            return a
         else
-            return convert(T, a)^p.p
+            return convert(T, a)^p.p # Riesz fraction
         end
     else
         # If the base operator is diagonal, so is the powered operator.
