@@ -46,17 +46,16 @@ function lfsn(N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
     Ẑ = Vector{Complex{T}}(undef, total_length)
     â = Vector{Complex{T}}(undef, total_length)
     result = Vector{T}(undef, _N)
-
     # Fill kernel coefficients (directly as complex)
     X2 = m^(-1 / α)
     Ha = H - 1 / α
     m_inv_Ha = (1 / m)^Ha
     scale = m_inv_Ha * X2 * sigma
-    fill!(â, Complex(0.0, 0.0))
+    fill!(â, Complex(zero(T), zero(T)))
 
     # First m coefficients
     @inbounds for j in 1:m
-        â[j] = Complex(j^Ha * scale, 0.0)
+        â[j] = Complex(j^Ha * scale, zero(T))
     end
 
     # Pre-compute powers for j values
@@ -67,13 +66,13 @@ function lfsn(N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
 
     # Remaining coefficients up to m*M
     @inbounds for j in (m + 1):(m * M)
-        â[j] = Complex((j_powers[j] - j_powers[j - m]) * scale, 0.0)
+        â[j] = Complex((j_powers[j] - j_powers[j - m]) * scale, zero(T))
     end
 
     # Fill with Lévy increments
-    d = Stable(α, 0.0, 1.0, 0.0)
+    d = Stable(α, zero(T), one(T), zero(T))
     for i in eachindex(Ẑ)
-        Ẑ[i] = Complex(rand(rng, d), 0.0)
+        Ẑ[i] = Complex(rand(rng, d), zero(T))
     end
 
     ℱ = plan_fft!(Ẑ)

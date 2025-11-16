@@ -116,29 +116,61 @@ struct PeriodicBox{D, Re} <: AbstractBoxBoundary{D}
         new{D, reset}(min_corner, max_corner)
     end
 end
+# function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
+#     dists = _boxdist(point, min_corner, max_corner)
+#     _, edge = findmin(dists)
+#     edge_faces = [min_corner[edge], max_corner[edge]]
+#     edgedists = abs.(edge_faces .- point[edge])
+#     _, old_edge = findmin(edgedists)
+#     _, new_edge = findmax(edgedists)
+#     point[edge] = edge_faces[new_edge] .+ (point[edge] .- edge_faces[old_edge])
+#     if reset
+#         velocity .= 0
+#     end
+# end
 function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
-    dists = _boxdist(point, min_corner, max_corner)
-    _, edge = findmin(dists)
-    edge_faces = [min_corner[edge], max_corner[edge]]
-    edgedists = abs.(edge_faces .- point[edge])
-    _, old_edge = findmin(edgedists)
-    _, new_edge = findmax(edgedists)
-    point[edge] = edge_faces[new_edge] .+ (point[edge] .- edge_faces[old_edge])
+    for i in eachindex(point)
+        box_width = max_corner[i] - min_corner[i]
+
+        # Shift point to origin-based coordinates
+        shifted = point[i] - min_corner[i]
+
+        # Wrap using modulo
+        wrapped = mod(shifted, box_width)
+
+        # Shift back to box coordinates
+        point[i] = wrapped + min_corner[i]
+    end
+
     if reset
         velocity .= 0
     end
+
+    return point
+end
+
+"""
+Corrects the integrator cache for boundary condition resets by setting the stored history
+difference to the difference of the post-update values
+"""
+function wrap_integrator_cache!(C, u, uprev)
+    return
+end
+function wrap_integrator_cache!(integrator)
+    wrap_integrator_cache!(integrator.cache, integrator.u, integrator.uprev)
 end
 function getaffect(R::PeriodicBox{D, Re}) where {D, Re}
     function affect!(integrator)
         vars = divide_dims(integrator.u, D)
         if length(vars) == 1
-            x = vars[1]
+            x = vars[1] # ! Updated position
             reenterbox!(similar(x), x, _corners(R)...; reset = Re)
         else
             x = vars[1]
             v = vars[2]
             reenterbox!(v, x, _corners(R)...; reset = Re)
         end
+        wrap_integrator_cache!(integrator)
     end
 end
 
@@ -212,7 +244,7 @@ function getcondition(R::ReentrantBox{D}) where {D}
 end
 
 function (B::AbstractBoxBoundary)(; kwargs...)
-    DiscreteCallback(getcondition(B), getaffect(B); save_positions = (false, false), # ! Will need to think about this more
+    DiscreteCallback(getcondition(B), getaffect(B); save_positions = (false, true),
                      kwargs...)
 end
 

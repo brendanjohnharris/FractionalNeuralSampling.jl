@@ -17,7 +17,7 @@ using Random
 import ..NoiseProcesses
 import ..FractionalNeuralSampling: divide_dims
 import ..NoiseProcesses: lfsn
-import ..Solvers: CaputoEM
+import ..Solvers: CaputoEM, MultiCaputoEM, PositionalCaputoEM
 using ..Densities
 import ..Densities.Density
 import ..Boundaries: init

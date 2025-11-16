@@ -36,7 +36,7 @@ function Base.getindex(p::ConcretePower{T, BT, P}, k::Integer, j::Integer) where
             # fractional operator is applied PRIOR to the regular gradient operator.
             return a
         else
-            return convert(T, a)^p.p # Riesz fraction
+            return convert(T, a)^p.p
         end
     else
         # If the base operator is diagonal, so is the powered operator.

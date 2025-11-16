@@ -528,7 +528,7 @@ end
     box = ReflectingBox(-5 .. 5)
     # box = NoBoundary()
     u0 = [0.0, 1.0]
-    tspan = (0.0, 1000.0) # Must be a matrix; col 1 is position, col2 is momentum
+    tspan = (0.0, 1000.0)
     # 𝜋 = Density(Normal(0, 0.25))
     𝜋 = Density(Uniform(-5, 5)) # No potential here is pathalogical; no transient to momentum equilibrium
     S = Langevin(; u0, tspan, β = 1.0, η = 0.1, boundaries = box(), 𝜋)
