@@ -35,7 +35,7 @@ function tFOLE(;
                u0 = [0.0],
                boundaries = nothing,
                noise_rate_prototype = similar(u0),
-               seed = nothing,
+               seed = rand(UInt32),
                noise = gen_fbm(β; u0, tspan, dt),
                callback = (),
                alg = CaputoEM(β, 1000),

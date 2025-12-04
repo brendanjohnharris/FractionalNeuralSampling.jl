@@ -25,8 +25,8 @@ function bFOLE(;
                u0 = [0.0],
                boundaries = nothing,
                noise_rate_prototype = similar(u0),
-               seed = nothing,
-               noise = gen_lfsm(α, β; u0, tspan, dt, seed),
+               seed = rand(UInt32),
+               noise = gen_lfsm(α, β; u0, tspan, dt, seed = rand(Xoshiro(seed), UInt32)),
                approx_n_modes = 1000,
                alg = CaputoEM(β, 1000), # Should match the order of the noise
                callback = (),
@@ -41,7 +41,7 @@ function bFOLE(;
             dt,
             p = (; η, α, β, ∇𝒟𝜋, 𝜋s, λ),
             𝜋,
-            seed = rand(Xoshiro(seed), UInt),
+            seed,
             alg,
             kwargs...) |> assert_dimension(; order = 1)
 end

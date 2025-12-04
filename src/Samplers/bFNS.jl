@@ -15,7 +15,7 @@ function bfns_g!(du, u, p, t)
     dv .= 0.0
 end
 
-function gen_lfsm_fns(α, β; u0, tspan, dt, seed, nhist) # * 1D with zeros for momentum noise
+function gen_lfsm_fns(α, β; tspan, dt, seed, nhist) # * 1D with zeros for momentum noise
     tmin = length(tspan) == 2 ? minimum(tspan) : 0
     tmax = maximum(tspan)
     H = one(α) / 2 - β / 2 + 1 / α
@@ -44,9 +44,9 @@ function bFNS(;
     τ=length(tspan) == 2 ? (tspan[2] - tspan[1]) / 10 : tspan / 10, # History length for caputo and lfsn
     u0=[0.0, 0.0],
     boundaries=nothing,
-    seed=nothing,
+    seed=rand(UInt32),
     noise_rate_prototype=similar(u0),
-    noise=gen_lfsm_fns(α, β; u0, tspan, dt, seed, nhist=round(Int, τ / dt)),
+    noise=gen_lfsm_fns(α, β; tspan, dt, seed=rand(Xoshiro(seed), UInt32), nhist=round(Int, τ / dt)),
     alg=PositionalCaputoEM(β, round(Int, τ / dt)), # Should match the order of the noise
     callback=(),
     kwargs...)
@@ -64,6 +64,7 @@ function bFNS(;
         p=(; α, β, γ, η, ∇𝒟𝜋, 𝜋s, λ),
         𝜋,
         alg,
+        seed,
         kwargs...) |> assert_dimension(; order=2)
 end
 

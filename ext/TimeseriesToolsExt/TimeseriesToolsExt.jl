@@ -3,16 +3,18 @@ using TimeseriesTools
 using FractionalNeuralSampling
 using Distributions
 import FractionalNeuralSampling: samplingpower, samplingaccuracy, samplingefficiency,
-                                 _samplingaccuracy
+    _samplingaccuracy
 
 function cdf_quantiles(n, dist::UnivariateDistribution)
     map(Base.Fix1(quantile, dist), (0.5:n) ./ n)
 end
-function wasserstein(samples, quantiles, domain; p::Int = 1)
+function wasserstein(samples, quantiles, domain; p::Int=1)
     sorted_samples = sort(samples)
-    idxs = map(∈(domain), sorted_samples)
     differences = abs.(sorted_samples .- quantiles)
-    differences = differences[idxs] # Only in-domain samples
+    if !isnothing(domain)
+        idxs = map(∈(domain), sorted_samples)
+        differences = differences[idxs] # Only in-domain samples
+    end
     if p == 1
         return mean(differences)
     else
@@ -25,7 +27,7 @@ The variance of differences scaled by the time step.
 Also known as rate of quadratic variation.
 For p != 2, this uses other norms of the increments (generalized variation).
 """
-function samplingpower(x, dt; p = 2)
+function samplingpower(x, dt; p=2)
     # # # Compute squared increments
     # # dx² = map(Base.Fix1(sum, abs2), diff(x))
 
@@ -39,8 +41,18 @@ function samplingpower(x, dt; p = 2)
     return (p_var)^(1 / p) / T
 end
 
-function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; p = 0, # No overlap by default
-                           domain = nothing)
+function _samplingaccuracy(x, 𝜋::AbstractDensity; domain=nothing)
+    τ = length(x)
+    if τ < 2
+        error("Minimum τ (samples) must be at least 2")
+    end
+    # * Calculate wasserstein distance
+    quantiles = cdf_quantiles(τ, distribution(𝜋))
+    wasserstein(x, quantiles, domain)
+end
+
+function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector; p=0, # No overlap by default
+    domain=nothing)
     if minimum(τs) < 2
         error("Minimum τ (samples) must be at least 2")
     end
@@ -55,8 +67,8 @@ function _samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100
     end
 end
 
-function samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector = 2:100; kwargs...)
-    ws = _samplingaccuracy(x, 𝜋, τs; kwargs...)
+function samplingaccuracy(x, 𝜋::AbstractDensity, args...; kwargs...)
+    ws = _samplingaccuracy(x, 𝜋, args...; kwargs...)
     return ws
 end
 
@@ -66,7 +78,7 @@ samplingpower(x::RegularTimeseries) = samplingpower(x, step(x))
 Taus in unit steps
 """
 function samplingaccuracy(x::RegularTimeseries, 𝜋::AbstractDensity, τs::AbstractVector;
-                          kwargs...)
+    kwargs...)
     y = samplingaccuracy(parent(x), 𝜋, τs; kwargs...)
     return ToolsArray(y, 𝑡(τs .* samplingperiod(x)))
 end
