@@ -38,7 +38,7 @@ function lfsn(N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
 
     # Validate parameters
     @assert 0<α<=2 "α must be in (0, 2]"
-    @assert 0<H<1 "H must be in (0, 1)"
+    @assert 0<H<1 "H must be in (0, 1); got α=$α, H=$H)"
     @assert sigma>0 "sigma must be positive"
     @assert N > 0&&m > 0 && M > 0 "N, m, M must be positive"
 

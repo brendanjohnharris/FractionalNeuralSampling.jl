@@ -22,15 +22,15 @@ using ..Densities
 import ..Densities.Density
 import ..Boundaries: init
 import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
-                  prepare_initial_state,
-                  promote_tspan, warn_paramtype, @add_kwonly
+    prepare_initial_state,
+    promote_tspan, warn_paramtype, @add_kwonly
 
 import StochasticDiffEq: EM
 
 export AbstractSampler, Sampler, parameters
 
-abstract type AbstractSampler{uType, tType, isinplace, ND} <:
-              AbstractSDEProblem{uType, tType, isinplace, ND} end
+abstract type AbstractSampler{uType,tType,isinplace,ND} <:
+              AbstractSDEProblem{uType,tType,isinplace,ND} end
 
 const compatible_solvers = (:EM, :CaputoEM)
 
@@ -42,42 +42,42 @@ function SciMLBase.solve(P::AbstractSampler; kwargs...)
     end
 end
 
-const Labelled = Union{SLArray, LArray, NamedTuple}
+const Labelled = Union{SLArray,LArray,NamedTuple}
 
-struct Sampler{uType, tType, isinplace, P <: Labelled, NP, F, G, K, ND,
-               D <: AbstractDensity} <:
-       AbstractSampler{uType, tType, isinplace, ND}
+struct Sampler{uType,tType,isinplace,P<:Labelled,NP,F,G,K,ND,
+    D<:Union{AbstractDensity,Function}} <:
+       AbstractSampler{uType,tType,isinplace,ND}
     f::F
     g::G
     u0::uType
     tspan::tType
-    p::Tuple{P, D} # = (params, 𝜋)
+    p::Tuple{P,D} # = (params, 𝜋)
     noise::NP
     kwargs::K
     noise_rate_prototype::ND
     seed::UInt64
 end
 function Sampler{isinplace}(f::F, g::G, u0::uType, # For @set
-                            tspan::tType,
-                            p::Tuple{P, D},
-                            noise::NP, kwargs::K,
-                            noise_rate_prototype::ND,
-                            seed::UInt64) where {uType,
-                                                 tType,
-                                                 isinplace,
-                                                 P <: Labelled,
-                                                 NP, F,
-                                                 G, K,
-                                                 ND, D}
-    Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D}(f, g, u0, tspan, p, noise,
-                                                            kwargs, noise_rate_prototype,
-                                                            seed)
+    tspan::tType,
+    p::Tuple{P,D},
+    noise::NP, kwargs::K,
+    noise_rate_prototype::ND,
+    seed::UInt64) where {uType,
+    tType,
+    isinplace,
+    P<:Labelled,
+    NP,F,
+    G,K,
+    ND,D}
+    Sampler{uType,tType,isinplace,P,NP,F,G,K,ND,D}(f, g, u0, tspan, p, noise,
+        kwargs, noise_rate_prototype,
+        seed)
 end
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
 SciMLBase.is_diagonal_noise(S::Sampler) = true
 
-function default_density(u0; dims = length(u0) ÷ 2)
+function default_density(u0; dims=length(u0) ÷ 2)
     u0 = divide_dims(u0, dims) |> first
     if length(u0) == 1
         D = Normal(0.0, 1.0)
@@ -91,29 +91,29 @@ function default_density(u0::Real)
     Normal(0.0, 1.0) |> Density
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}, u0, tspan,
-                      p::Tuple{<:Labelled, D} = (NullParameters(),
-                                                 (default_density ∘ first)(u0));
-                      noise_rate_prototype = nothing,
-                      noise = nothing,
-                      seed = UInt64(0),
-                      kwargs...) where {iip, D <: AbstractDensity}
+    p::Tuple{<:Labelled,D}=(NullParameters(),
+        (default_density ∘ first)(u0));
+    noise_rate_prototype=nothing,
+    noise=nothing,
+    seed=UInt64(0),
+    kwargs...) where {iip,D<:Union{AbstractDensity,Function}}
     _u0 = prepare_initial_state(u0)
     _tspan = promote_tspan(tspan)
     warn_paramtype(p)
-    Sampler{typeof(_u0), typeof(_tspan),
-            isinplace(f), typeof(first(p)),
-            typeof(noise), typeof(f), typeof(f.g), typeof(kwargs),
-            typeof(noise_rate_prototype), D}(f, f.g, _u0, _tspan, p,
-                                             noise,
-                                             kwargs,
-                                             noise_rate_prototype, seed)
+    Sampler{typeof(_u0),typeof(_tspan),
+        isinplace(f),typeof(first(p)),
+        typeof(noise),typeof(f),typeof(f.g),typeof(kwargs),
+        typeof(noise_rate_prototype),D}(f, f.g, _u0, _tspan, p,
+        noise,
+        kwargs,
+        noise_rate_prototype, seed)
 end
 function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan,
-                      p,
-                      kwargs...) where {iip}
+    p,
+    kwargs...) where {iip}
     Sampler{iip}(f, u0, tspan, p; kwargs...)
 end
-function Sampler{iip}(; f, g = nothing, kwargs...) where {iip}
+function Sampler{iip}(; f, g=nothing, kwargs...) where {iip}
     if f isa AbstractSDEFunction
         Sampler{iip}(f; kwargs...)
     elseif !isnothing(g)
@@ -123,7 +123,7 @@ function Sampler{iip}(; f, g = nothing, kwargs...) where {iip}
     end
 end
 function Sampler(f::AbstractSDEFunction, args...;
-                 kwargs...)
+    kwargs...)
     Sampler{isinplace(f)}(f, args...; kwargs...)
 end
 # function Sampler(f, g, args...; p, kwargs...)
@@ -170,7 +170,7 @@ end
 
 function assert_dimension(S::AbstractSampler; order)
     u0 = S.u0
-    assert_dimension(u0; order, dimension = dimension(Density(S)))
+    assert_dimension(u0; order, dimension=dimension(Density(S)))
     return S
 end
 

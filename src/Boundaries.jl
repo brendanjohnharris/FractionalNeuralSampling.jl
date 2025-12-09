@@ -250,6 +250,7 @@ end
 
 init(B::AbstractBoxBoundary; kwargs...) = B(; kwargs...)
 init(::Nothing; kwargs...) = nothing
+init(; kwargs...) = nothing
 init(D::DECallback; kwargs...) = D
 
 function domain(R::AbstractBoxBoundary)

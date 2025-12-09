@@ -30,7 +30,6 @@ function FNS(;
              kwargs...)
     p = SLVector(; α, β, γ)
 
-
     Sampler(fns_f!, fns_g!;
             callback = CallbackSet(init(boundaries), callback...),
             kwargs...,
