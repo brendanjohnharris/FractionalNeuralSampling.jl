@@ -40,7 +40,7 @@ function bFNS(;
               𝜋, # Target distribution
               domain, # An Interval
               approx_n_modes = 1000,
-              λ = 1e-9, # Regularization to avoid overflow in low-prob regions
+              λ = 1e-4, # Regularization to avoid overflow in low-prob regions
               τ = length(tspan) == 2 ? (tspan[2] - tspan[1]) / 10 : tspan / 10, # History length for caputo and lfsn
               u0 = [0.0, 0.0],
               boundaries = nothing,

@@ -19,7 +19,7 @@ function sfns_g!(du, u, p, t)
 end
 
 function sFNS(;
-              tspan, α, β, γ, λ = 1e-9, u0 = [0.0, 0.0],
+              tspan, α, β, γ, λ = 1e-4, u0 = [0.0, 0.0],
               boundaries = nothing,
               domain, # The domain for the spatial fractional derivative
               approx_n_modes = 1000,

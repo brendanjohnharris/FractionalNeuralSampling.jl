@@ -21,7 +21,7 @@ function bFOLE(;
                β, # Fractional order time
                𝜋, # Target distribution
                domain, # An Interval
-               λ = 1e-9, # Regularization to avoid overflow in low-prob regions
+               λ = 1e-4, # Regularization to avoid overflow in low-prob regions
                u0 = [0.0],
                boundaries = nothing,
                noise_rate_prototype = similar(u0),

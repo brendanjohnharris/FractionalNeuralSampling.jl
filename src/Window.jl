@@ -75,7 +75,6 @@
 # # Get oldest element (same as w[1])
 # oldest(w::Window) = w[1]
 
-
 # # ...................................
 # """
 # Efficient circular buffer for in-practice fixed-size history storage.
@@ -157,8 +156,6 @@
 # # Get oldest element (same as w[1])
 # oldest(w::Window) = w[1]
 
-
-
 """
 Optimized Window implementations for Julia
 Choose based on your use case
@@ -189,7 +186,7 @@ mutable struct Window{T} <: AbstractVector{T}
     end
 end
 
-Window(data::NTuple{N,T}) where {N,T} = Window(collect(data))
+Window(data::NTuple) = Window(collect(data))
 Window(u::T, len::Int) where {T} = Window(fill(zero(u), len))
 
 # Core functionality with optimizations
@@ -223,7 +220,7 @@ end
 end
 
 # Iteration support
-function Base.iterate(w::Window, state=1)
+function Base.iterate(w::Window, state = 1)
     state > w.len ? nothing : (@inbounds(w[state]), state + 1)
 end
 
@@ -235,7 +232,7 @@ Base.copy(w::Window) = Window(copy(w.data))
 # Broadcasting
 Base.BroadcastStyle(::Type{<:Window}) = Broadcast.ArrayStyle{Window}()
 function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{Window}},
-    ::Type{ElType}) where {ElType}
+                      ::Type{ElType}) where {ElType}
     Window{ElType}(length(bc))
 end
 
@@ -248,7 +245,7 @@ Base.lastindex(w::Window) = w.len
 # Convert to contiguous array
 function as_vector(w::Window)
     out = similar(w.data)
-    @inbounds for i in 1:w.len
+    @inbounds for i in 1:(w.len)
         out[i] = w[i]
     end
     return out

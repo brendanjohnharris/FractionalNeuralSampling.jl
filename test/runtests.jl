@@ -189,11 +189,11 @@ end
 @testitem "Space-fractional neural sampling bias" setup=[Setup] begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 5000.0)
-    dt = 0.01
+    dt = 0.05
     D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
     domain = -15 .. 15
     boundaries = PeriodicBox(-7 .. 7)
-    S = sFNS(; u0, tspan, α = 1.3, β = 0.25, γ = 0.5, 𝜋 = D, domain, boundaries)
+    S = sFNS(; u0, tspan, α = 1.5, β = 0.05, γ = 0.5, 𝜋 = D, domain, boundaries)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
