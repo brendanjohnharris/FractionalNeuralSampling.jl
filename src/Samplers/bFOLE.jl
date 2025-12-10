@@ -33,7 +33,7 @@ function bFOLE(;
                kwargs...)
     ∇𝒟𝜋, 𝜋s = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     Sampler(sfole_f!, sfole_g!;
-            callback = CallbackSet(init(boundaries), callback...),
+            callback = CallbackSet(boundary_init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,

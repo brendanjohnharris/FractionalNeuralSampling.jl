@@ -33,7 +33,7 @@ function sFNS(;
     ∇𝒟𝜋, 𝜋s = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     p = (; α, β, γ, ∇𝒟𝜋, 𝜋s, λ)
     Sampler(sfns_f!, sfns_g!;
-            callback = CallbackSet(init(boundaries), callback...),
+            callback = CallbackSet(boundary_init(boundaries), callback...),
             kwargs...,
             u0,
             noise_rate_prototype, noise,

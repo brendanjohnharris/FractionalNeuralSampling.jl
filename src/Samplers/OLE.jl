@@ -25,7 +25,7 @@ function OLE(;
              alg = EM(),
              kwargs...)
     Sampler(ole_f!, ole_g!;
-            callback = CallbackSet(init(boundaries), callback...),
+            callback = CallbackSet(boundary_init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,

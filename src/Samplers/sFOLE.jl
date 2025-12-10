@@ -1,7 +1,7 @@
 import ApproxFun: Operator, Derivative, Fun, Fourier, Laplacian, ApproxFunBase
 import ..FractionalNeuralSampling: Power
 
-function space_fractional_drift(𝜋; α, domain, approx_n_modes=10000)
+function space_fractional_drift(𝜋; α, domain, approx_n_modes = 10000)
     S = Fourier(domain) # Could use Laurent for complex functions
     D = Derivative(S, 1)
     Δ = maybeLaplacian(S)
@@ -37,32 +37,32 @@ end
 Space fractional overdamped langevin equation
 """
 function sFOLE(;
-    tspan,
-    η, # Noise strength
-    α, # Fractional order
-    𝜋, # Target distribution
-    domain, # An Interval
-    λ=0.001, # Regularization to avoid overflow in low-prob regions
-    u0=[0.0],
-    boundaries=nothing,
-    noise_rate_prototype=similar(u0),
-    noise=NoiseProcesses.LevyProcess!(α; ND=dimension(𝜋),
-        W0=zero(u0)),
-    approx_n_modes=1000,
-    alg=EM(),
-    callback=(),
-    kwargs...)
+               tspan,
+               η, # Noise strength
+               α, # Fractional order
+               𝜋, # Target distribution
+               domain, # An Interval
+               λ = 0.001, # Regularization to avoid overflow in low-prob regions
+               u0 = [0.0],
+               boundaries = nothing,
+               noise_rate_prototype = similar(u0),
+               noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
+                                                   W0 = zero(u0)),
+               approx_n_modes = 1000,
+               alg = EM(),
+               callback = (),
+               kwargs...)
     ∇𝒟𝜋, 𝜋s = space_fractional_drift(𝜋; α, domain, approx_n_modes)
     Sampler(sfole_f!, sfole_g!;
-        callback=CallbackSet(init(boundaries), callback...),
-        u0,
-        noise_rate_prototype,
-        noise,
-        tspan,
-        p=(; η, α, ∇𝒟𝜋, 𝜋s, λ),
-        𝜋,
-        alg,
-        kwargs...) |> assert_dimension(; order=1)
+            callback = CallbackSet(boundary_init(boundaries), callback...),
+            u0,
+            noise_rate_prototype,
+            noise,
+            tspan,
+            p = (; η, α, ∇𝒟𝜋, 𝜋s, λ),
+            𝜋,
+            alg,
+            kwargs...) |> assert_dimension(; order = 1)
 end
 
 const SpaceFractionalOverdampedLangevinEquation = sFOLE

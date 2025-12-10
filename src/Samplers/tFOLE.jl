@@ -41,7 +41,7 @@ function tFOLE(;
                alg = CaputoEM(β, 1000),
                kwargs...)
     Sampler(tfole_f!, tfole_g!;
-            callback = CallbackSet(init(boundaries), callback...),
+            callback = CallbackSet(boundary_init(boundaries), callback...),
             u0,
             noise_rate_prototype,
             noise,

@@ -248,10 +248,10 @@ function (B::AbstractBoxBoundary)(; kwargs...)
                      kwargs...)
 end
 
-init(B::AbstractBoxBoundary; kwargs...) = B(; kwargs...)
-init(::Nothing; kwargs...) = nothing
-init(; kwargs...) = nothing
-init(D::DECallback; kwargs...) = D
+boundary_init(B::AbstractBoxBoundary; kwargs...) = B(; kwargs...)
+boundary_init(::Nothing; kwargs...) = nothing
+boundary_init(; kwargs...) = nothing
+boundary_init(D::DECallback; kwargs...) = D
 
 function domain(R::AbstractBoxBoundary)
     [Interval(is...) for is in zip(R.min_corner, R.max_corner)]

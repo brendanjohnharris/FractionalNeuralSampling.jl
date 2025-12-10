@@ -31,7 +31,7 @@ function FNS(;
     p = SLVector(; α, β, γ)
 
     Sampler(fns_f!, fns_g!;
-            callback = CallbackSet(init(boundaries), callback...),
+            callback = CallbackSet(boundary_init(boundaries), callback...),
             kwargs...,
             u0,
             noise_rate_prototype, noise,
