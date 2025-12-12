@@ -44,6 +44,7 @@ include("Samplers.jl")
 @reexport using .Boundaries
 @reexport using .Samplers
 @reexport using .Solvers
+import .Boundaries: domain
 
 # * Extension placeholders
 function samplingpower end

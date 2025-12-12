@@ -191,9 +191,9 @@ end
     tspan = (0.0, 5000.0)
     dt = 0.05
     D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
-    domain = -15 .. 15
+    d = -15 .. 15
     boundaries = PeriodicBox(-7 .. 7)
-    S = sFNS(; u0, tspan, α = 1.5, β = 0.05, γ = 0.5, 𝜋 = D, domain, boundaries)
+    S = sFNS(; u0, tspan, α = 1.5, β = 0.05, γ = 0.5, 𝜋 = D, domain = d, boundaries)
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -210,6 +210,28 @@ end
     lines!(-4:0.1:4, D.(-4:0.1:4); color = :crimson)
     current_figure()
     @test evaluate(KLDivergence(), D, x) < 0.05
+end
+
+@testitem "2D sFNS" setup=[Setup] begin
+    u0 = ArrayPartition([0.0, 0.0], [0.0, 0.0])
+    tspan = (0.0, 50.0)
+    dt = 0.05
+    D = Density(MixtureModel(MvNormal, [([-2, -2], I(2)), ([2, 2], I(2))]))
+    d = (-7 .. 7, -7 .. 7)
+    boundaries = PeriodicBox(-5 .. 5, -5 .. 5)
+    S = sFNS(; u0, tspan, α = 1.5, β = 0.05, γ = 0.5, 𝜋 = D, domain = d, boundaries,
+             approx_n_modes = 1000)
+
+    W = @test_nowarn remake(S, p = S.p)
+    @test_nowarn solve(W, EM(); dt, saveat = 0.01)
+    @test W.p == S.p
+    @test W.u0 == S.u0
+    @test W.tspan == S.tspan
+    @test W.f == S.f
+    @test W.g == S.g
+
+    sol = solve(S; dt)
+    # ! Tests divergence against target distribution
 end
 
 @testitem "Recursive Arrays" setup=[Setup] begin

@@ -1,11 +1,19 @@
 import SpecialFunctions: gamma
 
-# * "Fractional neural sampling as a theory of spatiotemporal probabilistic computations in neural circuits", Qi and Gong
+# * "Fractional neural sampling as a theory of spatiotemporal probabilistic computations in
+#   neural circuits", Qi and Gong
+function maybeonly(x)
+    if length(x) == 1
+        return only(x)
+    else
+        return x
+    end
+end
 function sfns_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack α, β, γ, ∇𝒟𝜋, 𝜋s, λ = ps
     x, v = divide_dims(u, dimension(𝜋))
-    b = ∇𝒟𝜋(only(x)) / (𝜋s(only(x)) + λ)
+    b = ∇𝒟𝜋(maybeonly(x)) / (𝜋s(maybeonly(x)) + λ)
     dx, dv = divide_dims(du, length(du) ÷ 2)
     dx .= γ .* b .+ β .* v
     dv .= β .* b

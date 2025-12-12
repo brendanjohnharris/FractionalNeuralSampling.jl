@@ -1,13 +1,28 @@
 import ApproxFun: Operator, Derivative, Fun, Fourier, Laplacian, ApproxFunBase
 import ..FractionalNeuralSampling: Power
+using StaticArraysCore
 
-function space_fractional_drift(𝜋; α, domain, approx_n_modes = 10000)
+function space_fractional_deriv(::Val{1}; α, domain)
     S = Fourier(domain) # Could use Laurent for complex functions
     D = Derivative(S, 1)
     Δ = maybeLaplacian(S)
     @assert isdiag(Δ)
     @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
     𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
+    return S, D, 𝒟
+end
+function space_fractional_deriv(::Val{2}; α, domain)
+    S = reduce(*, map(Fourier, domain))  # Could use Laurent for complex functions
+    D = [Derivative(S, SVector{2}([1, 0])); Derivative(S, SVector{2}([0, 1]))]
+    Δ = maybeLaplacian(S)
+    @assert isdiag(Δ)
+    @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
+    𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
+    return S, D, 𝒟
+end
+
+function space_fractional_drift(𝜋; approx_n_modes = 10000, kwargs...)
+    S, D, 𝒟 = space_fractional_deriv(Val(dimension(𝜋)); kwargs...)
     𝜋s = Fun(𝜋, S, approx_n_modes)
     ∇𝒟𝜋 = D * 𝒟 * 𝜋s
     return ∇𝒟𝜋, 𝜋s

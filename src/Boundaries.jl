@@ -9,7 +9,7 @@ using LogDensityProblems
 import ..FractionalNeuralSampling: divide_dims, Densities.AbstractDensity
 
 export AbstractBoundary, AbstractContinuousBoundary, AbstractBoxBoundary, ReflectingBox,
-       NoBoundary, PeriodicBox, ReentrantBox, domain, gridaxes, grid
+       NoBoundary, PeriodicBox, ReentrantBox, gridaxes, grid
 
 # ? Boundary conditions are just callbacks
 abstract type AbstractBoundary{D} end
