@@ -15,11 +15,11 @@ struct PositionalCaputoEM{T} <: FractionalAlgorithm
     end
 end
 
-function PositionalCaputoEM(β1::T, nhist::Int) where {T<:AbstractFloat}
+function PositionalCaputoEM(β1::T, nhist::Int) where {T <: AbstractFloat}
     PositionalCaputoEM{T}(β1, nhist)
 end
 
-struct PositionalCaputoEMCache{T,uType<:AbstractArray{<:T},rateType,rateNoiseType} <:
+struct PositionalCaputoEMCache{T, uType <: AbstractArray{<:T}, rateType, rateNoiseType} <:
        StochasticDiffEqMutableCache
     u::uType                   # Current state
     uhist1::Window{T}          # History of Δx₁ only (length nhist)
@@ -43,16 +43,16 @@ ratenoise_cache(c::PositionalCaputoEMCache) = tuple(c.rtmp2)
 
 # -- cache builder
 function alg_cache(alg::PositionalCaputoEM, prob, u, ΔW, ΔZ, p,
-    rate_prototype,
-    noise_rate_prototype,
-    jump_rate_prototype,
-    ::Type{uEltypeNoUnits},
-    ::Type{uBottomEltypeNoUnits},
-    ::Type{tTypeNoUnits},
-    uprev, f, t, dt,
-    ::Type{Val{true}}) where {uEltypeNoUnits,
-    uBottomEltypeNoUnits,
-    tTypeNoUnits}
+                   rate_prototype,
+                   noise_rate_prototype,
+                   jump_rate_prototype,
+                   ::Type{uEltypeNoUnits},
+                   ::Type{uBottomEltypeNoUnits},
+                   ::Type{tTypeNoUnits},
+                   uprev, f, t, dt,
+                   ::Type{Val{true}}) where {uEltypeNoUnits,
+                                             uBottomEltypeNoUnits,
+                                             tTypeNoUnits}
     tmp = zero(u)
     rtmp1 = zero(rate_prototype)
     rtmp2 = noise_rate_prototype === nothing ? nothing : zero(noise_rate_prototype)

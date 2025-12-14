@@ -1,4 +1,5 @@
 module Solvers
+using UnPack
 import ..FractionalNeuralSampling: Window
 import ..Boundaries: wrap_integrator_cache!
 import StochasticDiffEq: StochasticDiffEqAlgorithm,
@@ -6,7 +7,7 @@ import StochasticDiffEq: StochasticDiffEqAlgorithm,
                          alg_cache, full_cache, jac_iter, rand_cache, ratenoise_cache,
                          perform_step!, is_split_step, is_diagonal_noise,
                          alg_compatible, DiffEqBase, SVector,
-                         @cache, @muladd, @unpack, @..
+                         @cache, @muladd, @..
 
 import SpecialFunctions: gamma
 using LinearAlgebra
