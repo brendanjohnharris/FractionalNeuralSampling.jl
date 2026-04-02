@@ -67,9 +67,10 @@ function alg_cache(alg::MultiCaputoEM, prob, u, ΔW, ΔZ, p,
                    ::Type{uBottomEltypeNoUnits},
                    ::Type{tTypeNoUnits},
                    uprev, f, t, dt,
-                   ::Type{Val{true}}) where {uEltypeNoUnits,
-                                             uBottomEltypeNoUnits,
-                                             tTypeNoUnits}
+                   ::Type{Val{true}},
+                   verbose = false) where {uEltypeNoUnits,
+                                           uBottomEltypeNoUnits,
+                                           tTypeNoUnits}
     tmp = zero(u)
     rtmp1 = zero(rate_prototype)
     if noise_rate_prototype !== nothing

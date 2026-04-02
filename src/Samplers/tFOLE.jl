@@ -18,8 +18,8 @@ function gen_fbm(β; u0, tspan, dt, seed) # * 1d for now
     tmax = maximum(tspan)
     H = 1 - β / 2
     N = Int(tspan / dt) + 1
-    x = cumsum(lfsn(N, α, H; dt, rng = Xoshiro(seed)))
-    ts = range(tmin, step = dt, length = N)
+    x = cumsum(lfsn(N, α, H; dt, rng=Xoshiro(seed)))
+    ts = range(tmin, step=dt, length=N)
     @assert last(ts) == tmax
     return NoiseGrid(ts, x)
 end
@@ -28,29 +28,29 @@ end
 Overdamped langevin equation
 """
 function tFOLE(;
-               tspan,
-               dt,
-               η, # Noise strength
-               β, # Fractional order in time
-               u0 = [0.0],
-               boundaries = nothing,
-               noise_rate_prototype = similar(u0),
-               seed = rand(UInt32),
-               noise = gen_fbm(β; u0, tspan, dt),
-               callback = (),
-               alg = CaputoEM(β, 1000),
-               kwargs...)
+    tspan,
+    dt,
+    η, # Noise strength
+    β, # Fractional order in time
+    u0=[0.0],
+    boundaries=nothing,
+    noise_rate_prototype=similar(u0),
+    seed=rand(UInt32),
+    noise=gen_fbm(β; u0, tspan, dt, seed),
+    callback=(),
+    alg=CaputoEM(β, 1000),
+    kwargs...)
     Sampler(tfole_f!, tfole_g!;
-            callback = CallbackSet(boundary_init(boundaries), callback...),
-            u0,
-            noise_rate_prototype,
-            noise,
-            tspan,
-            p = SLVector(; η, β),
-            dt,
-            seed = rand(Xoshiro(seed), UInt),
-            alg,
-            kwargs...) |> assert_dimension(; order = 1)
+        callback=CallbackSet(boundary_init(boundaries), callback...),
+        u0,
+        noise_rate_prototype,
+        noise,
+        tspan,
+        p=SLVector(; η, β),
+        dt,
+        seed=rand(Xoshiro(seed), UInt),
+        alg,
+        kwargs...) |> assert_dimension(; order=1)
 end
 
 const TemporalFractionalOverdampedLangevinEquation = tFOLE

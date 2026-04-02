@@ -50,9 +50,10 @@ function alg_cache(alg::PositionalCaputoEM, prob, u, ΔW, ΔZ, p,
                    ::Type{uBottomEltypeNoUnits},
                    ::Type{tTypeNoUnits},
                    uprev, f, t, dt,
-                   ::Type{Val{true}}) where {uEltypeNoUnits,
-                                             uBottomEltypeNoUnits,
-                                             tTypeNoUnits}
+                   ::Type{Val{true}},
+                   verbose = false) where {uEltypeNoUnits,
+                                           uBottomEltypeNoUnits,
+                                           tTypeNoUnits}
     tmp = zero(u)
     rtmp1 = zero(rate_prototype)
     rtmp2 = noise_rate_prototype === nothing ? nothing : zero(noise_rate_prototype)

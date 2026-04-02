@@ -45,16 +45,16 @@ begin # * Other exponent
     sol2 = _sol2 |> Timeseries |> eachcol |> only
 end
 
-begin # * Plot power spectrum
-    s = spectrum(rectify(sol, dims = 𝑡; tol = 1), 1)[10:end]
-    s2 = spectrum(rectify(sol2, dims = 𝑡; tol = 1), 1)[10:end]
+# begin # * Plot power spectrum
+#     s = spectrum(rectify(sol, dims = 𝑡; tol = 1), 1)[10:end]
+#     s2 = spectrum(rectify(sol2, dims = 𝑡; tol = 1), 1)[10:end]
 
-    s2 = (s2 ./ first(s2)) .* first(s)
+#     s2 = (s2 ./ first(s2)) .* first(s)
 
-    plotspectrum(s)
-    plotspectrum!(current_axis(), s2)
-    display(current_figure())
-end
+#     plotspectrum(s)
+#     plotspectrum!(current_axis(), s2)
+#     display(current_figure())
+# end
 
 begin # * Stepping cost
     alg = @inferred EM()
@@ -119,6 +119,6 @@ begin # * 2D example
 
     f = Figure()
     ax = Axis(f[1, 1], xlabel = "x", ylabel = "y")
-    lines!(ax, eachcol(sol2)..., linewidth = 1)
+    lines!(ax, eachcol(collect(sol2))..., linewidth = 1)
     display(f)
 end
