@@ -14,9 +14,9 @@ import FractionalNeuralSampling: Density
 
 begin
     Random.seed!(11)
-    α = 1.4
-    β = 1.0
-    γ = 0.0
+    α = 1.5
+    β = 0.9
+    γ = 0.1
     η = 0.2
     dt = 0.1
     𝜋 = MixtureModel([Normal(-2, 0.5), Normal(2, 0.5)]) |> Density
