@@ -1,7 +1,7 @@
 name = "FractionalNeuralSampling"
 uuid = "1a146edb-494d-4c3d-929d-e214933c7497"
 authors = ["brendanjohnharris <bhar9988@uni.sydney.edu.au> and contributors"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
