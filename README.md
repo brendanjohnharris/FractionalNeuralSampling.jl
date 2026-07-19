@@ -57,7 +57,6 @@ Samplers are keyword constructors returning a `Sampler <: AbstractSDEProblem`. E
 | `bFNS` | `BiFractionalNeuralSampler` | FNS with both spatial and temporal fractional orders |
 | `tFOLE`, `sFOLE`, `bFOLE` | — | Temporal-, space-, and bi-fractional overdamped Langevin |
 | `FHMC` | `FractionalHamiltonianMonteCarlo` | Fractional Hamiltonian Monte Carlo |
-| `AdaptiveWalkSampler`, `AdaptiveLevySampler` | — | Samplers with an adaptation field built from a history kernel |
 
 For example, a Langevin sampler of a standard normal:
 
