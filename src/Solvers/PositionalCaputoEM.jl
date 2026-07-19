@@ -93,7 +93,7 @@ end
     u_choice = is_split_step(integrator.alg) ? u : uprev
 
     # Diffusion g(xₙ)
-    integrator.g(rtmp2, u_choice, p, t)
+    integrator.f.g(rtmp2, u_choice, p, t) # v7 has no integrator.g field
 
     # Jump noise (additive term into tmp)
     if P !== nothing

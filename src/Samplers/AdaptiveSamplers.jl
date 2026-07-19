@@ -37,7 +37,7 @@ function kernel_effect!(integrator)
     da_K = -p.a_K ./ τ_d .+ a_k̂ ./ τ_r
     p.a_K .+= da_K .* dt
 
-    u_modified!(integrator, false)
+    derivative_discontinuity!(integrator, false) # SciMLBase v3 name for u_modified!
 end
 
 # * Adaptive walk (Gaussian noise)

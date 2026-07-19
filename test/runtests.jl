@@ -468,6 +468,8 @@ end
     @test logdensity(D)(ps) == logpdf.([d], ps)
     @test gradlogdensity(D)(p) == gradlogpdf(d, p)
     @test map(gradlogdensity(D), ps) == gradlogpdf.([d], ps)
+    @test gradlogdensity(D)(collect(ps)) == gradlogpdf.([d], ps) # Collection of positions
+    @test gradlogdensity(D)([view(p, 1:N)]) == [gradlogpdf(d, p)] # Views, as in solvers
 
     # * Ad
     D = @test_nowarn Density(MvNormal(μs, Σ), true)
@@ -1019,6 +1021,12 @@ end
 
 @testitem "CaputoEM" begin
     include("./Solvers/CaputoEM.jl")
+end
+@testitem "MultiCaputoEM" begin
+    include("./Solvers/MultiCaputoEM.jl")
+end
+@testitem "PositionalCaputoEM" begin
+    include("./Solvers/PositionalCaputoEM.jl")
 end
 @testitem "LFSM" begin
     include("./lfsn.jl")

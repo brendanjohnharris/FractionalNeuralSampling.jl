@@ -19,16 +19,12 @@ begin # * Distribution densities; supply a Distributions.Distribution, get a den
     logdensity(D::DistributionDensity) = Base.Fix1(logpdf, distribution(D))
     gradlogpdf(D::DistributionDensity) = Base.Fix1(gradlogpdf, distribution(D))
     gradpdf(D::DistributionDensity) = Base.Fix1(gradpdf, distribution(D))
-    # function _gradlogdensity(d::DistributionDensity{D, N, false},
-    #                          x::AbstractVector{T}) where {D, N, T <: Real}
-    #     gradlogpdf(D)(x)
-    # end
-    # function _gradlogdensity(d::DistributionDensity{D, N, false},
-    #                          x::AbstractVector{<:AbstractVector{T}}) where {D, N, T <: Real}
-    #     map(Base.Fix1(gradlogpdf, D), x)
-    # end
     function _gradlogdensity(d::DistributionDensity{D, N, false}, x) where {D, N}
         gradlogpdf(d)(x)
+    end
+    function _gradlogdensity(d::DistributionDensity{D, N, false}, # Collection of positions
+                             x::AbstractVector{<:AbstractVector{T}}) where {D, N, T <: Real}
+        map(gradlogpdf(d), x)
     end
     function _graddensity(d::DistributionDensity{D, N, false}, x) where {D, N}
         gradpdf(d)(x)

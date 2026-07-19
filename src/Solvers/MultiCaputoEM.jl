@@ -123,7 +123,7 @@ end
     end
 
     # * Compute noise coefficient
-    integrator.g(rtmp2, u_choice, p, t) # Update g(xₙ)
+    integrator.f.g(rtmp2, u_choice, p, t) # Update g(xₙ); v7 has no integrator.g field
 
     # * Jump noise
     if P !== nothing

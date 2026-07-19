@@ -2,12 +2,14 @@ module Solvers
 using UnPack
 import ..FractionalNeuralSampling: Window
 import ..Boundaries: wrap_integrator_cache!
-import StochasticDiffEq: StochasticDiffEqAlgorithm,
-                         StochasticDiffEqMutableCache,
-                         alg_cache, full_cache, jac_iter, rand_cache, ratenoise_cache,
-                         perform_step!, is_split_step, is_diagonal_noise,
-                         alg_compatible, DiffEqBase, SVector,
-                         @cache, @muladd, @..
+# Internals moved into the OrdinaryDiffEq.jl monorepo in the v7 wave; import from owners
+import StochasticDiffEqCore: StochasticDiffEqAlgorithm,
+                             StochasticDiffEqMutableCache,
+                             alg_cache, jac_iter, perform_step!,
+                             is_split_step, alg_compatible
+import DiffEqBase: DiffEqBase, full_cache, rand_cache, ratenoise_cache,
+                   is_diagonal_noise, @..
+import MuladdMacro: @muladd
 
 import SpecialFunctions: gamma
 using LinearAlgebra

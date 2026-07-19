@@ -35,10 +35,10 @@ end
 nhist(C::CaputoEM) = C.nhist
 nhist(C::CaputoEMCache) = length(C.uhist)
 
-full_cache(c::CaputoEM) = tuple(c.u, c.uhist, c.weights, c.correction, c.tmp, c.rtmp1)
-jac_iter(c::CaputoEM) = tuple()
-rand_cache(c::CaputoEM) = tuple()
-ratenoise_cache(c::CaputoEM) = tuple(c.rtmp2)
+full_cache(c::CaputoEMCache) = tuple(c.u, c.uhist, c.weights, c.correction, c.tmp, c.rtmp1)
+jac_iter(c::CaputoEMCache) = tuple()
+rand_cache(c::CaputoEMCache) = tuple()
+ratenoise_cache(c::CaputoEMCache) = tuple(c.rtmp2)
 
 caputo_factor(β::AbstractFloat, Δt::AbstractFloat) = gamma(2 - β) * Δt^(β - 1)
 
@@ -111,7 +111,7 @@ end
     end
 
     # * Do noise coefficient
-    integrator.g(rtmp2, u_choice, p, t) # * Update g(xₙ)
+    integrator.f.g(rtmp2, u_choice, p, t) # * Update g(xₙ); v7 has no integrator.g field
 
     # ! Jump noise
     if P !== nothing
