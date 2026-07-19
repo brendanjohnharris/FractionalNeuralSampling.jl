@@ -16,8 +16,8 @@ using Random
 using Statistics
 function fractional_gaussian_noise(N::Int, H::Float64; rng = Random.GLOBAL_RNG, dt = 1)
     # Validate inputs
-    @assert 0<H<1 "Hurst exponent H must be in (0, 1)"
-    @assert N>0 "N must be positive"
+    @assert 0 < H < 1 "Hurst exponent H must be in (0, 1)"
+    @assert N > 0 "N must be positive"
 
     # Autocovariance function for fGn
     function gamma_fgn(k, H)
@@ -42,7 +42,7 @@ function fractional_gaussian_noise(N::Int, H::Float64; rng = Random.GLOBAL_RNG, 
     lambda = real(fft(g))
 
     # Check for non-negative eigenvalues (should be satisfied for valid H)
-    if any(lambda .< -1e-10)
+    if any(lambda .< -1.0e-10)
         @warn "Negative eigenvalues detected. Results may be inaccurate."
     end
     lambda = max.(lambda, 0)  # Ensure non-negative
@@ -83,7 +83,7 @@ begin # * Test against fgn
 
     H̃x = hurst_exponent(x, 1:10)
     H̃y = hurst_exponent(y, 1:10)
-    @test first(H̃x)≈first(H̃y) atol=0.05
+    @test first(H̃x) ≈ first(H̃y) atol = 0.05
 end
 
 for α in (1.3, 1.5, 1.8, 2.0)
@@ -91,7 +91,7 @@ for α in (1.3, 1.5, 1.8, 2.0)
         H = 1 - β / 2
         x = lfsn(100000, α, H; dt = 0.01) |> cumsum
         H̃ = hurst_exponent(x, 1:10)
-        @test first(H̃)≈H rtol=0.15
+        @test first(H̃) ≈ H rtol = 0.15
     end
 end
 
@@ -109,8 +109,8 @@ begin # * Compare with levy process
 
         dx = fit(Stable, x)
         dy = fit(Stable, y)
-        @test dx.α≈dy.α rtol=0.1
-        @test dx.α≈α rtol=0.1
-        @test dx.σ≈dy.σ rtol=0.075
+        @test dx.α ≈ dy.α rtol = 0.1
+        @test dx.α ≈ α rtol = 0.1
+        @test dx.σ ≈ dy.σ rtol = 0.075
     end
 end

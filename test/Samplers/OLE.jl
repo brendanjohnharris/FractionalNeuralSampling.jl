@@ -17,7 +17,7 @@ begin
     τs = round.(Int, logrange(1, 1000, 10)) .÷ dt .|> Int
     𝜋 = MixtureModel([Normal(-2, 0.5), Normal(2, 0.5)]) |> Density
     u0 = [0.0]
-    tspan = 5000.00
+    tspan = 5000.0
 
     xs = map(Dim{:η}(etas)) do η
         S = OLE(; η, u0, 𝜋, tspan)

@@ -25,9 +25,11 @@ Generate Linear Fractional Stable Noise (LFSN). The resulting process has a `sca
 - `sigma::Float64=1.0`: Scale parameter
 - `rng`: Random number generator (default: `Random.default_rng()`)
 """
-function lfsn(N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
-              sigma = 1.0, rng = Random.default_rng(),
-              dt = 1) where {A <: Real, B <: Real}
+function lfsn(
+        N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
+        sigma = 1.0, rng = Random.default_rng(),
+        dt = 1
+    ) where {A <: Real, B <: Real}
     T = promote_type(A, B)
     total_length = m * (N + M)
     next_pow_2 = 2^ceil(Int, log2(total_length))
@@ -37,9 +39,9 @@ function lfsn(N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
     total_length = m * (N + M)
 
     # Validate parameters
-    @assert 0<α<=2 "α must be in (0, 2]"
-    @assert 0<H<1 "H must be in (0, 1); got α=$α, H=$H)"
-    @assert sigma>0 "sigma must be positive"
+    @assert 0 < α <= 2 "α must be in (0, 2]"
+    @assert 0 < H < 1 "H must be in (0, 1); got α=$α, H=$H)"
+    @assert sigma > 0 "sigma must be positive"
     @assert N > 0&&m > 0 && M > 0 "N, m, M must be positive"
 
     # Pre-allocate all arrays as complex from the start

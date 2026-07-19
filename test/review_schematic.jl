@@ -23,9 +23,13 @@ begin
     prior = [0.05, 0.5, 5.0]
     width = [1, 0.5, 0.1]
     prior ./= sum(prior)
-    d = MixtureModel([MvNormal([real(c), imag(c)], I(2) * s)
-                      for (c, s) in zip(centers, width)],
-                     prior)
+    d = MixtureModel(
+        [
+            MvNormal([real(c), imag(c)], I(2) * s)
+                for (c, s) in zip(centers, width)
+        ],
+        prior
+    )
     xmax = 5
     xs = range(-xmax, xmax, length = 100)
     D = Density(d)
@@ -34,7 +38,7 @@ begin
     #         colormap = :turbo)
     # end
     # begin
-    f = Figure()#size = (900, 300))
+    f = Figure() #size = (900, 300))
     αs = [2.0, 1.6, 1.2]
     gs = subdivide(f, 1, 3)
     # map(αs, gs) do α, g
@@ -49,14 +53,15 @@ begin
         box = ReflectingBox(-xmax .. xmax, -xmax .. xmax)
         @info "Starting simulation"
         L = FNS(;
-                u0 = ArrayPartition([0.0, 0.0], [0.0, 0.0]),
-                tspan = 100.0,
-                α = α,
-                β = 4,
-                γ = 0.8,
-                𝜋 = D,
-                seed = 42,
-                boundaries = box())
+            u0 = ArrayPartition([0.0, 0.0], [0.0, 0.0]),
+            tspan = 100.0,
+            α = α,
+            β = 4,
+            γ = 0.8,
+            𝜋 = D,
+            seed = 42,
+            boundaries = box()
+        )
         sol = solve(L, EM(); dt = 0.001)
         trans = length(sol) ÷ 2
         xs = range(-xmax, xmax, length = 1000)
@@ -65,20 +70,28 @@ begin
         zs = surf.(collect.(Iterators.product(xs, xs)))
         z = map(surf ∘ collect, zip(x[trans:subd:end], y[trans:subd:end]))
 
-        ax = Axis3(g[1, 1], title = "α = $α",
-                   #    limits = (nothing, nothing, (minimum(z) - 1, maximum(z))),
-                   aspect = (5.0, 5.0, 2 / 3), elevation = π / 6)
+        ax = Axis3(
+            g[1, 1], title = "α = $α",
+            #    limits = (nothing, nothing, (minimum(z) - 1, maximum(z))),
+            aspect = (5.0, 5.0, 2 / 3), elevation = π / 6
+        )
         hidedecorations!(ax)
         hidespines!(ax)
         # heatmap!(ax, xs, xs, potential(D).(collect.(Iterators.product(xs, xs))),
         #          colormap = :turbo)
 
         idxs = xs .∈ [-cxmax .. cxmax] # Idxs of zs within the original domain
-        p = surface!(ax, xs, xs, zs, colormap = :turbo,
-                     colorrange = extrema(zs[idxs, idxs]), rasterize=true)
-        contour3d!(ax, xs, xs, zs, colormap = :turbo, colorrange = extrema(zs[idxs, idxs]),
-                   linewidth = 1, levels = range(Interval(extrema(zs[idxs, idxs])...),
-                                                 20))
+        p = surface!(
+            ax, xs, xs, zs, colormap = :turbo,
+            colorrange = extrema(zs[idxs, idxs]), rasterize = true
+        )
+        contour3d!(
+            ax, xs, xs, zs, colormap = :turbo, colorrange = extrema(zs[idxs, idxs]),
+            linewidth = 1, levels = range(
+                Interval(extrema(zs[idxs, idxs])...),
+                20
+            )
+        )
 
         # reverse(seethrough(:turbo, -1))
         subd = 10
@@ -107,8 +120,10 @@ begin
                 if d > thr
                     # Plot the current segment if it has at least two points.
                     if length(seg) >= 2
-                        lines!(ax, seg,
-                               color = (:black, 0.5), linewidth = 2)
+                        lines!(
+                            ax, seg,
+                            color = (:black, 0.5), linewidth = 2
+                        )
                         meshscatter!(ax, [seg[1]]; color = cucumber, markersize)  # starting point
                         meshscatter!(ax, [seg[end]]; color = :crimson, markersize)  # ending point
                     else
@@ -137,8 +152,10 @@ begin
         Colorbar(g[1, 2], p, label = "Potential", height = Relative(0.3))
     end
     begin
-        lines!(ax, x[trans:subd:end], y[trans:subd:end], z, color = :crimson,
-               linewidth = 1)
+        lines!(
+            ax, x[trans:subd:end], y[trans:subd:end], z, color = :crimson,
+            linewidth = 1
+        )
     end
     save("test/review_schematic.pdf", f)
     f

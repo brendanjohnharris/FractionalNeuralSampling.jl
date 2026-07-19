@@ -5,7 +5,7 @@ using Random
 using Test
 
 import FractionalNeuralSampling.Solvers: full_cache, jac_iter, rand_cache,
-                                         ratenoise_cache
+    ratenoise_cache
 
 begin # * 2D overdamped sampler; target factorises so x₂ evolves independently of x₁
     dt = 0.01

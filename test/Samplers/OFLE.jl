@@ -20,8 +20,8 @@ begin # * Create fractional gaussian noise
     # ! gpt
     function fractional_gaussian_noise(N::Int, H::Float64; rng = Random.GLOBAL_RNG, dt = 1)
         # Validate inputs
-        @assert 0<H<1 "Hurst exponent H must be in (0, 1)"
-        @assert N>0 "N must be positive"
+        @assert 0 < H < 1 "Hurst exponent H must be in (0, 1)"
+        @assert N > 0 "N must be positive"
 
         # Autocovariance function for fGn
         function gamma_fgn(k, H)
@@ -46,7 +46,7 @@ begin # * Create fractional gaussian noise
         lambda = real(fft(g))
 
         # Check for non-negative eigenvalues (should be satisfied for valid H)
-        if any(lambda .< -1e-10)
+        if any(lambda .< -1.0e-10)
             @warn "Negative eigenvalues detected. Results may be inaccurate."
         end
         lambda = max.(lambda, 0)  # Ensure non-negative
@@ -88,7 +88,7 @@ end
 begin # * Generate a sample path and test the distribution is ok
     β = 1.0
     H = 1 - β / 2
-    tspan = 1000.00
+    tspan = 1000.0
     dt = 0.01
     η = 1.0
     N = Int(tspan / dt) + 1
@@ -119,8 +119,10 @@ end
 begin # * plot spectral exponent
     s = spectrum(sol, 0.5)
     f = Figure()
-    ax = Axis(f[1, 1]; xlabel = "Frequency", ylabel = "Power", xscale = log10,
-              yscale = log10)
+    ax = Axis(
+        f[1, 1]; xlabel = "Frequency", ylabel = "Power", xscale = log10,
+        yscale = log10
+    )
     s = logsample(s)
 end
 

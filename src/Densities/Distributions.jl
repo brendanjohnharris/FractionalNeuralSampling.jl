@@ -3,7 +3,7 @@ using DistributionsAD
 using Random
 import LogDensityProblems: capabilities, LogDensityOrder
 import Distributions: Distribution, MultivariateDistribution, UnivariateDistribution,
-                      MixtureModel
+    MixtureModel
 import Distributions: gradlogpdf, pdf, logpdf
 
 export DistributionDensity, distribution
@@ -20,62 +20,66 @@ begin # * Distribution densities; supply a Distributions.Distribution, get a den
     gradlogpdf(D::DistributionDensity) = Base.Fix1(gradlogpdf, distribution(D))
     gradpdf(D::DistributionDensity) = Base.Fix1(gradpdf, distribution(D))
     function _gradlogdensity(d::DistributionDensity{D, N, false}, x) where {D, N}
-        gradlogpdf(d)(x)
+        return gradlogpdf(d)(x)
     end
-    function _gradlogdensity(d::DistributionDensity{D, N, false}, # Collection of positions
-                             x::AbstractVector{<:AbstractVector{T}}) where {D, N, T <: Real}
-        map(gradlogpdf(d), x)
+    function _gradlogdensity(
+            d::DistributionDensity{D, N, false}, # Collection of positions
+            x::AbstractVector{<:AbstractVector{T}}
+        ) where {D, N, T <: Real}
+        return map(gradlogpdf(d), x)
     end
     function _graddensity(d::DistributionDensity{D, N, false}, x) where {D, N}
-        gradpdf(d)(x)
+        return gradpdf(d)(x)
     end
 end
 
-const UnivariateDistributionDensity = typeintersect(DistributionDensity,
-                                                    AbstractUnivariateDensity)
+const UnivariateDistributionDensity = typeintersect(
+    DistributionDensity,
+    AbstractUnivariateDensity
+)
 univariate_fix(f, x) = f(x)
 univariate_fix(f, x::AbstractVector{T}) where {T <: Real} = f(only(x))
 function univariate_fix(f, x::AbstractVector{<:AbstractVector{T}}) where {T}
-    map(univariate_fix(f), x)
+    return map(univariate_fix(f), x)
 end
 univariate_fix(f) = Base.Fix1(univariate_fix, f)
 function density(D::UnivariateDistributionDensity)
-    univariate_fix(Base.Fix1(pdf, distribution(D)))
+    return univariate_fix(Base.Fix1(pdf, distribution(D)))
 end
 function logdensity(D::UnivariateDistributionDensity)
-    univariate_fix(Base.Fix1(logpdf, distribution(D)))
+    return univariate_fix(Base.Fix1(logpdf, distribution(D)))
 end
 function gradlogpdf(D::UnivariateDistributionDensity)
-    univariate_fix(Base.Fix1(gradlogpdf, distribution(D)))
+    return univariate_fix(Base.Fix1(gradlogpdf, distribution(D)))
 end
 
 # * Constructors
 function Density{doAd}(d::D) where {D <: Distribution, doAd}
     N = length(d)
-    DistributionDensity{D, N, doAd}(d)
+    return DistributionDensity{D, N, doAd}(d)
 end
 Density(D::Distribution, args...) = DistributionDensity(D, args...)
 function DistributionDensity(distribution::D, doAd::Bool) where {D <: Distribution}
-    DistributionDensity{D, length(distribution), doAd}(distribution)
+    return DistributionDensity{D, length(distribution), doAd}(distribution)
 end
 function DistributionDensity(d::D) where {D <: UnivariateDistribution}
     doAd = !hasmethod(gradlogpdf, (D, Real))
     N = length(d)
-    DistributionDensity{D, N, doAd}(d)
+    return DistributionDensity{D, N, doAd}(d)
 end
 function DistributionDensity(d::D) where {D <: MultivariateDistribution}
     doAd = !hasmethod(gradlogpdf, (D, Vector{Real}))
     N = length(d)
-    DistributionDensity{D, N, doAd}(d)
+    return DistributionDensity{D, N, doAd}(d)
 end
 function DistributionDensity(d::D) where {D <: MixtureModel}
     doAd = !hasmethod(gradlogpdf, (D, Vector{Real}))
     N = length(d)
-    DistributionDensity{D, N, doAd}(d)
+    return DistributionDensity{D, N, doAd}(d)
 end
 Random.rand(rng::AbstractRNG, d::DistributionDensity) = rand(rng, distribution(d))
 
 # * Define gradients for common densities
 function gradpdf(d::Distributions.Normal, x::Real)
-    -(x - d.μ) * pdf(d, x) / d.σ^2
+    return -(x - d.μ) * pdf(d, x) / d.σ^2
 end

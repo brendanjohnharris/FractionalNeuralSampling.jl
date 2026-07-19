@@ -33,51 +33,56 @@ function sfole_f!(du, u, p, t)
     @unpack η, α, ∇𝒟𝜋, 𝜋s, λ = ps
     x = divide_dims(u, dimension(𝜋)) |> only
     b = ∇𝒟𝜋(only(x)) / (𝜋s(only(x)) + λ)
-    du .= only(η .* b)
+    return du .= only(η .* b)
 end
 function sfole_g!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η, α = ps
-    du .= only(η)^(1 / α) # ? × dW in the integrator.
+    return du .= only(η)^(1 / α) # ? × dW in the integrator.
 end
 
 function maybeLaplacian(S::ApproxFunBase.DirectSumSpace) # * If the space is 1D, use regular second derivative
-    Derivative(S, 2)
+    return Derivative(S, 2)
 end
 function maybeLaplacian(S::ApproxFunBase.AbstractProductSpace) # * If the space is multidimensional, use Laplacian
-    Laplacian(S)
+    return Laplacian(S)
 end
 
 """
 Space fractional overdamped langevin equation
 """
 function sFOLE(;
-               tspan,
-               η, # Noise strength
-               α, # Fractional order
-               𝜋, # Target distribution
-               domain, # An Interval
-               λ = 0.001, # Regularization to avoid overflow in low-prob regions
-               u0 = [0.0],
-               boundaries = nothing,
-               noise_rate_prototype = similar(u0),
-               noise = NoiseProcesses.LevyProcess!(α; ND = dimension(𝜋),
-                                                   W0 = zero(u0)),
-               approx_n_modes = 1000,
-               alg = EM(),
-               callback = (),
-               kwargs...)
+        tspan,
+        η, # Noise strength
+        α, # Fractional order
+        𝜋, # Target distribution
+        domain, # An Interval
+        λ = 0.001, # Regularization to avoid overflow in low-prob regions
+        u0 = [0.0],
+        boundaries = nothing,
+        noise_rate_prototype = similar(u0),
+        noise = NoiseProcesses.LevyProcess!(
+            α; ND = dimension(𝜋),
+            W0 = zero(u0)
+        ),
+        approx_n_modes = 1000,
+        alg = EM(),
+        callback = (),
+        kwargs...
+    )
     ∇𝒟𝜋, 𝜋s = space_fractional_drift(𝜋; α, domain, approx_n_modes)
-    Sampler(sfole_f!, sfole_g!;
-            callback = CallbackSet(boundary_init(boundaries), callback...),
-            u0,
-            noise_rate_prototype,
-            noise,
-            tspan,
-            p = (; η, α, ∇𝒟𝜋, 𝜋s, λ),
-            𝜋,
-            alg,
-            kwargs...) |> assert_dimension(; order = 1)
+    return Sampler(
+        sfole_f!, sfole_g!;
+        callback = CallbackSet(boundary_init(boundaries), callback...),
+        u0,
+        noise_rate_prototype,
+        noise,
+        tspan,
+        p = (; η, α, ∇𝒟𝜋, 𝜋s, λ),
+        𝜋,
+        alg,
+        kwargs...
+    ) |> assert_dimension(; order = 1)
 end
 
 const SpaceFractionalOverdampedLangevinEquation = sFOLE

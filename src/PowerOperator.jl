@@ -14,7 +14,7 @@ function Power{T}(op::BT, p::P) where {T, BT <: Operator, P <: Number}
     return ConcretePower{T, BT, P}(op, p)
 end
 function Power(op::BT, p::P) where {BT <: Operator, P <: Number}
-    Power{promote_type(eltype(op), P)}(op, p)
+    return Power{promote_type(eltype(op), P)}(op, p)
 end
 
 # The domain and range spaces are the same as the base operator's

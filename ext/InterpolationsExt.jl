@@ -3,38 +3,41 @@ import Interpolations
 using FractionalNeuralSampling
 using LogDensityProblems
 import FractionalNeuralSampling.Densities: AbstractDensity, Density,
-                                           gradlogdensity, vignette
+    gradlogdensity, vignette
 
-const AbstractInterpolationDensity{D, doAd} = AbstractDensity{D,
-                                                              doAd} where {
-                                                                           D <:
-                                                                           Interpolations.AbstractInterpolation,
-                                                                           doAd}
+const AbstractInterpolationDensity{D, doAd} = AbstractDensity{
+    D,
+    doAd,
+} where {
+    D <:
+    Interpolations.AbstractInterpolation,
+    doAd,
+}
 function (D::AbstractInterpolationDensity)(x::AbstractVector)
     d = D.density(x...)
     if d < 0
-        @warn "Density ($(round(d; sigdigits=2))) is negative at $x. Clipping to `eps`"
+        @warn "Density ($(round(d; sigdigits = 2))) is negative at $x. Clipping to `eps`"
     end
-    clamp(d, eps(), Inf)
+    return clamp(d, eps(), Inf)
 end
 function Density(d::D) where {D <: Interpolations.AbstractInterpolation}
-    Density{true}(d)
+    return Density{true}(d)
 end
 function LogDensityProblems.capabilities(::Type{<:AbstractInterpolationDensity})
-    LogDensityProblems.LogDensityOrder{1}()
+    return LogDensityProblems.LogDensityOrder{1}()
 end
 function LogDensityProblems.dimension(D::AbstractInterpolationDensity)
-    ndims(density(D))
+    return ndims(density(D))
 end
 function LogDensityProblems.logdensity(D::AbstractInterpolationDensity, x)
-    D(x) |> log
+    return D(x) |> log
 end
 function LogDensityProblems.logdensity_and_gradient(D::AbstractInterpolationDensity, x)
-    (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
+    return (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
 end
 
 function gradlogdensity(D::AbstractInterpolationDensity, x)
-    _gradlogdensity(D, x)
+    return _gradlogdensity(D, x)
 end
 
 function vignette(sz::Tuple{Int, Int}, radius = (0.75, 0.75))
@@ -43,10 +46,14 @@ function vignette(sz::Tuple{Int, Int}, radius = (0.75, 0.75))
     cr, cc = (nrows + 1) / 2, (ncols + 1) / 2
     rn = abs.(collect(1:nrows) .- cr) ./ (nrows / 2)
     cn = abs.(collect(1:ncols) .- cc) ./ (ncols / 2)
-    rw = ifelse.(rn .< (1 - fr), 1.0,
-                 ifelse.(rn .> 1.0, 0.0, 1 .- (rn .- (1 - fr)) ./ fr))
-    cw = ifelse.(cn .< (1 - fc), 1.0,
-                 ifelse.(cn .> 1.0, 0.0, 1 .- (cn .- (1 - fc)) ./ fc))
+    rw = ifelse.(
+        rn .< (1 - fr), 1.0,
+        ifelse.(rn .> 1.0, 0.0, 1 .- (rn .- (1 - fr)) ./ fr)
+    )
+    cw = ifelse.(
+        cn .< (1 - fc), 1.0,
+        ifelse.(cn .> 1.0, 0.0, 1 .- (cn .- (1 - fc)) ./ fc)
+    )
     return rw * cw'
 end
 vignette(sz::Tuple{Int, Int}, radius::Number) = vignette(sz, (radius, radius))

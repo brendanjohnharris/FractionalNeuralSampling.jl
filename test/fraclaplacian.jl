@@ -55,10 +55,10 @@ begin # * Regular derivative
 end
 
 function maybeLaplacian(S::ApproxFunBase.DirectSumSpace) # * If the space is 1D, use regular second derivative
-    Derivative(S, 2)
+    return Derivative(S, 2)
 end
 function maybeLaplacian(S::ApproxFunBase.AbstractProductSpace) # * If the space is multidimensional, use Laplacian
-    Laplacian(S)
+    return Laplacian(S)
 end
 begin # * Laplacian? Constant for quadratic. Seems like Gibbs phenomenon gets stronger for 2nd derivatives...
     Δ = maybeLaplacian(S)
@@ -84,7 +84,7 @@ function Power{T}(op::BT, p::P) where {T, BT <: Operator, P <: Number}
     return ConcretePower{T, BT, P}(op, p)
 end
 function Power(op::BT, p::P) where {BT <: Operator, P <: Number}
-    Power{promote_type(eltype(op), P)}(op, p)
+    return Power{promote_type(eltype(op), P)}(op, p)
 end
 
 # The domain and range spaces are the same as the base operator's
@@ -117,19 +117,21 @@ begin # * Effective potential defined through fractional laplacian
     αs = Dim{:α}(0.0:0.25:2.0)
     Δ = maybeLaplacian(S)
     Veffs = map(αs) do α
-                FΔ = Power(-Δ, (α / 2) - 1)  # Negative for power consistency. For alpha = 2, this is -Δ
-                # *
-                Veff = FΔ * Vs
-                f = Figure()
-                ax = Axis(f[1, 1], xlabel = "x", ylabel = "V(x)")
-                xs = X(LinRange(-2.0, 2.0, 1000))
-                V = Veff.(xs)
-                return V .- maximum(V)
-            end |> stack |> ToolsArray
+        FΔ = Power(-Δ, (α / 2) - 1)  # Negative for power consistency. For alpha = 2, this is -Δ
+        # *
+        Veff = FΔ * Vs
+        f = Figure()
+        ax = Axis(f[1, 1], xlabel = "x", ylabel = "V(x)")
+        xs = X(LinRange(-2.0, 2.0, 1000))
+        V = Veff.(xs)
+        return V .- maximum(V)
+    end |> stack |> ToolsArray
 
     f = Figure()
-    ax = Axis(f[1, 1], xlabel = L"x", ylabel = L"\tilde{V}(x)",
-              title = "Effective potential for different α")
+    ax = Axis(
+        f[1, 1], xlabel = L"x", ylabel = L"\tilde{V}(x)",
+        title = "Effective potential for different α"
+    )
     p = traces!(ax, reverse(Veffs, dims = 2); colormap = sunrise, linewidth = 2)
     Colorbar(f[1, 2], p; label = L"\alpha")
     display(f)
@@ -139,23 +141,25 @@ begin # * Drift defined through fractional laplacian
     αs = Dim{:α}(1.0:0.25:2.0)
     Δ = maybeLaplacian(S)
     drifts = map(αs) do α
-                 FΔ = Power(-Δ, (α / 2) - 1)  # Negative for power consistency. For alpha = 2, this is -Δ
-                 # * We keep the frac laplacian well behaved by multiplying and dividing the
-                 #   target distribution, like in fhmc paper
-                 drift = (D * (FΔ * 𝜋s)) / 𝜋s # FΔ * 𝜋s
-                 f = Figure()
-                 ax = Axis(f[1, 1], xlabel = "x", ylabel = "V(x)")
-                 xs = X(LinRange(-2.0, 2.0, 100))
-                 V = drift.(xs)
-                 # * Integrate to get 'potential'
-                 V = -cumsum(V) * (xs[2] - xs[1])
-                 return V
-             end |> stack |> ToolsArray
+        FΔ = Power(-Δ, (α / 2) - 1)  # Negative for power consistency. For alpha = 2, this is -Δ
+        # * We keep the frac laplacian well behaved by multiplying and dividing the
+        #   target distribution, like in fhmc paper
+        drift = (D * (FΔ * 𝜋s)) / 𝜋s # FΔ * 𝜋s
+        f = Figure()
+        ax = Axis(f[1, 1], xlabel = "x", ylabel = "V(x)")
+        xs = X(LinRange(-2.0, 2.0, 100))
+        V = drift.(xs)
+        # * Integrate to get 'potential'
+        V = -cumsum(V) * (xs[2] - xs[1])
+        return V
+    end |> stack |> ToolsArray
 
     drifts = drifts .- minimum(drifts, dims = 1)
     f = Figure()
-    ax = Axis(f[1, 1], xlabel = L"x", ylabel = L"\tilde{V}(x)",
-              title = "Drift for different α", limits = (nothing, (0, 1)))
+    ax = Axis(
+        f[1, 1], xlabel = L"x", ylabel = L"\tilde{V}(x)",
+        title = "Drift for different α", limits = (nothing, (0, 1))
+    )
     p = traces!(ax, reverse(drifts, dims = 2); colormap = sunrise, linewidth = 2)
     Colorbar(f[1, 2], p; label = L"\alpha")
     display(f)

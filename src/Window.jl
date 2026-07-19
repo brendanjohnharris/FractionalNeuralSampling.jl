@@ -178,11 +178,11 @@ mutable struct Window{T} <: AbstractVector{T}
     head::Int
 
     function Window{T}(len::Int) where {T}
-        new{T}(Vector{T}(undef, len), len, 0)
+        return new{T}(Vector{T}(undef, len), len, 0)
     end
 
     function Window(data::Vector{T}) where {T}
-        new{T}(data, length(data), 0)
+        return new{T}(data, length(data), 0)
     end
 end
 
@@ -221,7 +221,7 @@ end
 
 # Iteration support
 function Base.iterate(w::Window, state = 1)
-    state > w.len ? nothing : (@inbounds(w[state]), state + 1)
+    return state > w.len ? nothing : (@inbounds(w[state]), state + 1)
 end
 
 # Vector operations
@@ -231,9 +231,11 @@ Base.copy(w::Window) = Window(copy(w.data))
 
 # Broadcasting
 Base.BroadcastStyle(::Type{<:Window}) = Broadcast.ArrayStyle{Window}()
-function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{Window}},
-                      ::Type{ElType}) where {ElType}
-    Window{ElType}(length(bc))
+function Base.similar(
+        bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{Window}},
+        ::Type{ElType}
+    ) where {ElType}
+    return Window{ElType}(length(bc))
 end
 
 # Convenience methods

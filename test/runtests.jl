@@ -43,7 +43,7 @@ end
     set_theme!(foresight(:physics))
 end
 
-@testitem "Density" setup=[Setup] begin
+@testitem "Density" setup = [Setup] begin
     # Use a normal pdf
     f(x) = 1 / sqrt(2π) * exp(-x^2 / 2)
     f(x::AbstractVector{T}) where {T} = f(only(x))::T # Ensure univariate consistency
@@ -67,7 +67,7 @@ end
     @inferred FractionalNeuralSampling.Densities.logdensity_and_gradient(D, 0.0)
 end
 
-@testitem "Langevin sampler bias" setup=[Setup] begin
+@testitem "Langevin sampler bias" setup = [Setup] begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 10000.0)
     dt = 0.01
@@ -87,13 +87,15 @@ end
     Makie.hist(first.(sol.u), bins = 50, normalization = :pdf)
     lines!(-2.5:0.1:2.5, D.(-2.5:0.1:2.5))
     current_figure()
-    @test mean(first.(sol.u))≈0.0 atol=0.05
-    @test std(first.(sol.u))≈1.0 atol=0.05
+    @test mean(first.(sol.u)) ≈ 0.0 atol = 0.05
+    @test std(first.(sol.u)) ≈ 1.0 atol = 0.05
 
     if false
         tspan = (0.0, 100.0)
-        S = Langevin(; u0, tspan, β = 1.0, η = 1.0, 𝜋 = D,
-                     noise = WienerProcess(0.0, 0.0))
+        S = Langevin(;
+            u0, tspan, β = 1.0, η = 1.0, 𝜋 = D,
+            noise = WienerProcess(0.0, 0.0)
+        )
         βs = range(0, 5, length = 10)
         er = map(βs) do β
             P = remake(S, p = ((β, S.p[1][2:end]...), S.p[2:end]...))
@@ -111,7 +113,7 @@ end
     end
 end
 
-@testitem "Levy sampler bias" setup=[Setup] begin
+@testitem "Levy sampler bias" setup = [Setup] begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 1000.0)
     dt = 0.01
@@ -186,7 +188,7 @@ end
     end
 end
 
-@testitem "Space-fractional neural sampling bias" setup=[Setup] begin
+@testitem "Space-fractional neural sampling bias" setup = [Setup] begin
     u0 = [0.0, 0.0]
     tspan = (0.0, 5000.0)
     dt = 0.05
@@ -212,15 +214,17 @@ end
     @test evaluate(KLDivergence(), D, x) < 0.05
 end
 
-@testitem "2D sFNS" setup=[Setup] begin
+@testitem "2D sFNS" setup = [Setup] begin
     u0 = ArrayPartition([0.0, 0.0], [0.0, 0.0])
     tspan = (0.0, 50.0)
     dt = 0.05
     D = Density(MixtureModel(MvNormal, [([-2, -2], I(2)), ([2, 2], I(2))]))
     d = (-7 .. 7, -7 .. 7)
     boundaries = PeriodicBox(-5 .. 5, -5 .. 5)
-    S = sFNS(; u0, tspan, α = 1.5, β = 0.05, γ = 0.5, 𝜋 = D, domain = d, boundaries,
-             approx_n_modes = 1000)
+    S = sFNS(;
+        u0, tspan, α = 1.5, β = 0.05, γ = 0.5, 𝜋 = D, domain = d, boundaries,
+        approx_n_modes = 1000
+    )
 
     W = @test_nowarn remake(S, p = S.p)
     @test_nowarn solve(W, EM(); dt, saveat = 0.01)
@@ -234,7 +238,7 @@ end
     # ! Tests divergence against target distribution
 end
 
-@testitem "Recursive Arrays" setup=[Setup] begin
+@testitem "Recursive Arrays" setup = [Setup] begin
     # So for recursive arrays, we can use diagonal noise by setting the noise_rate prototype
     # to similar(u0)
     u0 = ArrayPartition([0.0], [0.0])
@@ -258,7 +262,7 @@ end
 end
 
 if false
-    u0 = [-3.0 0.00]
+    u0 = [-3.0 0.0]
     tspan = (0.0, 5000.0)
     dt = 0.01
     D = Density(MixtureModel(Laplace, [(-3, 0.3), (3, 0.3)]))
@@ -283,7 +287,7 @@ if false
 end
 
 if false # * Simple potential: power law iqr?
-    u0 = [-0.001 0.00]
+    u0 = [-0.001 0.0]
     tspan = (0.0, 1.0)
     dt = 0.00001
     D = Density(Normal(0, 1))
@@ -297,14 +301,14 @@ if false # * Simple potential: power law iqr?
     @test 1.6 < mm < 1.7
 
     lines(σ[2:10000]; axis = (; xscale = log10, yscale = log10))
-    lines!((2:10000) ./ 1e8)
+    lines!((2:10000) ./ 1.0e8)
     current_figure()
 end
 
 if false # * Unimodal vs bimodal comparison
     Random.seed!(43)
     g = Figure(size = (720, 360))
-    u0 = [-0.001 0.00]
+    u0 = [-0.001 0.0]
     tspan = (0.0, 1000.0)
     dt = 0.001
     idxs = range(start = 1, step = 200, length = 500)
@@ -324,7 +328,7 @@ if false # * Unimodal vs bimodal comparison
     hidespines!(ax)
     tightlimits!(ax)
 
-    u0 = [-0.201 0.00]
+    u0 = [-0.201 0.0]
     ax = Axis(g[2, 1]; xlabel = "t", ylabel = "v", title = "Bimodal")
     D = Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
     S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
@@ -346,7 +350,7 @@ if false # * Unimodal vs bimodal comparison
 end
 
 if false # * Fixation simulation: heavy tailed msd??
-    u0 = [-0.001 0.00]
+    u0 = [-0.001 0.0]
     tspan = (0.0, 100.0)
     dt = 0.001
     D = Density(Laplace(0, 1))
@@ -358,7 +362,7 @@ if false # * Fixation simulation: heavy tailed msd??
     density(filter(!isnan, x))
     lines!(-4:0.1:4, D.(-4:0.1:4))
     # current_axis().yscale = log10
-    current_axis().limits = (nothing, (1e-3, nothing))
+    current_axis().limits = (nothing, (1.0e-3, nothing))
     current_figure()
 
     d = map(1:5000) do t
@@ -373,8 +377,22 @@ if false # * Fixation simulation: heavy tailed msd??
 
     lines(x[1:10:1000])
 
-    c = collect(centraldiff(centraldiff(centraldiff(centraldiff(centraldiff(Timeseries(1:length(x),
-                                                                                       x)))))))
+    c = collect(
+        centraldiff(
+            centraldiff(
+                centraldiff(
+                    centraldiff(
+                        centraldiff(
+                            Timeseries(
+                                1:length(x),
+                                x
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
     c = c[abs.(c) .< 0.01]
     hist(c, bins = 100, normalization = :pdf)
     g = fit(Stable, c)
@@ -382,7 +400,7 @@ if false # * Fixation simulation: heavy tailed msd??
     current_figure()
 end
 
-@testitem "Autodiff" setup=[Setup] begin
+@testitem "Autodiff" setup = [Setup] begin
     D = Normal(0, 0.5)
     @inferred logpdf(D, 0.1)
     g(x::T) where {T <: Real} = logpdf(D, x)::T
@@ -391,7 +409,7 @@ end
     # @inferred ForwardDiff.gradient(g, [0.1])
     backend = AutoForwardDiff()
     @test gradlogdensity(Density(D, true)).(0.1:0.1:3) ==
-          gradlogpdf.([D], 0.1:0.1:3)
+        gradlogpdf.([D], 0.1:0.1:3)
     gr = gradient(g, backend, [0.1]) # @inferred
     @test gr isa Vector
     @test length(gr) == 1
@@ -411,7 +429,7 @@ end
     cl = @code_lowered Densities._gradlogdensity(Density(D, true), 0.1)
     @test contains(string(cl.code), "AD_BACKEND")
 end
-@testitem "Univariate DistributionDensity" setup=[Setup] begin
+@testitem "Univariate DistributionDensity" setup = [Setup] begin
     d = Normal(0.0, 0.5)
     D = @test_nowarn Density(d)
     @test D isa Densities.AbstractUnivariateDensity
@@ -419,8 +437,10 @@ end
     @test D(0.0) == 2 / sqrt(2π)
     @test D([0.0]) == 2 / sqrt(2π)
     @test LogDensityProblems.dimension(D) == 1
-    @test all(map(LogDensityProblems.logdensity(D), -1:0.1:1) .≈ log.(D.(-1:0.1:1)) .≈
-              logpdf(distribution(D), -1:0.1:1))
+    @test all(
+        map(LogDensityProblems.logdensity(D), -1:0.1:1) .≈ log.(D.(-1:0.1:1)) .≈
+            logpdf(distribution(D), -1:0.1:1)
+    )
     @inferred LogDensityProblems.logdensity(D, 0.0)
     @inferred LogDensityProblems.logdensity(D, 0)
     lines(-2:0.1:2, D.(-2:0.1:2))
@@ -452,7 +472,7 @@ end
     @test Densities.gradlogdensity(D, 0.0f0) isa Float32
 end
 
-@testitem "Multivariate DistributionDensity" setup=[Setup] begin
+@testitem "Multivariate DistributionDensity" setup = [Setup] begin
     N = 3
     μs = randn(N)
     x = randn(N, 100)
@@ -480,7 +500,7 @@ end
     @test gradlogdensity(D)(p) ≈ gradlogpdf(d, p)
 end
 
-@testitem "Mixture DistributionDensity" setup=[Setup] begin
+@testitem "Mixture DistributionDensity" setup = [Setup] begin
     Nd = 3
     N = 10
     μs = [randn(Nd) for _ in 1:N]
@@ -503,7 +523,7 @@ end
     @test gradlogdensity(D)(0.0) == 0.0
 end
 
-@testitem "AdDistributionDensity" setup=[Setup] begin
+@testitem "AdDistributionDensity" setup = [Setup] begin
     D = @inferred Densities.Density(Normal(0.0, 0.5))
     D = @inferred Densities.Density{true}(Normal(0.0, 0.5))
     x = zeros(LogDensityProblems.dimension(D)) # ℓ is your log density
@@ -519,15 +539,15 @@ end
         @benchmark LogDensityProblems.logdensity($D, $x) # check performance and allocations
     end
     @test only(LogDensityProblems.logdensity(D, [0.1])) ==
-          LogDensityProblems.logdensity(D, 0.1)
+        LogDensityProblems.logdensity(D, 0.1)
     @test_nowarn Distributions.gradlogpdf(D)(0.1)
     @inferred gradlogdensity(D, [0.1])
     @test gradlogdensity(D, [0.1]) == [-0.4]
     @test only.(LogDensityProblems.logdensity_and_gradient(D, [0.1])) ==
-          LogDensityProblems.logdensity_and_gradient(D, 0.1)
+        LogDensityProblems.logdensity_and_gradient(D, 0.1)
 end
 
-@testitem "Overdamped Langevin Sampler" setup=[Setup] begin
+@testitem "Overdamped Langevin Sampler" setup = [Setup] begin
     u0 = [0.0]
     tspan = (0.0, 100.0)
     D = Density(Normal(0, 10.0))
@@ -548,7 +568,7 @@ end
     @test s.tspan == 1000.0
 end
 
-@testitem "Box boundaries" setup=[Setup] begin
+@testitem "Box boundaries" setup = [Setup] begin
     box = ReflectingBox(-5 .. 5)
     # box = NoBoundary()
     u0 = [0.0, 1.0]
@@ -559,8 +579,8 @@ end
     sol = @test_nowarn solve(S; dt = 0.001, saveat = 0.1)
     x = first.(sol.u)
     y = last.(sol.u)
-    @test minimum(x) ≥ -5 - 2e-2
-    @test maximum(x) ≤ 5 + 2e-2
+    @test minimum(x) ≥ -5 - 2.0e-2
+    @test maximum(x) ≤ 5 + 2.0e-2
     lines(sol.t, x)
     lines(sol.t, y) # Momentum is constant?
     density(x) # The boundaries interfere with the density if they are too close
@@ -606,8 +626,8 @@ end
     x = first.(sol.u)
     density(x)
     gg = fit(Laplace, x)
-    @test gg.μ≈0.0f0 atol=5e-2
-    @test gg.θ≈1.0f0 atol=1e-1
+    @test gg.μ ≈ 0.0f0 atol = 5.0e-2
+    @test gg.θ ≈ 1.0f0 atol = 1.0e-1
 end
 
 # @testitem "Oscillations under flat potential?" setup=[Setup] begin
@@ -698,10 +718,10 @@ if false # ! Need to fix out-of-place noise
     sol = solve(prob; dt = 0.1)
 
     function f3(u, p, t, W)
-        2u * sin(W)
+        return 2u * sin(W)
     end
     Random.seed!(rng, 42)
-    u0 = 1.00
+    u0 = 1.0
     tspan = (0.0, 5.0)
     prob = RODEProblem(f3, u0, tspan; noise = LevyProcess(2.0))
     @time sol = solve(prob, RandomEM(), dt = 1 / 100)
@@ -709,18 +729,18 @@ if false # ! Need to fix out-of-place noise
 
     function f4(du, u, p, t, W)
         du[1] = 2u[1] * sin(W[1] - W[2])
-        du[2] = -2u[2] * cos(W[1] + W[2])
+        return du[2] = -2u[2] * cos(W[1] + W[2])
     end
-    u0 = [1.00; 1.00]
+    u0 = [1.0; 1.0]
     tspan = (0.0, 5.0)
     prob = RODEProblem(f4, u0, tspan; noise = LevyProcess(2.0))
     @test_throws "BoundsError" solve(prob, RandomEM(), dt = 1 / 100)
     @test_throws "DomainError" NoiseProblem(LevyProcess(-1.0), (0.0, 1.0))
 
     function f3!(u0, u, p, t, W)
-        u0[1] = 2u[1] * sin(W[1])
+        return u0[1] = 2u[1] * sin(W[1])
     end
-    u0 = [1.00]
+    u0 = [1.0]
     tspan = (0.0, 5.0)
     L = LevyProcess!(2.0)
     prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
@@ -735,25 +755,25 @@ if false # ! Need to fix out-of-place noise
     sol = solve(prob, RandomEM(); dt)
 
     lines(sol.t, sol.u; linewidth = 2)
-    @test std(diff(sol.u))≈sqrt(dt) rtol=1e-2
+    @test std(diff(sol.u)) ≈ sqrt(dt) rtol = 1.0e-2
 end
 
 # @testitem "Levy Noise" setup=[Setup] begin
 if false # ! Need to fix out-of-place noise
     L = LevyProcess(1.5)
     prob = NoiseProblem(L, (0.0, 1.0))
-    dt = 1e-6
+    dt = 1.0e-6
     sol = solve(prob, RandomEM(); dt)
 
     g = fit(Stable, diff(sol.u) ./ (dt^(1 / 1.5)))
-    @test L.dist.α≈g.α atol=1e-2
+    @test L.dist.α ≈ g.α atol = 1.0e-2
 end
 
 # @testitem "Ensemble" setup=[Setup] begin
 if false # ! Need to fix out-of-place noise
     Random.seed!(42)
     L = LevyProcess(1.5)
-    dt = 1e-3
+    dt = 1.0e-3
     prob = NoiseProblem(L, (0.0, 1.0))
     ensemble = EnsembleProblem(prob)
     sol = @test_nowarn solve(ensemble, RandomEM(), EnsembleSerial(); trajectories = 5, dt)

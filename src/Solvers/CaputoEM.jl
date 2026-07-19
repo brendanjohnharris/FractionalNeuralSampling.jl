@@ -15,15 +15,15 @@ struct CaputoEM{T} <: FractionalAlgorithm
         if !(0 < β <= 1)
             throw(ArgumentError("Fractional order β must be in (0, 1]"))
         end
-        new{T}(β, nhist)
+        return new{T}(β, nhist)
     end
 end # No split steps for now since we think noise is just additive.
 function CaputoEM(β::T, nhist::Int) where {T <: AbstractFloat}
-    CaputoEM{T}(β, nhist)
+    return CaputoEM{T}(β, nhist)
 end
 
 struct CaputoEMCache{T, uType <: AbstractArray{<:T}, rateType, rateNoiseType} <:
-       StochasticDiffEqMutableCache
+    StochasticDiffEqMutableCache
     u::uType # Current state
     uhist::Window{uType} # Circular buffer for history
     weights::Vector{T} # Weights for history terms
@@ -50,21 +50,25 @@ function caputo_weights(β::AbstractFloat, n::Int)
     # w_j = (j + 1)^(1-β) - j^(1-β) # for j = 1, 2, ..., n
     # j = 1 means 1 time step in the past
     w = range(n, 1, step = -1)
-    @. (w + 1)^(1 - β) - w^(1 - β)
+    return @. (w + 1)^(1 - β) - w^(1 - β)
 end
 
-function alg_cache(alg::CaputoEM, prob, u, ΔW, ΔZ, p,
-                   rate_prototype,
-                   noise_rate_prototype,
-                   jump_rate_prototype,
-                   ::Type{uEltypeNoUnits},
-                   ::Type{uBottomEltypeNoUnits},
-                   ::Type{tTypeNoUnits},
-                   uprev, f, t, dt,
-                   ::Type{Val{true}},
-                   verbose = false) where {uEltypeNoUnits,
-                                           uBottomEltypeNoUnits,
-                                           tTypeNoUnits}
+function alg_cache(
+        alg::CaputoEM, prob, u, ΔW, ΔZ, p,
+        rate_prototype,
+        noise_rate_prototype,
+        jump_rate_prototype,
+        ::Type{uEltypeNoUnits},
+        ::Type{uBottomEltypeNoUnits},
+        ::Type{tTypeNoUnits},
+        uprev, f, t, dt,
+        ::Type{Val{true}},
+        verbose = false
+    ) where {
+        uEltypeNoUnits,
+        uBottomEltypeNoUnits,
+        tTypeNoUnits,
+    }
     tmp = zero(u)
     rtmp1 = zero(rate_prototype)
     if noise_rate_prototype !== nothing
@@ -77,11 +81,11 @@ function alg_cache(alg::CaputoEM, prob, u, ΔW, ΔZ, p,
     β = convert(eltype(u), alg.β)
     correction = caputo_factor(β, dt)
     weights = caputo_weights(β, nhist(alg))
-    CaputoEMCache(u, uhist, weights, correction, tmp, rtmp1, rtmp2)
+    return CaputoEMCache(u, uhist, weights, correction, tmp, rtmp1, rtmp2)
 end
 
 function wrap_integrator_cache!(C::CaputoEMCache, u, uprev)
-    C.uhist[end] .= u .- uprev
+    return C.uhist[end] .= u .- uprev
 end
 
 @muladd function perform_step!(integrator, cache::CaputoEMCache)

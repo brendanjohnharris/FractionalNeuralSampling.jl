@@ -35,8 +35,10 @@ begin
     # β ∈ [-1,1]: Skewness
     # γ > 0: Scale parameter
     # δ: Location parameter
-    function levyNoise(α = 1.5, dt = 1, tspan = 1000; β = 0, γ = 1, δ = 0, ND = 1,
-                       max = nothing, seed = nothing)
+    function levyNoise(
+            α = 1.5, dt = 1, tspan = 1000; β = 0, γ = 1, δ = 0, ND = 1,
+            max = nothing, seed = nothing
+        )
         N = Int(floor(tspan / dt)) + 1
         dist = Stable(α, β, γ, δ)
         if (seed !== nothing)
@@ -63,10 +65,12 @@ begin
         return x
     end
 
-    function FractionalLM(H::Float64, α::Float64; dt = nothing, tspan = nothing,
-                          N = nothing,
-                          μ = 1.0, maxStep = nothing, ND = 1, method = :slice,
-                          uncorNoise = false, seed = nothing, k = 1.0)
+    function FractionalLM(
+            H::Float64, α::Float64; dt = nothing, tspan = nothing,
+            N = nothing,
+            μ = 1.0, maxStep = nothing, ND = 1, method = :slice,
+            uncorNoise = false, seed = nothing, k = 1.0
+        )
         if (μ < 0 || μ > 1)
             error("μ must be in the range [0,1]")
         end
@@ -143,7 +147,7 @@ begin # * Plot
     lines((x[1:10000]))
 end
 
-function noiseMatToNoiseGrid(X; dt = nothing, tspan = nothing, t = nothing,)
+function noiseMatToNoiseGrid(X; dt = nothing, tspan = nothing, t = nothing)
     if (t === nothing)
         if (tspan === nothing || dt === nothing)
             error("You must provide either a vector of times t, or a simulation time tspan and a time step dt")

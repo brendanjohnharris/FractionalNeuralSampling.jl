@@ -22,7 +22,7 @@ begin
     u0 = [0.0, 0.0]
     α = 1.6
     β = 0.4
-    tspan = 5000.00
+    tspan = 5000.0
 
     xs = map(Dim{:α}(alphas)) do α
         S = FNS(; γ, β, α, u0, 𝜋, tspan, boundaries)

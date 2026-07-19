@@ -20,14 +20,15 @@ begin
     α = 1.6
     f = Figure()
     L = FractionalHMC(;
-                      u0 = [-Δx / 2, 0],
-                      tspan = 500.0,
-                      α = α,
-                      β = 0.5,
-                      γ = 2.0,
-                      𝜋 = D,
-                      seed = 42,
-                      boundaries = boundaries())
+        u0 = [-Δx / 2, 0],
+        tspan = 500.0,
+        α = α,
+        β = 0.5,
+        γ = 2.0,
+        𝜋 = D,
+        seed = 42,
+        boundaries = boundaries()
+    )
     sol = solve(L, EM(); dt = 0.001)
     x = sol[1, :]
 
@@ -53,14 +54,15 @@ end
 begin # * Power spectrum
     u0 = [-Δx / 2, 0]
     L = FractionalHMC(;
-                      u0 = u0,
-                      tspan = 10000.0,
-                      α = 1.6, #α,
-                      β = 2.0,
-                      γ = 3.0,
-                      𝜋 = D,
-                      seed = 42,
-                      noise_rate_prototype = similar(u0))
+        u0 = u0,
+        tspan = 10000.0,
+        α = 1.6, #α,
+        β = 2.0,
+        γ = 3.0,
+        𝜋 = D,
+        seed = 42,
+        noise_rate_prototype = similar(u0)
+    )
     sol = solve(L, EM(); dt = 0.01)
     x = sol[1, :]
     x = TimeseriesTools.TimeSeries(sol.t, x)
@@ -73,22 +75,28 @@ begin
 
     # * Fit a line to the tail
     s = s[𝑓(1 .. Inf)]
-    logsample = exp10.(range(log10(minimum(freqs(s))), log10(maximum(freqs(s))),
-                             length = 1000))
+    logsample = exp10.(
+        range(
+            log10(minimum(freqs(s))), log10(maximum(freqs(s))),
+            length = 1000
+        )
+    )
     s = s[𝑓 = Near(logsample)]
     a = log.(freqs(s))
     b = log.(s |> collect)
     a = [ones(length(a)) a]
     b, m = a \ b
     lines!(freqs(s), exp.(m * log.(freqs(s)) .+ b), color = (:black, 0.5))
-    text!(10, 0.1, text = "α = $(round(m, sigdigits=2))", color = (:black, 0.5))
+    text!(10, 0.1, text = "α = $(round(m, sigdigits = 2))", color = (:black, 0.5))
 
     # * add a time series inset top
-    axx = Axis(current_figure()[1, 1],
-               width = Relative(0.5),
-               height = Relative(0.3),
-               halign = 0.05,
-               valign = 0.05)
+    axx = Axis(
+        current_figure()[1, 1],
+        width = Relative(0.5),
+        height = Relative(0.3),
+        halign = 0.05,
+        valign = 0.05
+    )
     hidedecorations!(axx)
     lines!(axx, x[1:5000], color = (:black, 0.5), linewidth = 1)
 

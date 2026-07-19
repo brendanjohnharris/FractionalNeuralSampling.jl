@@ -13,21 +13,21 @@ struct MultiCaputoEM{T} <: FractionalAlgorithm
         if !all(0 < b <= 1 for b in β)
             throw(ArgumentError("All fractional orders β must be in (0, 1]"))
         end
-        new{T}(β, nhist)
+        return new{T}(β, nhist)
     end
 end
 
 function MultiCaputoEM(β::Vector{T}, nhist::Int) where {T <: AbstractFloat}
-    MultiCaputoEM{T}(β, nhist)
+    return MultiCaputoEM{T}(β, nhist)
 end
 
 # Convenience constructor for uniform β across all variables
 function MultiCaputoEM(β::T, nvars::Int, nhist::Int) where {T <: AbstractFloat}
-    MultiCaputoEM(fill(β, nvars), nhist)
+    return MultiCaputoEM(fill(β, nvars), nhist)
 end
 
 struct MultiCaputoEMCache{T, uType <: AbstractArray{<:T}, rateType, rateNoiseType} <:
-       StochasticDiffEqMutableCache
+    StochasticDiffEqMutableCache
     u::uType # Current state
     uhist::Window{uType} # Circular buffer for history
     weights::Matrix{T} # Weights for history terms (nvars × nhist)
@@ -41,7 +41,7 @@ nhist(C::MultiCaputoEM) = C.nhist
 nhist(C::MultiCaputoEMCache) = length(C.uhist)
 
 function full_cache(c::MultiCaputoEMCache)
-    tuple(c.u, c.uhist, c.weights, c.correction, c.tmp, c.rtmp1)
+    return tuple(c.u, c.uhist, c.weights, c.correction, c.tmp, c.rtmp1)
 end
 jac_iter(c::MultiCaputoEMCache) = tuple()
 rand_cache(c::MultiCaputoEMCache) = tuple()
@@ -59,18 +59,22 @@ function caputo_weights_multiorder(β::Vector{T}, n::Int) where {T}
     return weights
 end
 
-function alg_cache(alg::MultiCaputoEM, prob, u, ΔW, ΔZ, p,
-                   rate_prototype,
-                   noise_rate_prototype,
-                   jump_rate_prototype,
-                   ::Type{uEltypeNoUnits},
-                   ::Type{uBottomEltypeNoUnits},
-                   ::Type{tTypeNoUnits},
-                   uprev, f, t, dt,
-                   ::Type{Val{true}},
-                   verbose = false) where {uEltypeNoUnits,
-                                           uBottomEltypeNoUnits,
-                                           tTypeNoUnits}
+function alg_cache(
+        alg::MultiCaputoEM, prob, u, ΔW, ΔZ, p,
+        rate_prototype,
+        noise_rate_prototype,
+        jump_rate_prototype,
+        ::Type{uEltypeNoUnits},
+        ::Type{uBottomEltypeNoUnits},
+        ::Type{tTypeNoUnits},
+        uprev, f, t, dt,
+        ::Type{Val{true}},
+        verbose = false
+    ) where {
+        uEltypeNoUnits,
+        uBottomEltypeNoUnits,
+        tTypeNoUnits,
+    }
     tmp = zero(u)
     rtmp1 = zero(rate_prototype)
     if noise_rate_prototype !== nothing
@@ -96,11 +100,11 @@ function alg_cache(alg::MultiCaputoEM, prob, u, ΔW, ΔZ, p,
     # Compute weights matrix
     weights = caputo_weights_multiorder(β, nhist(alg))
 
-    MultiCaputoEMCache(u, uhist, weights, correction, tmp, rtmp1, rtmp2)
+    return MultiCaputoEMCache(u, uhist, weights, correction, tmp, rtmp1, rtmp2)
 end
 
 function wrap_integrator_cache!(C::MultiCaputoEMCache, u, uprev)
-    C.uhist[end] .= u .- uprev
+    return C.uhist[end] .= u .- uprev
 end
 
 @muladd function perform_step!(integrator, cache::MultiCaputoEMCache)

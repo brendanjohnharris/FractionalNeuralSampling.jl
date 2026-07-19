@@ -11,10 +11,10 @@ import SpecialFunctions: gamma
 export AdaptiveWalkSampler, AdaptiveLevySampler
 
 function domain_length(d::DomainSets.Domain)
-    [d.b - d.a]
+    return [d.b - d.a]
 end
 function domain_length(d::DomainSets.ProductDomain)
-    map(domain_length, d.domains)
+    return map(domain_length, d.domains)
 end
 
 # * Kernel callback (shared by both samplers)
@@ -37,7 +37,7 @@ function kernel_effect!(integrator)
     da_K = -p.a_K ./ τ_d .+ a_k̂ ./ τ_r
     p.a_K .+= da_K .* dt
 
-    derivative_discontinuity!(integrator, false) # SciMLBase v3 name for u_modified!
+    return derivative_discontinuity!(integrator, false) # SciMLBase v3 name for u_modified!
 end
 
 # * Adaptive walk (Gaussian noise)
@@ -59,26 +59,28 @@ function adaptive_walk_f!(du, u, p, t)
     end
     ∇K_val = [f(x) for f in ∇K_funcs]
 
-    dx .= -γ * (∇V(x) .+ ∇K_val)
+    return dx .= -γ * (∇V(x) .+ ∇K_val)
 end
 
 function adaptive_walk_g!(du, u, p, t)
     ps, _ = p
     @unpack γ, dim = ps
     dx = divide_dims(du, dim)[1]
-    dx .= sqrt(2γ)
+    return dx .= sqrt(2γ)
 end
 
-function AdaptiveWalkSampler(kernel, approx_n_modes;
-                             tspan, γ, τ_r, τ_d,
-                             u0 = [0.0],
-                             boundaries = nothing,
-                             noise_rate_prototype = similar(u0),
-                             𝜋 = Density(default_density(first(u0))),
-                             noise = WienerProcess!(0.0, zero(u0)),
-                             alg = EM(),
-                             callback = (),
-                             kwargs...)
+function AdaptiveWalkSampler(
+        kernel, approx_n_modes;
+        tspan, γ, τ_r, τ_d,
+        u0 = [0.0],
+        boundaries = nothing,
+        noise_rate_prototype = similar(u0),
+        𝜋 = Density(default_density(first(u0))),
+        noise = WienerProcess!(0.0, zero(u0)),
+        alg = EM(),
+        callback = (),
+        kwargs...
+    )
     dim = length(u0)
 
     sp_domain = Boundaries.domain(boundaries)
@@ -102,11 +104,13 @@ function AdaptiveWalkSampler(kernel, approx_n_modes;
     p = (; γ, τ_r, τ_d, D, a_K, sp, plan, kernel, grid_points, dim)
 
     kernelcallback = DiscreteCallback(kernel_condition, kernel_effect!)
-    Sampler(adaptive_walk_f!, adaptive_walk_g!;
-            callback = CallbackSet(boundary_init(boundaries), kernelcallback, callback...),
-            kwargs...,
-            u0, noise_rate_prototype, noise, tspan,
-            p, 𝜋, alg) |> assert_dimension(; order = 1)
+    return Sampler(
+        adaptive_walk_f!, adaptive_walk_g!;
+        callback = CallbackSet(boundary_init(boundaries), kernelcallback, callback...),
+        kwargs...,
+        u0, noise_rate_prototype, noise, tspan,
+        p, 𝜋, alg
+    ) |> assert_dimension(; order = 1)
 end
 
 # * Adaptive Lévy walk
@@ -128,27 +132,31 @@ function adaptive_levy_f!(du, u, p, t)
     end
     ∇K_val = [f(x) for f in ∇K_funcs]
 
-    dx .= -γ * (∇V(x) .+ ∇K_val) * gamma(α - 1) / (gamma(α / 2) .^ 2)
+    return dx .= -γ * (∇V(x) .+ ∇K_val) * gamma(α - 1) / (gamma(α / 2) .^ 2)
 end
 
 function adaptive_levy_g!(du, u, p, t)
     ps, _ = p
     @unpack α, γ, dim = ps
     dx = divide_dims(du, dim)[1]
-    dx .= γ^(1 / α)
+    return dx .= γ^(1 / α)
 end
 
-function AdaptiveLevySampler(kernel, approx_n_modes;
-                             tspan, α, γ, τ_r, τ_d,
-                             u0 = [0.0],
-                             boundaries = nothing,
-                             noise_rate_prototype = similar(u0),
-                             𝜋 = Density(default_density(first(u0))),
-                             noise = NoiseProcesses.LevyProcess!(α; ND = length(u0),
-                                                                 W0 = zero(u0)),
-                             alg = EM(),
-                             callback = (),
-                             kwargs...)
+function AdaptiveLevySampler(
+        kernel, approx_n_modes;
+        tspan, α, γ, τ_r, τ_d,
+        u0 = [0.0],
+        boundaries = nothing,
+        noise_rate_prototype = similar(u0),
+        𝜋 = Density(default_density(first(u0))),
+        noise = NoiseProcesses.LevyProcess!(
+            α; ND = length(u0),
+            W0 = zero(u0)
+        ),
+        alg = EM(),
+        callback = (),
+        kwargs...
+    )
     dim = length(u0)
 
     sp_domain = Boundaries.domain(boundaries)
@@ -172,9 +180,11 @@ function AdaptiveLevySampler(kernel, approx_n_modes;
     p = (; α, γ, τ_r, τ_d, D, a_K, sp, plan, kernel, grid_points, dim)
 
     kernelcallback = DiscreteCallback(kernel_condition, kernel_effect!)
-    Sampler(adaptive_levy_f!, adaptive_levy_g!;
-            callback = CallbackSet(boundary_init(boundaries), kernelcallback, callback...),
-            kwargs...,
-            u0, noise_rate_prototype, noise, tspan,
-            p, 𝜋, alg) |> assert_dimension(; order = 1)
+    return Sampler(
+        adaptive_levy_f!, adaptive_levy_g!;
+        callback = CallbackSet(boundary_init(boundaries), kernelcallback, callback...),
+        kwargs...,
+        u0, noise_rate_prototype, noise, tspan,
+        p, 𝜋, alg
+    ) |> assert_dimension(; order = 1)
 end

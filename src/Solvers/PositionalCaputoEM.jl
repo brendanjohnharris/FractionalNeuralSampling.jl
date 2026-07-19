@@ -11,16 +11,16 @@ struct PositionalCaputoEM{T} <: FractionalAlgorithm
     nhist::Int
     function PositionalCaputoEM{T}(β1::T, nhist::Int) where {T}
         (0 < β1 <= 1) || throw(ArgumentError("β₁ must be in (0, 1]"))
-        new{T}(β1, nhist)
+        return new{T}(β1, nhist)
     end
 end
 
 function PositionalCaputoEM(β1::T, nhist::Int) where {T <: AbstractFloat}
-    PositionalCaputoEM{T}(β1, nhist)
+    return PositionalCaputoEM{T}(β1, nhist)
 end
 
 struct PositionalCaputoEMCache{T, uType <: AbstractArray{<:T}, rateType, rateNoiseType} <:
-       StochasticDiffEqMutableCache
+    StochasticDiffEqMutableCache
     u::uType                   # Current state
     uhist1::Window{T}          # History of Δx₁ only (length nhist)
     weights1::Vector{T}        # L1 weights for β₁ (length nhist)
@@ -35,25 +35,29 @@ nhist(C::PositionalCaputoEMCache) = length(C.uhist1)
 
 function full_cache(c::PositionalCaputoEMCache)
     # Return the same shape of tuple as other algs typically do
-    tuple(c.u, c.uhist1, c.weights1, c.correction1, c.tmp, c.rtmp1)
+    return tuple(c.u, c.uhist1, c.weights1, c.correction1, c.tmp, c.rtmp1)
 end
 jac_iter(::PositionalCaputoEMCache) = tuple()
 rand_cache(c::PositionalCaputoEMCache) = tuple()
 ratenoise_cache(c::PositionalCaputoEMCache) = tuple(c.rtmp2)
 
 # -- cache builder
-function alg_cache(alg::PositionalCaputoEM, prob, u, ΔW, ΔZ, p,
-                   rate_prototype,
-                   noise_rate_prototype,
-                   jump_rate_prototype,
-                   ::Type{uEltypeNoUnits},
-                   ::Type{uBottomEltypeNoUnits},
-                   ::Type{tTypeNoUnits},
-                   uprev, f, t, dt,
-                   ::Type{Val{true}},
-                   verbose = false) where {uEltypeNoUnits,
-                                           uBottomEltypeNoUnits,
-                                           tTypeNoUnits}
+function alg_cache(
+        alg::PositionalCaputoEM, prob, u, ΔW, ΔZ, p,
+        rate_prototype,
+        noise_rate_prototype,
+        jump_rate_prototype,
+        ::Type{uEltypeNoUnits},
+        ::Type{uBottomEltypeNoUnits},
+        ::Type{tTypeNoUnits},
+        uprev, f, t, dt,
+        ::Type{Val{true}},
+        verbose = false
+    ) where {
+        uEltypeNoUnits,
+        uBottomEltypeNoUnits,
+        tTypeNoUnits,
+    }
     tmp = zero(u)
     rtmp1 = zero(rate_prototype)
     rtmp2 = noise_rate_prototype === nothing ? nothing : zero(noise_rate_prototype)
@@ -67,11 +71,11 @@ function alg_cache(alg::PositionalCaputoEM, prob, u, ΔW, ΔZ, p,
     correction1 = caputo_factor(β1, dt)
     weights1 = caputo_weights(β1, nhist(alg))
 
-    PositionalCaputoEMCache(u, uhist1, weights1, correction1, tmp, rtmp1, rtmp2)
+    return PositionalCaputoEMCache(u, uhist1, weights1, correction1, tmp, rtmp1, rtmp2)
 end
 
 function wrap_integrator_cache!(C::PositionalCaputoEMCache, u, uprev)
-    C.uhist1[end] = u[1] - uprev[1] # Just correct history for x
+    return C.uhist1[end] = u[1] - uprev[1] # Just correct history for x
 end
 
 # -- single step

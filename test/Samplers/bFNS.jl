@@ -23,7 +23,7 @@ begin
     domain = -10 .. 10
     boundaries = PeriodicBox(-5 .. 5)
     u0 = [0.0, 0.0]
-    tspan = 10000.00
+    tspan = 10000.0
 
     S = bFNS(; α, β, γ, η, u0, 𝜋, dt, tspan, boundaries, domain)
     sol = solve(S, EM(); dt) |> Timeseries |> eachcol |> first

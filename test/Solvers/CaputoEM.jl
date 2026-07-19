@@ -14,7 +14,7 @@ begin # * Make Sampler
     # 𝜋 = MixtureModel([Normal(-3, 1), Normal(3, 1)]) |> FractionalNeuralSampling.Density
     𝜋 = PotentialDensity{1}(_ -> 0.0) # Flat potential
     u0 = [0.0]
-    tspan = 100.00
+    tspan = 100.0
     S = OLE(; η, u0, 𝜋, tspan)
 end
 

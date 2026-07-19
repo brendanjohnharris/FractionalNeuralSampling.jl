@@ -36,13 +36,17 @@ begin
 
     # Save snapshots of the adaptive kernel coefficients
     saved_aK = SavedValues(Float64, Vector{Float64})
-    save_callback = SavingCallback((u, t, integrator) -> copy(integrator.p[1].a_K),
-                                   saved_aK;
-                                   saveat = 0.0:dt:tspan)
+    save_callback = SavingCallback(
+        (u, t, integrator) -> copy(integrator.p[1].a_K),
+        saved_aK;
+        saveat = 0.0:dt:tspan
+    )
 
-    S = AdaptiveLevySampler(kernel, approx_n_modes;
-                            α, γ, τ_r, τ_d, u0, 𝜋, tspan, boundaries, dt,
-                            callback = (save_callback,))
+    S = AdaptiveLevySampler(
+        kernel, approx_n_modes;
+        α, γ, τ_r, τ_d, u0, 𝜋, tspan, boundaries, dt,
+        callback = (save_callback,)
+    )
 
     sol = solve(S, EM(); dt)
     x = Timeseries(sol) |> eachcol |> first
@@ -75,13 +79,17 @@ begin
     # # * Plot 1: Time series with effective potential heatmap
     # begin
     f = Figure(size = (900, 400))
-    ax1 = Axis(f[1, 1]; xlabel = "Time", ylabel = "x",
-               title = "Adaptive Lévy Sampler (α = $α)")
+    ax1 = Axis(
+        f[1, 1]; xlabel = "Time", ylabel = "x",
+        title = "Adaptive Lévy Sampler (α = $α)"
+    )
 
     imax = findfirst(t_hm .>= 2)
-    hm = heatmap!(ax1, collect(t_hm)[1:imax], collect(xgrid_hm),
-                  V_eff'[1:imax, :];
-                  colormap = :bone)
+    hm = heatmap!(
+        ax1, collect(t_hm)[1:imax], collect(xgrid_hm),
+        V_eff'[1:imax, :];
+        colormap = :bone
+    )
 
     # Trajectory on top
     lines!(ax1, x[𝑡 = 0 .. 2]; linewidth = 1, color = :crimson)
@@ -101,8 +109,10 @@ end
 # * Plot 2: Histogram vs target density
 begin
     f = Figure(size = (600, 400))
-    ax = Axis(f[1, 1]; xlabel = "x", ylabel = "Density",
-              title = "Sampled vs Target Distribution")
+    ax = Axis(
+        f[1, 1]; xlabel = "x", ylabel = "Density",
+        title = "Sampled vs Target Distribution"
+    )
     hist!(ax, collect(x); normalization = :pdf, bins = -5:0.1:5, color = (:steelblue, 0.6))
     xgrid = -5:0.01:5
     lines!(ax, xgrid, 𝜋.(xgrid); color = :red, linewidth = 2, label = "Target")
@@ -119,9 +129,13 @@ begin
     dwell_times = diff(transition_idx) .* dt
 
     f = Figure(size = (600, 400))
-    ax = Axis(f[1, 1]; xlabel = "Dwell time", ylabel = "Density",
-              title = "Dwell Time Distribution")
-    ziggurat!(ax, dwell_times;
-              color = (:cornflowerblue, 0.7), bins = 0.05:0.05:1, normalization = :pdf)
+    ax = Axis(
+        f[1, 1]; xlabel = "Dwell time", ylabel = "Density",
+        title = "Dwell Time Distribution"
+    )
+    ziggurat!(
+        ax, dwell_times;
+        color = (:cornflowerblue, 0.7), bins = 0.05:0.05:1, normalization = :pdf
+    )
     display(f)
 end

@@ -29,55 +29,63 @@ import StochasticDiffEq: EM
 
 export AbstractSampler, Sampler, parameters
 
-abstract type AbstractSampler{uType,tType,isinplace,ND} <:
-              AbstractSDEProblem{uType,tType,isinplace,ND} end
+abstract type AbstractSampler{uType, tType, isinplace, ND} <:
+AbstractSDEProblem{uType, tType, isinplace, ND} end
 
 const compatible_solvers = (:EM, :CaputoEM)
 
 function SciMLBase.solve(P::AbstractSampler; kwargs...)
-    if haskey(P.kwargs, :alg)
+    return if haskey(P.kwargs, :alg)
         solve(P, P.kwargs[:alg]; kwargs...)
     else
         throw(ArgumentError("Use `solve(S::Sampler, alg; kwargs...)`. Compatible algorithms: $(join(compatible_solvers, ", "))"))
     end
 end
 
-const Labelled = Union{SLArray,LArray,NamedTuple}
+const Labelled = Union{SLArray, LArray, NamedTuple}
 
-struct Sampler{uType,tType,isinplace,P<:Labelled,NP,F,G,K,ND,
-    D<:Union{AbstractDensity,Function}} <:
-       AbstractSampler{uType,tType,isinplace,ND}
+struct Sampler{
+        uType, tType, isinplace, P <: Labelled, NP, F, G, K, ND,
+        D <: Union{AbstractDensity, Function},
+    } <:
+    AbstractSampler{uType, tType, isinplace, ND}
     f::F
     g::G
     u0::uType
     tspan::tType
-    p::Tuple{P,D} # = (params, 𝜋)
+    p::Tuple{P, D} # = (params, 𝜋)
     noise::NP
     kwargs::K
     noise_rate_prototype::ND
     seed::UInt64
 end
-function Sampler{isinplace}(f::F, g::G, u0::uType, # For @set
-    tspan::tType,
-    p::Tuple{P,D},
-    noise::NP, kwargs::K,
-    noise_rate_prototype::ND,
-    seed::UInt64) where {uType,
-    tType,
-    isinplace,
-    P<:Labelled,
-    NP,F,
-    G,K,
-    ND,D}
-    Sampler{uType,tType,isinplace,P,NP,F,G,K,ND,D}(f, g, u0, tspan, p, noise,
+function Sampler{isinplace}(
+        f::F, g::G, u0::uType, # For @set
+        tspan::tType,
+        p::Tuple{P, D},
+        noise::NP, kwargs::K,
+        noise_rate_prototype::ND,
+        seed::UInt64
+    ) where {
+        uType,
+        tType,
+        isinplace,
+        P <: Labelled,
+        NP, F,
+        G, K,
+        ND, D,
+    }
+    return Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D}(
+        f, g, u0, tspan, p, noise,
         kwargs, noise_rate_prototype,
-        seed)
+        seed
+    )
 end
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
 SciMLBase.is_diagonal_noise(S::Sampler) = true
 
-function default_density(u0; dims=length(u0) ÷ 2)
+function default_density(u0; dims = length(u0) ÷ 2)
     u0 = divide_dims(u0, dims) |> first
     if length(u0) == 1
         D = Normal(0.0, 1.0)
@@ -88,33 +96,43 @@ function default_density(u0; dims=length(u0) ÷ 2)
     return D
 end
 function default_density(u0::Real)
-    Normal(0.0, 1.0) |> Density
+    return Normal(0.0, 1.0) |> Density
 end
-function Sampler{iip}(f::AbstractSDEFunction{iip}, u0, tspan,
-    p::Tuple{<:Labelled,D}=(NullParameters(),
-        (default_density ∘ first)(u0));
-    noise_rate_prototype=nothing,
-    noise=nothing,
-    seed=UInt64(0),
-    kwargs...) where {iip,D<:Union{AbstractDensity,Function}}
+function Sampler{iip}(
+        f::AbstractSDEFunction{iip}, u0, tspan,
+        p::Tuple{<:Labelled, D} = (
+            NullParameters(),
+            (default_density ∘ first)(u0),
+        );
+        noise_rate_prototype = nothing,
+        noise = nothing,
+        seed = UInt64(0),
+        kwargs...
+    ) where {iip, D <: Union{AbstractDensity, Function}}
     _u0 = prepare_initial_state(u0)
     _tspan = promote_tspan(tspan)
     warn_paramtype(p)
-    Sampler{typeof(_u0),typeof(_tspan),
-        isinplace(f),typeof(first(p)),
-        typeof(noise),typeof(f),typeof(f.g),typeof(kwargs),
-        typeof(noise_rate_prototype),D}(f, f.g, _u0, _tspan, p,
+    return Sampler{
+        typeof(_u0), typeof(_tspan),
+        isinplace(f), typeof(first(p)),
+        typeof(noise), typeof(f), typeof(f.g), typeof(kwargs),
+        typeof(noise_rate_prototype), D,
+    }(
+        f, f.g, _u0, _tspan, p,
         noise,
         kwargs,
-        noise_rate_prototype, seed)
+        noise_rate_prototype, seed
+    )
 end
-function Sampler{iip}(f::AbstractSDEFunction{iip}; u0, tspan,
-    p,
-    kwargs...) where {iip}
-    Sampler{iip}(f, u0, tspan, p; kwargs...)
+function Sampler{iip}(
+        f::AbstractSDEFunction{iip}; u0, tspan,
+        p,
+        kwargs...
+    ) where {iip}
+    return Sampler{iip}(f, u0, tspan, p; kwargs...)
 end
-function Sampler{iip}(; f, g=nothing, kwargs...) where {iip}
-    if f isa AbstractSDEFunction
+function Sampler{iip}(; f, g = nothing, kwargs...) where {iip}
+    return if f isa AbstractSDEFunction
         Sampler{iip}(f; kwargs...)
     elseif !isnothing(g)
         Sampler{iip}(f, g; kwargs...)
@@ -122,16 +140,18 @@ function Sampler{iip}(; f, g=nothing, kwargs...) where {iip}
         throw(ArgumentError("You must specify an f::AbstractSDEFunction, or both f and g"))
     end
 end
-function Sampler(f::AbstractSDEFunction, args...;
-    kwargs...)
-    Sampler{isinplace(f)}(f, args...; kwargs...)
+function Sampler(
+        f::AbstractSDEFunction, args...;
+        kwargs...
+    )
+    return Sampler{isinplace(f)}(f, args...; kwargs...)
 end
 # function Sampler(f, g, args...; p, kwargs...)
 #     Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
 # end
 function Sampler(f, g, args...; p, 𝜋, kwargs...)
     p = (p, 𝜋)
-    Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
+    return Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
 end
 
 function (S::AbstractSampler)(; kwargs...)
@@ -163,14 +183,14 @@ function (S::AbstractSampler)(; kwargs...)
 end
 
 function assert_dimension(u0; order, dimension)
-    if length(u0) != order * dimension
+    return if length(u0) != order * dimension
         throw(ArgumentError("Initial condition u0 must have length $(order * dimension) for dimension $dimension and order $order, got length $(length(u0))"))
     end
 end
 
 function assert_dimension(S::AbstractSampler; order)
     u0 = S.u0
-    assert_dimension(u0; order, dimension=dimension(Density(S)))
+    assert_dimension(u0; order, dimension = dimension(Density(S)))
     return S
 end
 
