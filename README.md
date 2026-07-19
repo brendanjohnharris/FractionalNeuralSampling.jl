@@ -3,6 +3,7 @@
 [![Build Status](https://github.com/brendanjohnharris/FractionalNeuralSampling.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/brendanjohnharris/FractionalNeuralSampling.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/brendanjohnharris/FractionalNeuralSampling.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/brendanjohnharris/FractionalNeuralSampling.jl)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-black)](https://github.com/fredrikekre/Runic.jl)
 
 A Julia package for simulating fractional neural sampling: stochastic samplers driven by Lévy (α-stable) noise and fractional-order dynamics, following [Qi and Gong (2022)](https://doi.org/10.1038/s41467-022-32279-z), *Fractional neural sampling as a theory of spatiotemporal probabilistic computations in neural circuits*.
 
