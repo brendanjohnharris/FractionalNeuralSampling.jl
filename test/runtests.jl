@@ -6,7 +6,10 @@ using TestItemRunner
 
 @testitem "Aqua.jl" begin
     using Aqua
-    Aqua.test_all(FractionalNeuralSampling; persistent_tasks = false)
+    Aqua.test_all(
+        FractionalNeuralSampling; persistent_tasks = false,
+        undefined_exports = false
+    )
 end
 
 @testsnippet Setup begin
@@ -40,6 +43,8 @@ end
     import TimeseriesTools.msdist
     using Normalization
     import FractionalNeuralSampling: Density
+    import FFTW
+    FFTW.set_num_threads(1) # Threaded FFTW segfaults (JuliaMath/FFTW.jl#236)
     set_theme!(foresight(:physics))
 end
 

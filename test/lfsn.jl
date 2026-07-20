@@ -1,6 +1,8 @@
 using FractionalNeuralSampling
 using Test
 using Hurst
+import FFTW
+FFTW.set_num_threads(1) # Threaded FFTW segfaults (JuliaMath/FFTW.jl#236)
 
 begin  # Test Hurst exponent
     α = 1.5
