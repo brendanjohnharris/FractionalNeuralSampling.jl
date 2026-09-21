@@ -6,7 +6,7 @@ using RecursiveArrayTools
 using ComponentArrays
 using ForwardDiff
 @reexport using SciMLBase
-@reexport using StochasticDiffEq
+@reexport using StochasticDiffEqLowOrder # Reexports StochasticDiffEqCore; `EM` is the only upstream solver used
 
 function set_ad_backend!(
         new_backend::Union{

@@ -44,7 +44,7 @@ begin # * Fractional orders alter the trajectory but remain finite
 end
 
 begin # * Integrator internals and cache interface
-    int = StochasticDiffEq.init(S, MultiCaputoEM([0.9, 0.9], 100); dt)
+    int = init(S, MultiCaputoEM([0.9, 0.9], 100); dt)
     c = int.cache
     @test c isa FractionalNeuralSampling.Solvers.MultiCaputoEMCache
     @test full_cache(c) == (c.u, c.uhist, c.weights, c.correction, c.tmp, c.rtmp1)
@@ -52,5 +52,5 @@ begin # * Integrator internals and cache interface
     @test rand_cache(c) === ()
     @test ratenoise_cache(c) === (c.rtmp2,)
     @test size(c.weights) == (2, 100) # nvars × nhist
-    @inferred StochasticDiffEq.perform_step!(int, int.cache)
+    @inferred StochasticDiffEqCore.perform_step!(int, int.cache)
 end

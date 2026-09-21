@@ -25,7 +25,7 @@ import SciMLBase: AbstractSDEProblem, AbstractSDEFunction, NullParameters,
     prepare_initial_state,
     promote_tspan, warn_paramtype, @add_kwonly
 
-import StochasticDiffEq: EM
+import StochasticDiffEqLowOrder: EM
 
 export AbstractSampler, Sampler, parameters
 

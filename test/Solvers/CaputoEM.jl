@@ -26,17 +26,17 @@ end
 begin # * Stepping is type stable
     alg = @inferred EM()
     alg2 = @inferred CaputoEM(0.75f0, 1000)
-    int = StochasticDiffEq.init(S, alg, dt = dt)
-    int2 = StochasticDiffEq.init(S, alg2, dt = dt)
-    @inferred StochasticDiffEq.perform_step!(int, int.cache)
-    @inferred StochasticDiffEq.perform_step!(int2, int2.cache)
+    int = init(S, alg, dt = dt)
+    int2 = init(S, alg2, dt = dt)
+    @inferred StochasticDiffEqCore.perform_step!(int, int.cache)
+    @inferred StochasticDiffEqCore.perform_step!(int2, int2.cache)
 end
 
 begin # * A coarser timestep gives a rougher path, not a different one
     Random.seed!(1234)
     noise = [[randn()] for n in 1:100000] |> cumsum # Must be the integral of the noise
     ts = range(S.tspan..., length = length(noise))
-    W = StochasticDiffEq.NoiseGrid(ts, noise)
+    W = DiffEqNoiseProcess.NoiseGrid(ts, noise)
     S2 = OLE(; η, u0, 𝜋, tspan, noise = W)
 
     dt2 = 0.01 # Below 0.01 the paths do diverge

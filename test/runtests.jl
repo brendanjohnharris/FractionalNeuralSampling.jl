@@ -594,7 +594,7 @@ end
 end
 
 @testitem "Per-step allocations" setup = [Setup] begin
-    using StochasticDiffEq
+    using StochasticDiffEqCore
     import FractionalNeuralSampling.Boundaries: getcondition
 
     # The boundary condition runs every step. It used to materialise the per-axis edge
@@ -616,10 +616,10 @@ end
     # A step must not allocate its history element or re-prepare its gradient.
     # Measured on this machine: OLE/EM 5440 -> 2240, OLE/CaputoEM 7040 -> 2560.
     function steps(S, alg; dt = 0.01, n = 20)
-        int = StochasticDiffEq.init(S, alg; dt)
-        StochasticDiffEq.perform_step!(int, int.cache) # compile
+        int = init(S, alg; dt)
+        StochasticDiffEqCore.perform_step!(int, int.cache) # compile
         return @allocated for _ in 1:n
-            StochasticDiffEq.perform_step!(int, int.cache)
+            StochasticDiffEqCore.perform_step!(int, int.cache)
         end
     end
 

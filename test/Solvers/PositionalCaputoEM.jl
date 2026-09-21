@@ -43,7 +43,7 @@ begin # * Fractional β₁: x₁ deviates from EM while x₂ stays on the EM pat
 end
 
 begin # * Integrator internals and cache interface
-    int = StochasticDiffEq.init(S, PositionalCaputoEM(0.75, 100); dt)
+    int = init(S, PositionalCaputoEM(0.75, 100); dt)
     c = int.cache
     @test c isa FractionalNeuralSampling.Solvers.PositionalCaputoEMCache
     @test full_cache(c) == (c.u, c.uhist1, c.weights1, c.correction1, c.tmp, c.rtmp1)
@@ -51,5 +51,5 @@ begin # * Integrator internals and cache interface
     @test rand_cache(c) === ()
     @test ratenoise_cache(c) === (c.rtmp2,)
     @test length(c.weights1) == 100
-    @inferred StochasticDiffEq.perform_step!(int, int.cache)
+    @inferred StochasticDiffEqCore.perform_step!(int, int.cache)
 end

@@ -7,7 +7,7 @@
 
 A Julia package for simulating fractional neural sampling: stochastic samplers driven by Lévy (α-stable) noise and fractional-order dynamics, following [Qi and Gong (2022)](https://doi.org/10.1038/s41467-022-32279-z), *Fractional neural sampling as a theory of spatiotemporal probabilistic computations in neural circuits*.
 
-Samplers are defined as `SDEProblem`-compatible types built on the [SciML](https://sciml.ai) ecosystem ([StochasticDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl)), so they compose with the standard `solve`/`init` interface, callbacks, and ensemble machinery. The package provides:
+Samplers are defined as `SDEProblem`-compatible types built on the [SciML](https://sciml.ai) ecosystem, so they compose with the standard `solve`/`init` interface, callbacks, and ensemble machinery. Only [StochasticDiffEqLowOrder.jl](https://github.com/SciML/StochasticDiffEq.jl) is a dependency, which provides `EM`; add `StochasticDiffEq` yourself for the other upstream solvers. The package provides:
 
 - A `Density` type wrapping target distributions (from [Distributions.jl](https://github.com/JuliaStats/Distributions.jl), plain functions, or potentials), with analytic or automatic differentiation of log-densities.
 - A family of samplers: classical Langevin dynamics, Lévy-driven fractional neural sampling, and space- and time-fractional variants.
@@ -112,7 +112,7 @@ With [TimeseriesTools.jl](https://github.com/brendanjohnharris/TimeseriesTools.j
 
 ## Fractional solvers
 
-Three custom `StochasticDiffEq`-compatible algorithms solve SDEs with Caputo fractional time derivatives of order β ∈ (0, 1], using an L1 Euler--Maruyama approximation with a truncated history of `nhist` steps:
+Three custom `StochasticDiffEqCore`-compatible algorithms solve SDEs with Caputo fractional time derivatives of order β ∈ (0, 1], using an L1 Euler--Maruyama approximation with a truncated history of `nhist` steps:
 
 ```julia
 S = OLE(; η = 0.1, u0 = [0.0], 𝜋 = Density(Normal(0.0, 1.0)), tspan = 100.0)
