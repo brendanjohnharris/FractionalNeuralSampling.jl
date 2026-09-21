@@ -3,6 +3,7 @@ using Distributions
 using TimeseriesTools
 using Random
 using Test
+import DiffEqNoiseProcess # NoiseGrid; not reexported by the package
 
 begin # * Make Sampler
     dt = 0.001
