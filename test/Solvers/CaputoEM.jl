@@ -1,108 +1,57 @@
 using FractionalNeuralSampling
 using Distributions
-using CairoMakie
 using TimeseriesTools
 using Random
-using Foresight
 using Test
-using BenchmarkTools
-set_theme!(foresight(:physics))
 
 begin # * Make Sampler
     dt = 0.001
     η = 0.1
-    # 𝜋 = MixtureModel([Normal(-3, 1), Normal(3, 1)]) |> FractionalNeuralSampling.Density
     𝜋 = PotentialDensity{1}(_ -> 0.0) # Flat potential
     u0 = [0.0]
     tspan = 100.0
     S = OLE(; η, u0, 𝜋, tspan)
 end
 
-begin # * Standard EM
+begin # * CaputoEM at β = 1 reduces exactly to EM
     Random.seed!(1234)
     alg = @inferred EM()
     sol = solve(S, alg; dt) |> Timeseries |> eachcol |> only
-    f = TwoPanel()
-    ax = Axis(f[1, 1], xlabel = "t", ylabel = "x(t)")
-    lines!(ax, sol, linewidth = 3)
-    display(f)
-end
 
-begin # * Same fractional EM Ok.
     Random.seed!(1234)
-    _sol2 = solve(S, CaputoEM(1.0, 1000); dt)
-    sol2 = _sol2 |> Timeseries |> eachcol |> only
-    ax = Axis(f[1, 2], xlabel = "t", ylabel = "x(t)")
-    lines!(ax, sol2, linewidth = 3)
-    display(f)
-
+    sol2 = solve(S, CaputoEM(1.0, 1000); dt) |> Timeseries |> eachcol |> only
     @test sol == sol2
 end
 
-begin # * Other exponent
-    Random.seed!(1234)
-    _sol2 = solve(S, CaputoEM(0.6, 1000); dt)
-    sol2 = _sol2 |> Timeseries |> eachcol |> only
-end
-
-# begin # * Plot power spectrum
-#     s = spectrum(rectify(sol, dims = 𝑡; tol = 1), 1)[10:end]
-#     s2 = spectrum(rectify(sol2, dims = 𝑡; tol = 1), 1)[10:end]
-
-#     s2 = (s2 ./ first(s2)) .* first(s)
-
-#     plotspectrum(s)
-#     plotspectrum!(current_axis(), s2)
-#     display(current_figure())
-# end
-
-begin # * Stepping cost
+begin # * Stepping is type stable
     alg = @inferred EM()
     alg2 = @inferred CaputoEM(0.75f0, 1000)
-
     int = StochasticDiffEq.init(S, alg, dt = dt)
     int2 = StochasticDiffEq.init(S, alg2, dt = dt)
     @inferred StochasticDiffEq.perform_step!(int, int.cache)
     @inferred StochasticDiffEq.perform_step!(int2, int2.cache)
-
-    # * Benchmark
-    @info "EM"
-    display(@benchmark StochasticDiffEq.perform_step!($int, $int.cache))
-
-    @info "CaputoEM"
-    display(@benchmark StochasticDiffEq.perform_step!($int2, $int2.cache))
 end
 
-begin # * Check finer timestep using NoiseGrid
+begin # * A coarser timestep gives a rougher path, not a different one
     Random.seed!(1234)
     noise = [[randn()] for n in 1:100000] |> cumsum # Must be the integral of the noise
     ts = range(S.tspan..., length = length(noise))
     W = StochasticDiffEq.NoiseGrid(ts, noise)
     S2 = OLE(; η, u0, 𝜋, tspan, noise = W)
 
-    dt2 = 0.01  # Vary and see we get rougher path, but not different overall. Dont drop it below 0.01
+    dt2 = 0.01 # Below 0.01 the paths do diverge
     alg = @inferred CaputoEM(0.6, Int(100 ÷ dt2))
-    _sol2 = solve(S2, alg; dt = dt2)
-    sol2 = _sol2 |> Timeseries |> eachcol |> only
+    sol2 = solve(S2, alg; dt = dt2) |> Timeseries |> eachcol |> only
 
-    dt2 = 0.1  # Vary and see we get rougher path, but not different overall. Dont drop it below 0.01
+    dt2 = 0.1
     alg = @inferred CaputoEM(0.6, Int(100 ÷ dt2))
-    _sol3 = solve(S2, alg; dt = dt2)
-    sol3 = _sol3 |> Timeseries |> eachcol |> only
+    sol3 = solve(S2, alg; dt = dt2) |> Timeseries |> eachcol |> only
 
     ts = range(S2.tspan..., length = min(length(sol2), length(sol3)))
     @test cor(sol2[𝑡 = Near(ts)], sol3[𝑡 = Near(ts)]) > 0.95
-
-    f = TwoPanel()
-    ax = Axis(f[1, 1], xlabel = "t", ylabel = "x(t)")
-    lines!(ax, sol2, linewidth = 3)
-
-    ax = Axis(f[1, 2], xlabel = "t", ylabel = "x(t)")
-    lines!(ax, sol3, linewidth = 3)
-    display(f)
 end
 
-begin # * 2D example
+begin # * 2D target, which takes the multivariate gradient path
     using LinearAlgebra
     Random.seed!(1234)
     dt = 0.01
@@ -114,11 +63,6 @@ begin # * 2D example
     S = OLE(; η, u0, 𝜋, tspan)
 
     alg = @inferred CaputoEM(0.5, 1000)
-    _sol2 = solve(S, alg; dt)
-    sol2 = _sol2 |> Timeseries
-
-    f = Figure()
-    ax = Axis(f[1, 1], xlabel = "x", ylabel = "y")
-    lines!(ax, eachcol(collect(sol2))..., linewidth = 1)
-    display(f)
+    sol2 = @test_nowarn solve(S, alg; dt) |> Timeseries
+    @test size(sol2, 2) == 2
 end

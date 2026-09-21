@@ -14,8 +14,6 @@ end
 
 @testsnippet Setup begin
     using RecursiveArrayTools
-    using CairoMakie
-    using Foresight
     using FractionalNeuralSampling
     import FractionalNeuralSampling: Density
     using Random
@@ -45,7 +43,6 @@ end
     import FractionalNeuralSampling: Density
     import FFTW
     FFTW.set_num_threads(1) # Threaded FFTW segfaults (JuliaMath/FFTW.jl#236)
-    set_theme!(foresight(:physics))
 end
 
 @testitem "Density" setup = [Setup] begin
@@ -89,9 +86,6 @@ end
 
     @test_nowarn KLDivergence()(D, randn(1000))
     sol = solve(S, EM(); dt)
-    Makie.hist(first.(sol.u), bins = 50, normalization = :pdf)
-    lines!(-2.5:0.1:2.5, D.(-2.5:0.1:2.5))
-    current_figure()
     @test mean(first.(sol.u)) ≈ 0.0 atol = 0.05
     @test std(first.(sol.u)) ≈ 1.0 atol = 0.05
 
@@ -113,8 +107,6 @@ end
         end
         stds = last.(er)
         ers = first.(er)
-        lines(βs, ers)
-        lines(βs, stds)
     end
 end
 
@@ -136,61 +128,8 @@ end
     sol = solve(S; dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
-    density(x)
-    lines!(-4:0.1:4, D.(-4:0.1:4))
-    current_figure()
     @test evaluate(KLDivergence(), D, x) < 0.2
 
-    if false
-        βs = range(0, 2, length = 20)
-        er = map(βs) do β
-            P = remake(S, p = ((S.p[1][1], β, S.p[1][3]), S.p[2:end]...))
-            ensemble = EnsembleProblem(P)
-            sol = solve(ensemble, EM(); dt, trajectories = 10)
-            ts = map(sol) do s
-                x = s[1, :]
-                x = x[abs.(x) .< 6]
-            end
-            er = evaluate.([KLDivergence()], [D], ts) |> mean
-            return er
-        end
-        lines(βs, er)
-
-        αs = range(1.1, 2.0, length = 20)
-        er = map(αs) do α
-            P = remake(S, p = ((α, S.p[1][2:end]...), S.p[2:end]...))
-            ensemble = EnsembleProblem(P)
-            sol = solve(ensemble, EM(), EnsembleThreads(); dt, trajectories = 100)
-            ts = map(sol) do s
-                x = s[1, :]
-                x = x[abs.(x) .< 6]
-            end
-            er = evaluate.([KLDivergence()], [D], ts) |> mean
-            return er
-        end
-        lines(αs, er)
-
-        αs = range(1.25, 2.0, length = 52)
-        βs = range(0, 2, length = 51)
-        ps = Iterators.product(αs, βs) .|> collect
-        push!.(ps, 1.0) # Add γ
-        ers = pmap(ps) do p
-            P = remake(S, p = (Tuple(p), S.p[2:end]...))
-            ensemble = EnsembleProblem(P)
-            sol = solve(ensemble, EM(); dt, trajectories = 1000)
-            ts = [s[1, :] for s in sol]
-            ts = map(sol) do s
-                x = s[1, :]
-                x = x[abs.(x) .< 6]
-            end
-            er = evaluate.([KLDivergence()], [D], ts) |> mean
-            return er
-        end
-        fax = heatmap(αs, βs, (ers); axis = (; xlabel = "α", ylabel = "β"))
-        Colorbar(fax.figure[1, 2], fax.plot; label = "KL Divergence")
-        fax
-        # heatmap(αs, βs, stds; axis = (; xlabel = "α", ylabel = "β"))
-    end
 end
 
 @testitem "Space-fractional neural sampling bias" setup = [Setup] begin
@@ -213,9 +152,6 @@ end
     sol = solve(S; dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
-    hist(x; normalization = :pdf, bins = 50)
-    lines!(-4:0.1:4, D.(-4:0.1:4); color = :crimson)
-    current_figure()
     @test evaluate(KLDivergence(), D, x) < 0.05
 end
 
@@ -314,8 +250,6 @@ end
     )
     @inferred LogDensityProblems.logdensity(D, 0.0)
     @inferred LogDensityProblems.logdensity(D, 0)
-    lines(-2:0.1:2, D.(-2:0.1:2))
-    lines(-2:0.01:2, Densities.potential(D).(-2:0.01:2))
     @inferred Densities.gradlogdensity(D, 0.01)
     @inferred map(Densities.gradlogdensity(D), 0.01:0.01:5)
     @test map(Densities.gradlogdensity(D), 0.1:0.1:5) == gradlogpdf.([d], 0.1:0.1:5)
@@ -334,9 +268,6 @@ end
         @benchmark map(Densities.gradlogdensity($D), -1:0.01:1)
         @benchmark LogDensityProblems.logdensity_and_gradient.([$D], -1:0.01:1)
     end
-    lines(-2:0.1:2, D.(-2:0.1:2))
-    lines(-2:0.01:2, Densities.potential(D).(-2:0.01:2))
-    lines(-2:0.01:2, Densities.gradlogdensity(D).(-2:0.01:2))
 
     D = @test_nowarn Density(Normal(0.0f0, 0.5f0))
     @test LogDensityProblems.logdensity(D, 0.0f0) isa Float32
@@ -426,8 +357,6 @@ end
 
     sol = @test_nowarn solve(S, EM(); dt = 0.001, saveat = 0.01)
     x = first.(sol.u)
-    plot(x)
-    density(x)
 
     # * Try setting parameters
     s = S(η = 0.1)
@@ -452,9 +381,6 @@ end
     y = last.(sol.u)
     @test minimum(x) ≥ -5 - 2.0e-2
     @test maximum(x) ≤ 5 + 2.0e-2
-    lines(sol.t, x)
-    lines(sol.t, y) # Momentum is constant?
-    density(x) # The boundaries interfere with the density if they are too close
     # @test x == trajectory(S)
 
     box = ReflectingBox(-1 .. 1)
@@ -466,9 +392,6 @@ end
     x = first.(sol.u)
     y = last.(sol.u)
     minimum(x)
-    lines(sol.t, x; linewidth = 3)
-    lines(sol.t, y, linewidth = 3)
-    density(x)
     @test minimum(x) ≥ -1 - 0.05
     @test maximum(x) ≤ 1 + 0.05
 
@@ -481,9 +404,6 @@ end
     x = first.(sol.u)
     y = last.(sol.u)
     minimum(x)
-    lines(sol.t, x; linewidth = 3)
-    lines(sol.t, y, linewidth = 3)
-    density(x)
     @test minimum(x) ≥ -1 - 0.02
     @test maximum(x) ≤ 1 + 0.02
 
@@ -495,7 +415,6 @@ end
     # @benchmark solve(S; dt = 0.001, saveat = 0.01)
     sol = @test_nowarn solve(S; dt = 0.01f0, saveat = 0.1f0)
     x = first.(sol.u)
-    density(x)
     gg = fit(Laplace, x)
     @test gg.μ ≈ 0.0f0 atol = 5.0e-2
     @test gg.θ ≈ 1.0f0 atol = 1.0e-1
