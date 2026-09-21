@@ -1,9 +1,9 @@
 function tfole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η = ps
-    x = divide_dims(u, dimension(𝜋))
-    b = gradlogdensity(𝜋)(x)
-    return du .= only(η .* b)
+    x = first_dims(u, dimension(𝜋))
+    b = gradlogdensity(𝜋, x)
+    return du .= η .* b
 end
 function tfole_g!(du, u, p, t)
     ps, 𝜋 = p
@@ -16,7 +16,7 @@ function gen_fbm(β; u0, tspan, dt, seed) # * 1d for now
     tmin = length(tspan) == 2 ? minimum(tspan) : 0
     tmax = maximum(tspan)
     H = 1 - β / 2
-    N = Int(tspan / dt) + 1
+    N = Int((tmax - tmin) / dt) + 1
     x = cumsum(lfsn(N, α, H; dt, rng = Xoshiro(seed)))
     ts = range(tmin, step = dt, length = N)
     @assert last(ts) == tmax
@@ -36,12 +36,14 @@ function tFOLE(;
         noise_rate_prototype = similar(u0),
         seed = rand(UInt32),
         noise = gen_fbm(β; u0, tspan, dt, seed),
+        𝜋 = default_density(u0; dims = length(u0)),
         callback = (),
         alg = CaputoEM(β, 1000),
         kwargs...
     )
     return Sampler(
         tfole_f!, tfole_g!;
+        𝜋,
         callback = CallbackSet(boundary_init(boundaries), callback...),
         u0,
         noise_rate_prototype,

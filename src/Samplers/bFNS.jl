@@ -19,7 +19,7 @@ function gen_lfsm_fns(α, β; tspan, dt, seed, nhist) # * 1D with zeros for mome
     tmin = length(tspan) == 2 ? minimum(tspan) : 0
     tmax = maximum(tspan)
     H = one(α) / 2 - β / 2 + 1 / α
-    N = Int(tspan / dt) + 1
+    N = Int((tmax - tmin) / dt) + 1
     x = cumsum(lfsn(N, α, H; dt, rng = Xoshiro(seed), M = nhist))
     x = hcat(x, zero(x)) # Zeros for momentum
     ts = range(tmin, step = dt, length = N)

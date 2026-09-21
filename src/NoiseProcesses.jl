@@ -13,10 +13,10 @@ struct LevyNoise{inplace, T}
     β::T
     σ::T
     μ::T
-    ND::Integer # ? The number of dimensions to the noise process
+    ND::Int # ? The number of dimensions to the noise process
 end
 function LevyNoise{inplace}(α, β = 0.0, σ = 1, μ = 0.0, ND = 1) where {inplace}
-    Stable(α, β, σ, μ)
+    Stable(α, β, σ, μ) # Validate the parameters up front
     return LevyNoise{inplace, typeof(α)}(α, β, σ, μ, ND)
 end
 function LevyNoise(args...)
@@ -30,10 +30,11 @@ dist(L::LevyNoise) = Stable(L.α, L.β, L.σ, L.μ)
 
 @inline function (L::LevyNoise{true})(rng::AbstractRNG, rand_vec::AbstractVector)
     rand_vecs = divide_dims(rand_vec, L.ND) # * Add ND noise independently to each column (each variable)
-    return map(rand_vecs) do x
+    d = dist(L)
+    return foreach(rand_vecs) do x
         randn!(rng, x) # * Choose a point from a spherical distribution
         x ./= norm(x) # * Normalize the vector
-        x .*= rand(rng, dist(L)) # * Take a levy step in the chosen direction
+        x .*= rand(rng, d) # * Take a levy step in the chosen direction
     end
 end
 @inline function (L::LevyNoise{true})(rng::AbstractRNG, rand_mat::AbstractMatrix)
@@ -46,12 +47,16 @@ function (L!::LevyNoise{true})(rand_mat, W, dt, u, p, t, rng)
     return @fastmath rand_mat .*= abs(dt)^(1 / L!.α)
 end
 
+"""
+Out-of-place Lévy noise is not implemented: `LevyNoise{false}` has no sampling method, so
+the process would only fail once solved. Use [`LevyProcess!`](@ref).
+"""
 function LevyProcess(
         α, β = 0.0, σ = 1; μ = 0.0, t0 = 0.0, W0 = 0.0, Z0 = nothing,
         ND = 1,
         kwargs...
     )
-    return NoiseProcess{false}(t0, W0, Z0, LevyNoise{false}(α, β, σ, μ, ND), nothing; kwargs...)
+    return throw(ArgumentError("Out-of-place Lévy noise is not implemented; use `LevyProcess!`"))
 end
 function LevyProcess!(
         α, β = 0.0, σ = 1; μ = 0.0, t0 = 0.0, W0 = [0.0],

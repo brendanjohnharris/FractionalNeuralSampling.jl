@@ -14,7 +14,7 @@ function sfns_f!(du, u, p, t)
     @unpack α, β, γ, ∇𝒟𝜋, 𝜋s, λ = ps
     x, v = divide_dims(u, dimension(𝜋))
     b = ∇𝒟𝜋(maybeonly(x)) / (𝜋s(maybeonly(x)) + λ)
-    dx, dv = divide_dims(du, length(du) ÷ 2)
+    dx, dv = divide_dims(du, dimension(𝜋))
     dx .= γ .* b .+ β .* v
     return dv .= β .* b
 end
@@ -32,7 +32,7 @@ function sFNS(;
         domain, # The domain for the spatial fractional derivative
         approx_n_modes = 1000,
         noise_rate_prototype = similar(u0),
-        𝜋 = Density(default_density(first(u0))),
+        𝜋 = default_density(u0),
         noise = NoiseProcesses.LevyProcess!(
             α; ND = dimension(𝜋),
             W0 = zero(u0)

@@ -6,7 +6,7 @@ function fns_f!(du, u, p, t)
     @unpack α, β, γ = ps
     x, v = divide_dims(u, dimension(𝜋))
     b = gradlogdensity(𝜋)(x) * gamma(α - 1) / (gamma(α / 2) .^ 2)
-    dx, dv = divide_dims(du, length(du) ÷ 2)
+    dx, dv = divide_dims(du, dimension(𝜋))
     dx .= γ .* b .+ β .* v
     return dv .= β .* b
 end
@@ -22,7 +22,7 @@ function FNS(;
         tspan, α, β, γ, u0 = [0.0, 0.0],
         boundaries = nothing,
         noise_rate_prototype = similar(u0),
-        𝜋 = Density(default_density(first(u0))),
+        𝜋 = default_density(u0),
         noise = NoiseProcesses.LevyProcess!(
             α; ND = dimension(𝜋),
             W0 = zero(u0)

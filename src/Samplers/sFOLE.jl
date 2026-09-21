@@ -7,7 +7,7 @@ function space_fractional_deriv(::Val{1}; α, domain)
     D = Derivative(S, 1)
     Δ = maybeLaplacian(S)
     @assert isdiag(Δ)
-    @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
+    @assert all(Δ[i, i] <= 0.0 for i in 1:100) # * Should be negative for Fourier domain
     𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
     return S, D, 𝒟
 end
@@ -16,7 +16,7 @@ function space_fractional_deriv(::Val{2}; α, domain)
     D = [Derivative(S, SVector{2}([1, 0])); Derivative(S, SVector{2}([0, 1]))]
     Δ = maybeLaplacian(S)
     @assert isdiag(Δ)
-    @assert all([Δ[i, i] for i in 1:length(100)] .<= 0.0) # * Should be negative for Fourier domain
+    @assert all(Δ[i, i] <= 0.0 for i in 1:100) # * Should be negative for Fourier domain
     𝒟 = Power(-Δ, (α - 2) / 2) # The fractional LAPLACIAN
     return S, D, 𝒟
 end
@@ -31,7 +31,7 @@ end
 function sfole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η, α, ∇𝒟𝜋, 𝜋s, λ = ps
-    x = divide_dims(u, dimension(𝜋)) |> only
+    x = first_dims(u, dimension(𝜋))
     b = ∇𝒟𝜋(only(x)) / (𝜋s(only(x)) + λ)
     return du .= only(η .* b)
 end

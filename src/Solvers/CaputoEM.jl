@@ -145,8 +145,9 @@ end
     for (dx, w) in zip(uhist, weights)
         @. u -= w .* dx
     end
-    # * Roll history
-    push!(uhist, u - uprev)
+    # * Roll history, overwriting the dropped element rather than allocating
+    Δu = roll!(uhist)
+    Δu .= u .- uprev
 
     return nothing
 end

@@ -54,7 +54,11 @@ function gradlogpdf(D::UnivariateDistributionDensity)
 end
 
 # * Constructors
+# ! For distributions the dimension comes from the distribution itself, so the type
+# ! parameter is `doAd` here, unlike `Density{N}(f)` for a function
 function Density{doAd}(d::D) where {D <: Distribution, doAd}
+    doAd isa Bool ||
+        throw(ArgumentError("`Density{doAd}(::Distribution)` takes a `Bool`; the dimension is taken from the distribution. Got `$doAd`"))
     N = length(d)
     return DistributionDensity{D, N, doAd}(d)
 end

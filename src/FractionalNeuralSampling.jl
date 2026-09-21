@@ -40,8 +40,14 @@ function divide_dims(rand_vec::ComponentArray, ND) # ND unused
     return map(Base.Fix1(view, rand_vec), ComponentArrays.valkeys(rand_vec))
 end
 
+"""
+The first of the views returned by [`divide_dims`](@ref), without materialising the rest
+"""
+first_dims(u::AbstractVector, ND) = view(u, 1:ND)
+first_dims(u::ArrayPartition, ND) = first(u.x)
+first_dims(u::ComponentArray, ND) = view(u, first(ComponentArrays.valkeys(u)))
+
 include("PowerOperator.jl")
-include("Probabilities.jl")
 include("NoiseProcesses.jl")
 include("Densities.jl")
 include("Boundaries.jl")
@@ -56,11 +62,10 @@ include("Samplers.jl")
 @reexport using .Solvers
 import .Boundaries: domain
 
-# * Extension placeholders
+# * Extension placeholders (defined in TimeseriesToolsExt)
 function samplingpower end
 function samplingaccuracy end
-function samplingefficiency end
 function _samplingaccuracy end
 
-export samplingpower, samplingaccuracy, samplingefficiency
+export samplingpower, samplingaccuracy
 end

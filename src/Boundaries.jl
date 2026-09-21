@@ -6,7 +6,7 @@ using Statistics
 using Distributions
 using LinearAlgebra
 using LogDensityProblems
-import ..FractionalNeuralSampling: divide_dims, Densities.AbstractDensity
+import ..FractionalNeuralSampling: divide_dims, first_dims, Densities.AbstractDensity
 
 export AbstractBoundary, AbstractContinuousBoundary, AbstractBoxBoundary, ReflectingBox,
     NoBoundary, PeriodicBox, ReentrantBox, gridaxes, grid
@@ -40,6 +40,14 @@ function (B::Type{<:AbstractBoxBoundary})(interval::AbstractInterval)
     return B(zip(map(extrema, [interval])...)...)
 end
 
+"""
+Promote a pair of corners to a common element type, so that box fields are concrete
+"""
+function _promote_corners(c1::NTuple{D}, c2::NTuple{D}) where {D}
+    T = promote_type(map(typeof, c1)..., map(typeof, c2)...)
+    return map(Base.Fix1(convert, T), c1), map(Base.Fix1(convert, T), c2)
+end
+
 function _boxdist(point, min_corner, max_corner)
     return map(point, min_corner, max_corner) do p, min_c, max_c
         if p < min_c
@@ -51,21 +59,38 @@ function _boxdist(point, min_corner, max_corner)
         end
     end
 end
+"""
+Whether any coordinate of `point` lies outside the box; equivalent to a negative
+[`boxdist`](@ref), but without materialising the distances
+"""
+function isoutside(point, min_corner, max_corner)
+    return any(eachindex(point)) do i
+        point[i] < min_corner[i] || point[i] > max_corner[i]
+    end
+end
 function boxdist(point, min_corner, max_corner)
     d = minimum(_boxdist(point, min_corner, max_corner))  # Overall distance to the closest edge
     return d
 end
+"""
+Mirror `point` about the nearest box face, reversing the corresponding component of
+`velocity`. `velocity === nothing` for first-order systems, which carry no momentum
+"""
 function reflectvelocity!(velocity, point, min_corner, max_corner)
     dists = _boxdist(point, min_corner, max_corner)
     _, edge = findmin(dists)
-    velocity[edge] = -velocity[edge]
+    isnothing(velocity) || (velocity[edge] = -velocity[edge])
     edge_faces = [min_corner[edge], max_corner[edge]]
     _, closest_edge = findmin(abs.(edge_faces .- point[edge]))
     return point[edge] = edge_faces[closest_edge] .- (point[edge] .- edge_faces[closest_edge]) # ! Is this best???
 end
-struct ReflectingBox{D} <: AbstractBoxBoundary{D}
-    min_corner::NTuple{D}
-    max_corner::NTuple{D}
+struct ReflectingBox{D, T} <: AbstractBoxBoundary{D}
+    min_corner::NTuple{D, T}
+    max_corner::NTuple{D, T}
+    function ReflectingBox(min_corner::NTuple{D}, max_corner::NTuple{D}) where {D}
+        mn, mx = _promote_corners(min_corner, max_corner)
+        return new{D, eltype(mn)}(mn, mx)
+    end
 end
 _corners(R::AbstractBoxBoundary) = (R.min_corner, R.max_corner)
 function corners(R::AbstractBoxBoundary)
@@ -92,7 +117,7 @@ function getaffect(R::ReflectingBox{D}) where {D}
         vars = divide_dims(integrator.u, D)
         return if length(vars) == 1
             x = vars[1]
-            reflectvelocity!(similar(x), x, _corners(R)...)
+            reflectvelocity!(nothing, x, _corners(R)...)
         else
             x = vars[1]
             v = vars[2]
@@ -102,34 +127,25 @@ function getaffect(R::ReflectingBox{D}) where {D}
 end
 function getcondition(R::AbstractBoxBoundary{D}) where {D}
     return function condition(u, t, integrator)
-        x = divide_dims(u, D) |> first
-        d = boxdist(x, _corners(R)...)
-        return d < 0
+        return isoutside(first_dims(u, D), _corners(R)...)
     end
 end
 
-struct PeriodicBox{D, Re} <: AbstractBoxBoundary{D}
-    min_corner::NTuple{D}
-    max_corner::NTuple{D}
+struct PeriodicBox{D, Re, T} <: AbstractBoxBoundary{D}
+    min_corner::NTuple{D, T}
+    max_corner::NTuple{D, T}
     function PeriodicBox(
             min_corner::NTuple{D}, max_corner::NTuple{D};
             reset = false
         ) where {D}
-        return new{D, reset}(min_corner, max_corner)
+        mn, mx = _promote_corners(min_corner, max_corner)
+        return new{D, reset, eltype(mn)}(mn, mx)
     end
 end
-# function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
-#     dists = _boxdist(point, min_corner, max_corner)
-#     _, edge = findmin(dists)
-#     edge_faces = [min_corner[edge], max_corner[edge]]
-#     edgedists = abs.(edge_faces .- point[edge])
-#     _, old_edge = findmin(edgedists)
-#     _, new_edge = findmax(edgedists)
-#     point[edge] = edge_faces[new_edge] .+ (point[edge] .- edge_faces[old_edge])
-#     if reset
-#         velocity .= 0
-#     end
-# end
+"""
+Wrap `point` into the box. `velocity` is zeroed if `reset`, and is `nothing` for
+first-order systems, which carry no momentum
+"""
 function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
     for i in eachindex(point)
         box_width = max_corner[i] - min_corner[i]
@@ -144,7 +160,7 @@ function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
         point[i] = wrapped + min_corner[i]
     end
 
-    if reset
+    if reset && !isnothing(velocity)
         velocity .= 0
     end
 
@@ -152,8 +168,8 @@ function reenterbox!(velocity, point, min_corner, max_corner; reset = false)
 end
 
 """
-Corrects the integrator cache for boundary condition resets by setting the stored history
-difference to the difference of the post-update values
+Corrects the integrator cache after a boundary reset, by setting the stored history
+difference to the difference of the post-update values. A no-op for caches without history
 """
 function wrap_integrator_cache!(C, u, uprev)
     return
@@ -166,7 +182,7 @@ function getaffect(R::PeriodicBox{D, Re}) where {D, Re}
         vars = divide_dims(integrator.u, D)
         if length(vars) == 1
             x = vars[1] # ! Updated position
-            reenterbox!(similar(x), x, _corners(R)...; reset = Re)
+            reenterbox!(nothing, x, _corners(R)...; reset = Re)
         else
             x = vars[1]
             v = vars[2]
@@ -179,15 +195,16 @@ end
 """
 A 'half-periodic' box where one edge is permeable and one edge is re-entrant.
 """
-struct ReentrantBox{D, Re} <: AbstractBoxBoundary{D}
-    reentrance::NTuple{D}
-    exit::NTuple{D}
+struct ReentrantBox{D, Re, T} <: AbstractBoxBoundary{D}
+    reentrance::NTuple{D, T}
+    exit::NTuple{D, T}
     relpos::NTuple{D, Bool}
     function ReentrantBox(
             reentrance::NTuple{D}, exit::NTuple{D};
             reset = true
         ) where {D}
-        return new{D, reset}(reentrance, exit, Tuple(exit .> reentrance))
+        re, ex = _promote_corners(reentrance, exit)
+        return new{D, reset, eltype(re)}(re, ex, Tuple(ex .> re))
     end
 end
 function ReentrantBox(
@@ -238,9 +255,9 @@ function getcondition(R::ReentrantBox{D}) where {D}
     reentrance, exit = _corners(R)
     relpos = R.relpos
     return function condition(u, t, integrator)
-        x = divide_dims(u, D) |> first
+        x = first_dims(u, D)
 
-        for i in 1:length(x)
+        for i in eachindex(x)
             y = x[i]
             ex = reentrance[i]
             en = exit[i]
@@ -268,7 +285,7 @@ boundary_init(; kwargs...) = nothing
 boundary_init(D::DECallback; kwargs...) = D
 
 function domain(R::AbstractBoxBoundary)
-    return [Interval(is...) for is in zip(R.min_corner, R.max_corner)]
+    return [Interval(minmax(is...)...) for is in zip(_corners(R)...)]
 end
 
 function gridaxes(R::AbstractBoxBoundary{D}, n::Int) where {D}
@@ -283,10 +300,7 @@ function grid(R::AbstractBoxBoundary, n)
 end
 
 function (Base.in)(point, R::AbstractBoxBoundary)
-    inside = map(point, R.min_corner, R.max_corner) do p, min_c, max_c
-        (p >= min_c) && (p <= max_c)
-    end
-    return all(inside)
+    return !isoutside(point, _corners(R)...)
 end
 
 end # module

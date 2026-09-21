@@ -1,9 +1,9 @@
 function ole_f!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η = ps
-    x = divide_dims(u, dimension(𝜋))
-    b = gradlogdensity(𝜋)(x)
-    return du .= only(η .* b)
+    x = first_dims(u, dimension(𝜋))
+    b = gradlogdensity(𝜋, x)
+    return du .= η .* b
 end
 function ole_g!(du, u, p, t)
     ps, 𝜋 = p
@@ -21,12 +21,14 @@ function OLE(;
         boundaries = nothing,
         noise_rate_prototype = similar(u0),
         noise = WienerProcess!(0.0, zero(u0)),
+        𝜋 = default_density(u0; dims = length(u0)),
         callback = (),
         alg = EM(),
         kwargs...
     )
     return Sampler(
         ole_f!, ole_g!;
+        𝜋,
         callback = CallbackSet(boundary_init(boundaries), callback...),
         u0,
         noise_rate_prototype,

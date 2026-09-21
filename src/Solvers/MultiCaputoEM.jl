@@ -167,8 +167,9 @@ end
         end
     end
 
-    # * Roll history
-    push!(uhist, u - uprev)
+    # * Roll history, overwriting the dropped element rather than allocating
+    Δu = roll!(uhist)
+    Δu .= u .- uprev
 
     return nothing
 end

@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.3.0
+
+### Breaking
+- Removed `samplingefficiency`, which was exported but never defined.
+- Removed the empty `MakieExt`; `Makie` is no longer a weak dependency.
+- Box boundaries (`ReflectingBox`, `PeriodicBox`, `ReentrantBox`) carry their corner element type as a type parameter, so their fields are concrete.
+
+### Fixed
+- `FNS`, `FHMC`, `sFNS` and the adaptive samplers threw a `MethodError` when constructed without a `𝜋`; their default target now works, and `Langevin`, `OLE` and `tFOLE` gained the same default.
+- `FHMC` defaulted `u0` to a 1×2 matrix, ignored `boundaries` unless they were already a callback, and had no default algorithm.
+- `Langevin` defaulted `u0` to `[0.0]`, one element short of the 2 a second-order sampler needs, so the default always failed `assert_dimension`. It is now `[0.0, 0.0]`.
+- `lfsn` returned uninitialised memory for small odd `m`, since the FFT padding was computed before `m` was made even.
+- `tFOLE`, `bFOLE` and `bFNS` failed for a tuple `tspan`, having divided the tuple by `dt`.
+- The Fourier-Laplacian assertions in `space_fractional_deriv` checked one diagonal entry rather than 100 (`1:length(100)`).
+- `domain` and `in` now work for `ReentrantBox`.
+- Adaptive samplers now report a missing `boundaries` rather than failing inside `domain`.
+- `lfsn`'s docstring gave a signature it does not have (`m` and `M` are keywords, not positional) and omitted `dt`. It now also warns that multithreaded FFTW segfaults on the in-place plan (JuliaMath/FFTW.jl#236), which takes the session down rather than throwing.
+- `Sampler` now normalises its `kwargs` field to `Base.Pairs` in the positional constructor that `remake` reaches. `DiffEqBase` reads `values(prob.kwargs)` and needs a `NamedTuple` back; since DiffEqBase v7.21, `_erase_problem_callback_types` rebuilds the field as a plain `NamedTuple`, whose `values` is a `Tuple`, so every `solve` failed in `merge_problem_kwargs` with a `MethodError`. This made the package unusable with StochasticDiffEq v7.2. The normalisation is a no-op on earlier versions, so one implementation covers both.
+
+### Performance
+No change to any sampler's output; all of the following remove per-step allocations.
+- Box boundary conditions test for a crossing without materialising the edge distances, and take the position partition without allocating the others.
+- `CaputoEM` and `MultiCaputoEM` overwrite the dropped history element rather than allocating a new one each step.
+- `OLE` and `tFOLE` take the single-vector gradient path, rather than routing a one-element collection of views through the collection method.
+- Univariate autodiff uses a scalar derivative rather than a gradient over a one-element vector.
+- `LevyNoise` stores `ND::Int`, and constructs its `Stable` distribution once per call rather than once per variable.
+
+### Internal
+- Removed `src/FourierSpectral.jl` (a scratch script) and the empty `Probabilities` module; stripped the superseded commented-out implementations from `Window.jl` and elsewhere.
+- The two adaptive samplers share their spectral setup and kernel-gradient code.
+
 ## v0.2.0
 
 ### Breaking

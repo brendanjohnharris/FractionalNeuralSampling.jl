@@ -247,7 +247,11 @@ end
     # So for recursive arrays, we can use diagonal noise by setting the noise_rate prototype
     # to similar(u0)
     u0 = ArrayPartition([0.0], [0.0])
-    tspan = (0.0, 500.0)
+    # At tspan = 500 the KL estimate ranged over 0.005--0.27 across runs, straddling the
+    # 0.1 threshold below, so this test failed about half the time (and kept CI red on
+    # whichever platform lost the toss). Four times the trajectory brings the spread to
+    # 0.004--0.024; the seed then makes it reproducible for a given Julia version.
+    tspan = (0.0, 2000.0)
     dt = 0.01
     D = Density(MixtureModel(Normal, [(-2, 0.5), (2, 0.5)]))
     S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.1, γ = 0.5, 𝜋 = D)
@@ -260,149 +264,11 @@ end
     @test W.f == S.f
     @test W.g == S.g
 
+    Random.seed!(42)
     sol = solve(S, EM(); dt)
     x = first.(sol.u)
     x = x[abs.(x) .< 6]
     @test evaluate(KLDivergence(), D, x) < 0.1
-end
-
-if false
-    u0 = [-3.0 0.0]
-    tspan = (0.0, 5000.0)
-    dt = 0.01
-    D = Density(MixtureModel(Laplace, [(-3, 0.3), (3, 0.3)]))
-    # D = Density(Normal(-2, 0.5))
-    S = FractionalNeuralSampler(; u0, tspan, α = 1.5, β = 0.0, γ = 0.1, 𝜋 = D)
-
-    sol = solve(S, EM(); dt)
-    x = first.(sol.u)
-    x = x[abs.(x) .< 8]
-    density(filter(!isnan, x))
-    lines!(-4:0.1:4, D.(-4:0.1:4))
-    current_figure()
-
-    g = Figure(size = (800, 400))
-    ax = Axis(g[1, 1])
-    lines!((1:10000), x[1:10000])
-    ax = Axis(g[1, 2])
-    xx = Timeseries((1:length(x)), x)
-    lines!((1:5000), autocor(centraldiff(xx), 1:5000))
-    # spectrumplot(spectrum(xx, 1))
-    g
-end
-
-if false # * Simple potential: power law iqr?
-    u0 = [-0.001 0.0]
-    tspan = (0.0, 1.0)
-    dt = 0.00001
-    D = Density(Normal(0, 1))
-    S = FractionalNeuralSampler(; u0, tspan, α = 1.2, β = 0.0, γ = 0.1, 𝜋 = D)
-    P = EnsembleProblem(S)
-    sol = solve(P, EM(); dt, trajectories = 100)
-    σ = mapslices(iqr, stack(getindex.(sol.u, 1, :)); dims = 2)[:] .^ 2
-
-    mm = first([log10.(2:1000) ones(length(σ[2:1000]))] \ log10.(σ[2:1000]))
-
-    @test 1.6 < mm < 1.7
-
-    lines(σ[2:10000]; axis = (; xscale = log10, yscale = log10))
-    lines!((2:10000) ./ 1.0e8)
-    current_figure()
-end
-
-if false # * Unimodal vs bimodal comparison
-    Random.seed!(43)
-    g = Figure(size = (720, 360))
-    u0 = [-0.001 0.0]
-    tspan = (0.0, 1000.0)
-    dt = 0.001
-    idxs = range(start = 1, step = 200, length = 500)
-    # ft = identity
-    ft = x -> abs.((x[3:end] .- x[1:(end - 2)]) ./ 2)
-
-    ax = Axis(g[1, 1]; xlabel = "t", ylabel = "v", title = "Unimodal")
-    D = Density(Laplace(0, 0.5))
-    S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
-    sol = solve(S, EM(); dt)
-    x = sol[1, :][idxs]
-    lines!(ax, ft(x), color = :cornflowerblue, linewidth = 2)
-
-    ax = Axis(g[1, 2])
-    hist!(ax, ft(x); direction = :x, bins = 50, color = :gray)
-    hidedecorations!(ax)
-    hidespines!(ax)
-    tightlimits!(ax)
-
-    u0 = [-0.201 0.0]
-    ax = Axis(g[2, 1]; xlabel = "t", ylabel = "v", title = "Bimodal")
-    D = Density(MixtureModel([Laplace(-1, 0.5), Laplace(1, 0.5)]))
-    S = FractionalNeuralSampler(; u0, tspan, α = 1.4, β = 2.0, γ = 0.5, 𝜋 = D)
-    sol = solve(S, EM(); dt)
-    x = sol[1, :][idxs]
-
-    lines!(ax, ft(x); color = :crimson, linewidth = 2)
-
-    ax = g[2, 2] |> Axis
-    hist!(ax, ft(x); direction = :x, bins = 50, color = :gray)
-    hidedecorations!(ax)
-    hidespines!(ax)
-    tightlimits!(ax)
-
-    colgap!(g.layout, 1, Relative(0))
-    colsize!(g.layout, 2, Relative(0.2))
-    linkyaxes!(contents(g.layout)...)
-    g
-end
-
-if false # * Fixation simulation: heavy tailed msd??
-    u0 = [-0.001 0.0]
-    tspan = (0.0, 100.0)
-    dt = 0.001
-    D = Density(Laplace(0, 1))
-    S = FHMC(; u0, tspan, α = 2.0, β = 0.1, γ = 0.1, 𝜋 = D)
-
-    sol = solve(S, EM(); dt)
-    x = first.(sol.u)[1:50:end] # Need heavy oversampling to prevent blowout
-    x = x[abs.(x) .< 8]
-    density(filter(!isnan, x))
-    lines!(-4:0.1:4, D.(-4:0.1:4))
-    # current_axis().yscale = log10
-    current_axis().limits = (nothing, (1.0e-3, nothing))
-    current_figure()
-
-    d = map(1:5000) do t
-        mean((x[1:(end - t)] .- x[(t + 1):end]) .^ 2)
-    end
-    plot(d; axis = (; xscale = log10, yscale = log10))
-    a = d[1:100]
-    b = hcat(ones(length(a)), log.(1:length(a))) \ log.(a)
-    lines!(1:100, exp(b[1]) * (1:100) .^ b[2]; color = :red)
-    text!(1, 1; text = "α=$(b[2])")
-    current_figure()
-
-    lines(x[1:10:1000])
-
-    c = collect(
-        centraldiff(
-            centraldiff(
-                centraldiff(
-                    centraldiff(
-                        centraldiff(
-                            Timeseries(
-                                1:length(x),
-                                x
-                            )
-                        )
-                    )
-                )
-            )
-        )
-    )
-    c = c[abs.(c) .< 0.01]
-    hist(c, bins = 100, normalization = :pdf)
-    g = fit(Stable, c)
-    lines!(-0.005:0.00001:0.005, pdf.([g], -0.005:0.00001:0.005))
-    current_figure()
 end
 
 @testitem "Autodiff" setup = [Setup] begin
@@ -635,414 +501,6 @@ end
     @test gg.θ ≈ 1.0f0 atol = 1.0e-1
 end
 
-# @testitem "Oscillations under flat potential?" setup=[Setup] begin
-# if false # !! Add callbacks for discontinuities
-#     u0 = [0.0 0.0]
-#     tspan = (0.0, 100.0)
-
-#     # * Quadratic potential (gaussian pdf)
-#     𝜋 = Normal(0.0, 1.0) |> Density
-#     S = Langevin(; u0, tspan, 𝜋, β = 1.0, η = 0.1)
-#     sol = solve(S; dt = 0.0001, saveat = 0.01)
-#     x = Timeseries(sol.t, first.(sol.u))
-#     plot(x) # Oscillating? Yes.
-#     hill(collect(x))
-
-#     # * Flat potential (uniform pdf... kind of. Discontinuity sucks. Add callback...boundary conditions...to handle this)
-#     𝜋 = Uniform(-0.5, 0.5) |> Density
-#     S = Langevin(; u0, tspan, 𝜋, β = 1.0, η = 0.1, callbacks = ...)
-#     @test density(Density(S)) == density(𝜋)
-#     sol = solve(S; dt = 0.0001, saveat = 0.01)
-#     x = Timeseries(sol.t, first.(sol.u))
-#     plot(x) # Oscillating? No; divergent. Can't really handle delta gradient
-#     hill(collect(x))
-# end
-
-# @testitem "LevyNoise" setup=[Setup] begin
-if false # ! Need to fix out-of-place noise
-    import FractionalNeuralSampling.NoiseProcesses.LevyNoise
-    DIST = LevyNoise{false}(2.0, 0.0, 1 / sqrt(2), 0.0)
-    Random.seed!(42)
-    rng = Random.default_rng()
-    a = DIST(rng)
-    Random.seed!(42)
-    b = DIST(rng)
-    Random.seed!(42)
-    c = rand(rng, NoiseProcesses.dist(DIST))
-    @test a == b == c
-
-    @test Base.return_types(DIST, (AbstractRNG,)) == [Float64]
-    @test Base.return_types(DIST, (AbstractRNG, Matrix)) == [Matrix{Float64}]
-    @test Base.return_types(DIST, (AbstractRNG, Type{Float64})) == [Float64]
-    @test DIST(rng, randn(10, 10)) isa Matrix
-    @test DIST(rng, Float64) isa Float64
-    @test_throws MethodError DIST(rng, Float32)  # Method error on type mismatch
-    x = StaticArraysCore.SMatrix{3, 3}(zeros(3, 3))
-    Random.seed!(42)
-    y = DIST(x, nothing, 0.01, nothing, nothing, nothing, rng)
-    @test typeof(y) == typeof(x)
-
-    DIST = LevyNoise{true}(2.0, 0.0, 1 / sqrt(2), 0.0)
-    x = zeros(10)
-    DIST(rng, x)
-    @test all(x .!= 0)
-    @test length(unique(x)) == length(x)
-    x = zeros(10, 10)
-    Random.seed!(42)
-    DIST(rng, x)
-    @test all(x .!= 0)
-    @test length(unique(x)) == length(x)
-
-    z = zeros(3, 3)
-    Random.seed!(42)
-    DIST(z, nothing, 0.01, nothing, nothing, nothing, rng)
-    @test all(z .* 0.01 .^ (1 / DIST.α) .== y)
-end
-
-# @testitem "Test that adaptive stepping is disabled for FractionalNeuralSamplers" setup=[Setup] begin end
-
-# @testitem "FractionalNeuralSampling.jl" setup=[Setup] begin
-#     include("fractional_sampling.jl")
-# end
-
-# @testitem "LevyProcess" setup=[Setup] begin
-if false # ! Need to fix out-of-place noise
-    rng = Random.default_rng()
-    Random.seed!(rng, 42)
-    W = LevyProcess(2.0; rng)
-    dt = 0.1
-    W.dt = dt
-    u = nothing
-    p = nothing # for state-dependent distributions
-    calculate_step!(W, dt, u, p)
-    for i in 1:10
-        accept_step!(W, dt, u, p)
-    end
-    Random.seed!(rng, 42)
-    prob = NoiseProblem(LevyProcess(2.0; rng, reseed = false), (0.0, 1.0))
-    sol = solve(prob; dt = 0.1)
-
-    function f3(u, p, t, W)
-        return 2u * sin(W)
-    end
-    Random.seed!(rng, 42)
-    u0 = 1.0
-    tspan = (0.0, 5.0)
-    prob = RODEProblem(f3, u0, tspan; noise = LevyProcess(2.0))
-    @time sol = solve(prob, RandomEM(), dt = 1 / 100)
-    plot(sol)
-
-    function f4(du, u, p, t, W)
-        du[1] = 2u[1] * sin(W[1] - W[2])
-        return du[2] = -2u[2] * cos(W[1] + W[2])
-    end
-    u0 = [1.0; 1.0]
-    tspan = (0.0, 5.0)
-    prob = RODEProblem(f4, u0, tspan; noise = LevyProcess(2.0))
-    @test_throws "BoundsError" solve(prob, RandomEM(), dt = 1 / 100)
-    @test_throws "DomainError" NoiseProblem(LevyProcess(-1.0), (0.0, 1.0))
-
-    function f3!(u0, u, p, t, W)
-        return u0[1] = 2u[1] * sin(W[1])
-    end
-    u0 = [1.0]
-    tspan = (0.0, 5.0)
-    L = LevyProcess!(2.0)
-    prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
-    @time solve(prob, RandomEM(); dt = 1 / 100)
-end
-
-# @testitem "Brownian Noise" setup=[Setup] begin
-if false # ! Need to fix out-of-place noise
-    prob = NoiseProblem(LevyProcess(2.0), (0.0, 1.0))
-    dt = 0.00001
-    ensemble = EnsembleProblem(prob)
-    sol = solve(prob, RandomEM(); dt)
-
-    lines(sol.t, sol.u; linewidth = 2)
-    @test std(diff(sol.u)) ≈ sqrt(dt) rtol = 1.0e-2
-end
-
-# @testitem "Levy Noise" setup=[Setup] begin
-if false # ! Need to fix out-of-place noise
-    L = LevyProcess(1.5)
-    prob = NoiseProblem(L, (0.0, 1.0))
-    dt = 1.0e-6
-    sol = solve(prob, RandomEM(); dt)
-
-    g = fit(Stable, diff(sol.u) ./ (dt^(1 / 1.5)))
-    @test L.dist.α ≈ g.α atol = 1.0e-2
-end
-
-# @testitem "Ensemble" setup=[Setup] begin
-if false # ! Need to fix out-of-place noise
-    Random.seed!(42)
-    L = LevyProcess(1.5)
-    dt = 1.0e-3
-    prob = NoiseProblem(L, (0.0, 1.0))
-    ensemble = EnsembleProblem(prob)
-    sol = @test_nowarn solve(ensemble, RandomEM(), EnsembleSerial(); trajectories = 5, dt)
-    @test_nowarn solve(ensemble, RandomEM(), EnsembleDistributed(); trajectories = 5, dt)
-    @test_nowarn solve(ensemble, RandomEM(), EnsembleThreads(); trajectories = 5, dt)
-    g = Figure()
-    ax = Axis(g[1, 1])
-    [lines!(ax, s.t, s.u) for s in sol]
-    display(g)
-end
-
-# @testitem "Benchmark LevyNoise" setup=[Setup] begin
-# if false # ! Need to fix out-of-place noise
-#     import FractionalNeuralSampling.NoiseProcesses.LevyNoise
-#     import FractionalNeuralSampling.NoiseProcesses.LevyNoise!
-#     import DiffEqNoiseProcess.WHITE_NOISE_DIST as W
-#     import DiffEqNoiseProcess.INPLACE_WHITE_NOISE_DIST as W!
-#     L = LevyNoise(2.0, 0.0, 1 / sqrt(2), 0.0)
-#     L! = LevyNoise!(2.0, 0.0, 1 / sqrt(2), 0.0)
-#     rng = Random.default_rng()
-
-#     X = zeros(100, 100)
-#     _L = Stable(2.0, 0.0, 1 / sqrt(2), 0.0)
-#     a = @benchmark randn(size($X))
-#     c = @benchmark $L($rng, $X)
-#     @test a.memory≈c.memory atol=10
-#     @test a.allocs == c.allocs == 2
-
-#     a = @benchmark $W($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-#     b = @benchmark $L($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-#     c = @benchmark $W!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-#     d = @benchmark $L!($X, 0.0, 0.01, 0.0, 0.0, 0.0, $rng)
-#     @test c.allocs == d.allocs == 0
-#     @test c.memory≈d.memory atol=10
-#     @test a.allocs == b.allocs == 4
-#     @test a.memory≈b.memory atol=10
-
-#     a = @benchmark rand!($rng, Stable(2.0, 0.0, 1 / sqrt(2), 0.0), $X)
-#     a = @benchmark $L!($rng, $X)
-#     @test a.allocs == a.memory == 0
-
-#     @benchmark Stable(2.0, 0.0, 1 / sqrt(2), 0.0) # * Super cheap
-# end
-
-# if CUDA.functional(true)
-#     @testitem "GPU Benchmark" setup=[Setup] begin
-#         using DiffEqGPU
-#         function f3!(u0, u, p, t, W)
-#             u0[1] = 2u[1] * sin(W[1])
-#         end
-#         u0 = [1.00]
-#         tspan = (0.0, 5.0)
-#         dt = 0.01
-#         L = LevyProcess!(2.0)
-#         prob = RODEProblem{true}(f3!, u0, tspan; noise = L)
-#         ensemble = EnsembleProblem(prob)
-#         @test_nowarn @benchmark solve($ensemble, RandomEM(), EnsembleSerial();
-#                                       trajectories = 5,
-#                                       dt = $dt)
-#         @test_throws "MethodError" solve(ensemble, RandomEM(),
-#                                          EnsembleGPUArray(CUDA.CUDABackend());
-#                                          trajectories = 5, dt)
-#     end
-# end
-
-# @testitem "2D potential" setup=[Setup] begin
-# if false
-#     using DifferentialEquations
-#     Δx = 5
-#     d = MixtureModel([
-#                          MvNormal([-Δx / 2, 0], [1 0; 0 1]),
-#                          MvNormal([Δx / 2, 0], [1 0; 0 1])
-#                      ])
-#     D = Density(d)
-
-#     αs = [2.0, 1.6, 1.2]
-#     f = Figure(size = (900, 300))
-#     gs = subdivide(f, 1, 3)
-#     map(αs, gs) do α, g
-#         L = FractionalNeuralSampler(;
-#                                     u0 = [-Δx / 2 0 0 0],
-#                                     tspan = 500.0,
-#                                     α = α,
-#                                     β = 0.2,
-#                                     γ = 0.02,
-#                                     𝜋 = D,
-#                                     seed = 42)
-#         sol = solve(L, EM(); dt = 0.001)
-#         x, y = eachrow(sol[1:2, :])
-
-#         xmax = maximum(abs.(extrema(vcat(x, y)))) * 1.5
-#         xs = range(-xmax, xmax, length = 100)
-
-#         ax = Axis(g[1, 1], title = "α = $α", aspect = DataAspect())
-#         # heatmap!(ax, xs, xs, potential(D).(collect.(Iterators.product(xs, xs))), colormap=seethrough(:turbo))
-#         heatmap!(ax, xs, xs, D.(collect.(Iterators.product(xs, xs))),
-#                  colormap = seethrough(:turbo))
-#         lines!(ax, x[1:10:end], y[1:10:end], color = (:black, 0.5), linewidth = 1)
-#         hidedecorations!(ax)
-#     end
-#     f
-# end
-
-# @testitem "MSD check" setup=[Setup] begin
-# begin
-#     u0 = [0.0, 0.0]
-#     tspan = (0.0, 10000.0)
-#     dt = 0.1
-#     D = Density(Normal(0.0, 1.0))
-#     S = Samplers.FHMC(; u0, tspan, α = 1.9, β = 0.01, γ = 1.0, 𝜋 = D)
-#     sol = solve(S, EM(); dt)
-
-#     x = sol[1, :]
-#     x = TimeseriesTools.Timeseries(sol.t, x)
-#     x = rectify(x, dims = 𝑡, tol = 1)
-
-#     msd = msdist(x)
-
-#     begin
-#         f = Figure(size = (1000, 300))
-#         ax = Axis(f[1, 1])
-#         lines!(ax, x[1:20:20000])
-
-#         lu = (-4 * std(x), +4 * std(x))
-#         axx = Axis(f[1, 2], limits = (lu, nothing))
-#         xs = range(lu..., length = 1000)
-#         hist!(axx, x; bins = 100, normalization = :pdf)
-#         lines!(axx, xs, D.(xs); color = :red, linewidth = 2)
-
-#         axxx = Axis(f[1, 3], xscale = log10, yscale = log10)
-#         lines!(axxx, msd[𝑡 = dt .. 1000], label = nothing)
-
-#         # * Fit a tail index to msd
-#         y = msd[𝑡 = dt .. 1]
-#         ts = logrange(extrema(times(y))..., length = 1000)
-#         y = y[𝑡 = Near(ts)]
-#         taus = times(y)
-#         α, β = [log10.(taus) ones(length(y))] \ log10.(y)
-
-#         # * Plot line of fitted tail
-#         lines!(axxx, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
-#                label = "Fit: α = $α")
-#         axislegend(axxx, position = :lt)
-#         display(f)
-#     end
-# end
-
-# begin
-#     x = rand(Stable(2.0, 0.0), 10000) |> cumsum
-#     x = Timeseries(range(dt, length = length(x), step = dt), x)
-#     lines(x)
-#     msd = mad(x)
-#     f = Figure()
-#     ax = Axis(f[1, 1], xscale = log10, yscale = log10)
-#     lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
-
-#     # * Fit a tail index to msd
-#     y = msd[𝑡 = dt .. 1]
-#     ts = logrange(extrema(times(y))..., length = 1000)
-#     y = y[𝑡 = Near(ts)]
-#     taus = times(y)
-#     α, β = [log10.(taus) ones(length(y))] \ log10.(y)
-
-#     # * Plot line of fitted tail
-#     lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
-#            label = "Fit: α = $α")
-#     axislegend(ax, position = :lt)
-#     display(f)
-# end
-
-# begin
-#     using TimeseriesTools
-#     using CairoMakie
-#     using StableDistributions
-#     using Statistics
-#     function mad(x::AbstractVector{T}) where {T <: Real}
-#         n = length(x)
-#         lags = 1:(n - 1)
-#         mads = zeros(T, n - 1)
-#         Threads.@threads for lag in lags
-#             displacements = abs.(x[(1 + lag):n] .- x[1:(n - lag)])
-#             mads[lag] = mean(displacements)
-#         end
-#         return mads
-#     end
-#     function mad(x::UnivariateRegular)
-#         mads = mad(parent(x))
-#         lags = range(step(x), length = length(mads), step = step(x))
-#         return Timeseries(lags, mads)
-#     end
-#     function mssd(x::AbstractVector{T}) where {T <: Real}
-#         n = length(x)
-#         lags = 1:(n - 1)
-#         msds = zeros(T, n - 1)
-#         Threads.@threads for lag in lags
-#             displacements = (x[(1 + lag):n] .- x[1:(n - lag)]) .^ 2
-#             msds[lag] = mean(displacements)
-#         end
-#         return msds
-#     end
-#     function mssd(x::UnivariateRegular)
-#         mssds = mssd(parent(x))
-#         lags = range(step(x), length = length(mssds), step = step(x))
-#         return Timeseries(lags, mssds)
-#     end
-# end
-
-# begin
-#     x = rand(Stable(1.3, 0.0), 10000) |> cumsum
-#     x = Timeseries(range(dt, length = length(x), step = dt), x)
-#     lines(x)
-#     msd = mad(x)
-#     f = Figure()
-#     ax = Axis(f[1, 1], xscale = log10, yscale = log10)
-#     lines!(ax, msd[𝑡 = dt .. 100], label = nothing)
-
-#     # * Fit a tail index to msd
-#     y = msd[𝑡 = dt .. 1]
-#     ts = logrange(extrema(times(y))..., length = 1000)
-#     y = y[𝑡 = Near(ts)]
-#     taus = times(y)
-#     α, β = [log10.(taus) ones(length(y))] \ log10.(y)
-
-#     # * Plot line of fitted tail
-#     lines!(ax, taus, 10 .^ (α * log10.(taus) .+ β); color = :red, linewidth = 2,
-#            label = "Fit: α = $α")
-#     axislegend(ax, position = :lt)
-#     display(f)
-# end
-
-# begin
-#     global estimator = mad
-#     repeats = 100
-#     dt = 0.01 # Dummy timestep
-#     αs = 1.1:0.05:2.0
-
-#     ms = progressmap(αs) do α
-#         map(1:repeats) do _
-#             x = rand(Stable(α, 0.0), 10000) |> cumsum
-#             x = Timeseries(range(dt, length = length(x), step = dt), x)
-#             m = estimator(x)
-
-#             # * Fit a tail index to msd
-#             y = m[𝑡 = dt .. 1]
-#             ts = logrange(extrema(times(y))..., length = 1000)
-#             y = y[𝑡 = Near(ts)]
-#             taus = times(y)
-#             β, _ = [log10.(taus) ones(length(y))] \ log10.(y)
-#             return β
-#         end
-#     end
-#     σs = std.(ms) ./ 2
-#     ms = mean.(ms)
-
-#     f = Figure()
-#     ax = Axis(f[1, 1], xlabel = "α", ylabel = "β", title = "$estimator")
-#     band!(ax, αs, ms .- σs, ms .+ σs; color = (:black, 0.3))
-#     lines!(ax, αs, ms, color = :black)
-#     if estimator === mad
-#         # * Plot a line of beta = 1/alpha
-#         lines!(ax, αs, 1 ./ αs, color = :red, linestyle = :dash, label = "β = 1/α")
-#     end
-#     display(f)
-# end
 
 @testitem "CaputoEM" begin
     include("./Solvers/CaputoEM.jl")
@@ -1055,4 +513,246 @@ end
 end
 @testitem "LFSM" begin
     include("./lfsn.jl")
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Regression tests for the v0.3.0 cleanup
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testitem "Sampler defaults" setup = [Setup] begin
+    # Every sampler with a default target used to throw a MethodError, since
+    # `default_density` already returns a `Density` and was being wrapped again
+    tspan = (0.0, 1.0)
+    @test_nowarn FNS(; tspan, α = 1.5, β = 0.1, γ = 0.5)
+    @test_nowarn FHMC(; tspan, α = 1.5, β = 0.1, γ = 0.5)
+    @test_nowarn Langevin(; tspan, β = 1.0, η = 1.0)
+    @test_nowarn OLE(; tspan, η = 1.0)
+
+    # ... and the default target has the dimension the sampler's order implies
+    @test dimension(Density(FNS(; tspan, α = 1.5, β = 0.1, γ = 0.5))) == 1
+    S = FNS(; u0 = zeros(4), tspan, α = 1.5, β = 0.1, γ = 0.5)
+    @test dimension(Density(S)) == 2
+    @test dimension(Density(OLE(; u0 = [0.0], tspan, η = 1.0))) == 1
+
+    # FHMC defaulted u0 to a 1x2 matrix (a missing comma), and dropped `boundaries`
+    # unless they were already a callback
+    @test FHMC(; tspan, α = 1.5, β = 0.1, γ = 0.5).u0 isa AbstractVector
+    @test_nowarn FHMC(;
+        tspan, α = 1.5, β = 0.1, γ = 0.5,
+        boundaries = ReflectingBox(-5 .. 5)
+    )
+
+    # Every sampler supplies a default algorithm, so `solve(S)` works
+    for S in (
+            FNS(; tspan, α = 1.5, β = 0.1, γ = 0.5),
+            FHMC(; tspan, α = 1.5, β = 0.1, γ = 0.5),
+            Langevin(; tspan, β = 1.0, η = 1.0),
+            OLE(; tspan, η = 1.0),
+        )
+        @test_nowarn solve(S; dt = 0.01)
+    end
+end
+
+@testitem "Fractional solvers are fixed-step" setup = [Setup] begin
+    import FractionalNeuralSampling.Solvers: isadaptive
+    for alg in (CaputoEM(0.6, 10), MultiCaputoEM([0.6], 10), PositionalCaputoEM(0.6, 10))
+        @test isadaptive(alg) == false
+    end
+    # The L1 weights assume a uniform grid, so asking for adaptivity must error
+    S = OLE(; u0 = [0.0], tspan = (0.0, 1.0), η = 1.0, 𝜋 = Density(Normal(0, 1)))
+    @test_throws "Fixed timestep" solve(S, CaputoEM(0.6, 10); dt = 0.01, adaptive = true)
+end
+
+@testitem "Boundaries" setup = [Setup] begin
+    import FractionalNeuralSampling.Boundaries: isoutside, boxdist, _corners
+
+    # `isoutside` is the allocation-free form of the old `boxdist(...) < 0`
+    box = PeriodicBox(-2 .. 3, -1 .. 1)
+    mn, mx = _corners(box)
+    for p in ([0.0, 0.0], [-2.0, -1.0], [3.0, 1.0], [-2.1, 0.0], [0.0, 1.1], [9.0, 9.0])
+        @test isoutside(p, mn, mx) == (boxdist(p, mn, mx) < 0)
+    end
+    @test [0.0, 0.0] ∈ box
+    @test [9.0, 9.0] ∉ box
+
+    # Corner fields are concrete, so the per-step condition is type stable
+    for b in (ReflectingBox(-5 .. 5), PeriodicBox(-1 .. 1), ReentrantBox(-1.0 => 1.0))
+        @test isconcretetype(fieldtype(typeof(b), 1))
+    end
+    @test ReflectingBox(-5 .. 5.0).min_corner === (-5.0,) # promoted, not Any
+
+    # `domain` and `in` read through `_corners`, so they work for ReentrantBox too,
+    # which has no min_corner/max_corner fields
+    @test FractionalNeuralSampling.domain(PeriodicBox(-2 .. 3)) == [-2 .. 3]
+    @test FractionalNeuralSampling.domain(ReentrantBox(-1.0 => 1.0)) == [-1.0 .. 1.0]
+end
+
+@testitem "Window" setup = [Setup] begin
+    import FractionalNeuralSampling: Window, roll!
+
+    w = Window([1.0, 2.0, 3.0])
+    @test collect(w) == [1.0, 2.0, 3.0] # index 1 oldest, end newest after pushes
+    push!(w, 4.0)
+    @test w[end] == 4.0
+
+    # Elements must be distinct objects: `fill` would alias one array into every slot,
+    # which the in-place history roll would then corrupt
+    v = Window([0.0], 3)
+    @test length(unique(objectid.(v.data))) == 3
+
+    # `roll!` returns the dropped slot for overwriting, matching `push!`
+    a = Window([0.0], 3)
+    b = Window([0.0], 3)
+    for i in 1:5
+        push!(a, [float(i)])
+        roll!(b) .= [float(i)]
+    end
+    @test collect(a) == collect(b)
+end
+
+@testitem "lfsn robustness" setup = [Setup] begin
+    import FFTW
+    FFTW.set_num_threads(1) # Threaded FFTW segfaults (JuliaMath/FFTW.jl#236)
+
+    # The FFT padding used to be sized before `m` was rounded up to even, so a small
+    # odd `m` left the tail of the result uninitialised
+    for m in (1, 2, 3, 127, 128)
+        x = lfsn(500, 1.5, 0.6; m)
+        @test length(x) == 500
+        @test all(isfinite, x)
+    end
+    @test length(lfsn(1000, 1.5, 0.6; M = 10)) == 1000
+
+    # dt scales the increments by dt^H
+    Random.seed!(1)
+    a = lfsn(2000, 2.0, 0.5; dt = 1)
+    Random.seed!(1)
+    b = lfsn(2000, 2.0, 0.5; dt = 0.25)
+    @test b ≈ a .* 0.25^0.5
+end
+
+@testitem "Noise processes" setup = [Setup] begin
+    import FractionalNeuralSampling.NoiseProcesses: LevyNoise
+
+    # Out-of-place Lévy noise has no sampling method, so it must fail at construction
+    # rather than at solve time
+    @test_throws ArgumentError LevyProcess(1.5)
+    @test_nowarn LevyProcess!(1.5; W0 = [0.0])
+
+    @test fieldtype(LevyNoise{true, Float64}, :ND) === Int # was ::Integer, an abstract field
+    L = LevyNoise{true}(1.5, 0.0, 1.0, 0.0, 2)
+    x = zeros(4)
+    Random.seed!(1)
+    L(Random.default_rng(), x)
+    @test all(!iszero, x)
+    @test_throws Exception LevyNoise{true}(2.5) # α outside (0, 2]
+end
+
+@testitem "Density constructors" setup = [Setup] begin
+    # For a distribution the type parameter is `doAd`, not the dimension; passing a
+    # dimension used to build a density that matched no gradient method
+    @test_throws ArgumentError Density{1}(Normal(0.0, 1.0))
+    @test Densities.doautodiff(Density{true}(Normal(0.0, 1.0))) == true
+    @test Densities.doautodiff(Density(Normal(0.0, 1.0))) == false # analytic gradlogpdf
+
+    # `Density{N}(f)` still means the dimension for a plain function
+    f(x) = exp(-only(x)^2 / 2) / sqrt(2π)
+    @test dimension(Density{1}(f)) == 1
+end
+
+@testitem "Noise generators accept a tuple tspan" setup = [Setup] begin
+    import FFTW
+    FFTW.set_num_threads(1)
+    # These divided `tspan` by `dt`, which fails for the tuple form the README documents
+    @test_nowarn tFOLE(;
+        tspan = (0.0, 1.0), dt = 0.01, η = 0.1, β = 0.8,
+        𝜋 = Density(Normal(0, 1))
+    )
+    @test_nowarn tFOLE(;
+        tspan = 1.0, dt = 0.01, η = 0.1, β = 0.8,
+        𝜋 = Density(Normal(0, 1))
+    )
+end
+
+@testitem "Per-step allocations" setup = [Setup] begin
+    using StochasticDiffEq
+    import FractionalNeuralSampling.Boundaries: getcondition
+
+    # The boundary condition runs every step. It used to materialise the per-axis edge
+    # distances (272 bytes a call); it now tests for a crossing in place. Taking `c` and
+    # `u` as arguments keeps the measurement itself free of closure boxing.
+    function condition_calls(c, u, n)
+        for _ in 1:n
+            c(u, 0.0, nothing)
+        end
+        return nothing
+    end
+    for box in (PeriodicBox(-3 .. 3), PeriodicBox(-3 .. 3, -3 .. 3), ReflectingBox(-3 .. 3))
+        c = getcondition(box)
+        u = zeros(2 * length(FractionalNeuralSampling.domain(box)))
+        condition_calls(c, u, 1) # compile
+        @test (@allocated condition_calls(c, u, 100)) == 0
+    end
+
+    # A step must not allocate its history element or re-prepare its gradient.
+    # Measured on this machine: OLE/EM 5440 -> 2240, OLE/CaputoEM 7040 -> 2560.
+    function steps(S, alg; dt = 0.01, n = 20)
+        int = StochasticDiffEq.init(S, alg; dt)
+        StochasticDiffEq.perform_step!(int, int.cache) # compile
+        return @allocated for _ in 1:n
+            StochasticDiffEq.perform_step!(int, int.cache)
+        end
+    end
+
+    𝜋 = Density(Normal(0.0, 1.0))
+    u0 = [0.0]
+    tspan = (0.0, 10.0)
+    @test steps(OLE(; u0, tspan, η = 1.0, 𝜋), EM()) < 4000
+    @test steps(OLE(; u0, tspan, η = 1.0, 𝜋), CaputoEM(0.6, 50)) < 4500
+end
+
+@testitem "Sampler kwargs survive remake" setup = [Setup] begin
+    # `DiffEqBase` reads `values(prob.kwargs)` and needs a `NamedTuple` back, so the field
+    # has to stay a `Base.Pairs`. Since DiffEqBase v7.21 `_erase_problem_callback_types`
+    # rebuilds it as a plain `NamedTuple`, whose `values` is a `Tuple`, and every `solve`
+    # then fails in `merge_problem_kwargs`.
+    S = OLE(; u0 = [0.0], tspan = (0.0, 1.0), η = 1.0, 𝜋 = Density(Normal(0, 1)))
+    @test S.kwargs isa Base.Pairs
+    @test values(S.kwargs) isa NamedTuple
+
+    W = remake(S, p = S.p)
+    @test W.kwargs isa Base.Pairs
+
+    # the path the solver itself takes: `_erase_problem_callback_types` rebuilds the
+    # field from a NamedTuple, via this positional constructor
+    R = Sampler{true}(
+        S.f, S.g, S.u0, S.tspan, S.p, S.noise,
+        (; callback = S.kwargs[:callback], alg = S.kwargs[:alg]),
+        S.noise_rate_prototype, S.seed
+    )
+    @test R.kwargs isa Base.Pairs
+    @test values(R.kwargs) isa NamedTuple
+    @test_nowarn solve(R, EM(); dt = 0.01)
+end
+
+@testitem "Fractional Laplacian operator" setup = [Setup] begin
+    using ApproxFun
+    import FractionalNeuralSampling: Power
+    import FractionalNeuralSampling.Samplers: space_fractional_deriv
+
+    # At α = 2 the fractional Laplacian is the identity, so the drift reduces to ∇𝜋
+    S, D, 𝒟 = space_fractional_deriv(Val(1); α = 2.0, domain = -5.0 .. 5.0)
+    𝜋(x) = exp(-x^2 / 2) / sqrt(2π)
+    𝜋s = Fun(𝜋, S, 500)
+    xs = -3:0.5:3
+    @test (𝒟 * 𝜋s).(xs) ≈ 𝜋s.(xs) atol = 1.0e-6
+    @test (D * 𝒟 * 𝜋s).(xs) ≈ (D * 𝜋s).(xs) atol = 1.0e-6
+    # ∇𝜋 of a standard normal is -x 𝜋(x)
+    @test (D * 𝜋s).(xs) ≈ -xs .* 𝜋.(xs) atol = 1.0e-6
+
+    # Power is diagonal and leaves the zero mode alone for negative powers
+    Δ = FractionalNeuralSampling.Samplers.maybeLaplacian(S)
+    P = Power(-Δ, -0.5)
+    @test ApproxFun.bandwidths(P) == (0, 0)
+    @test P[1, 2] == 0
 end

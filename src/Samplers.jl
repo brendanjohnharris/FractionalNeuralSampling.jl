@@ -15,7 +15,7 @@ using Accessors
 using Random
 
 import ..NoiseProcesses
-import ..FractionalNeuralSampling: divide_dims
+import ..FractionalNeuralSampling: divide_dims, first_dims
 import ..NoiseProcesses: lfsn
 import ..Solvers: CaputoEM, MultiCaputoEM, PositionalCaputoEM
 using ..Densities
@@ -32,7 +32,7 @@ export AbstractSampler, Sampler, parameters
 abstract type AbstractSampler{uType, tType, isinplace, ND} <:
 AbstractSDEProblem{uType, tType, isinplace, ND} end
 
-const compatible_solvers = (:EM, :CaputoEM)
+const compatible_solvers = (:EM, :CaputoEM, :MultiCaputoEM, :PositionalCaputoEM)
 
 function SciMLBase.solve(P::AbstractSampler; kwargs...)
     return if haskey(P.kwargs, :alg)
@@ -59,11 +59,21 @@ struct Sampler{
     noise_rate_prototype::ND
     seed::UInt64
 end
+"""
+Positional constructor, reached by `@set` and `ConstructionBase.setproperties`, and so by
+every `remake` of a sampler.
+
+`kwargs` is normalised to `Base.Pairs`, which the solver stack requires: `DiffEqBase` reads
+`values(prob.kwargs)` and needs a `NamedTuple` back, whereas `values` of a plain
+`NamedTuple` is a `Tuple`. Since DiffEqBase v7.21, `_erase_problem_callback_types` rebuilds
+the field as a plain `NamedTuple`, so without this the first `solve` fails in
+`merge_problem_kwargs`. The normalisation is a no-op on earlier versions.
+"""
 function Sampler{isinplace}(
         f::F, g::G, u0::uType, # For @set
         tspan::tType,
         p::Tuple{P, D},
-        noise::NP, kwargs::K,
+        noise::NP, kwargs,
         noise_rate_prototype::ND,
         seed::UInt64
     ) where {
@@ -72,12 +82,13 @@ function Sampler{isinplace}(
         isinplace,
         P <: Labelled,
         NP, F,
-        G, K,
+        G,
         ND, D,
     }
-    return Sampler{uType, tType, isinplace, P, NP, F, G, K, ND, D}(
+    _kwargs = kwargs isa Base.Pairs ? kwargs : pairs(kwargs)
+    return Sampler{uType, tType, isinplace, P, NP, F, G, typeof(_kwargs), ND, D}(
         f, g, u0, tspan, p, noise,
-        kwargs, noise_rate_prototype,
+        _kwargs, noise_rate_prototype,
         seed
     )
 end
@@ -85,17 +96,21 @@ parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
 SciMLBase.is_diagonal_noise(S::Sampler) = true
 
+"""
+    default_density(u0; dims)
+
+A standard normal target over the first `dims` coordinates of `u0`; the fallback when a
+sampler is constructed without a `𝜋`. `dims` defaults to half the state, as for the
+second-order samplers that carry both position and momentum.
+"""
 function default_density(u0; dims = length(u0) ÷ 2)
-    u0 = divide_dims(u0, dims) |> first
-    if length(u0) == 1
-        D = Normal(0.0, 1.0)
-    else
-        D = MvNormal(zeros(length(u0)), I(length(u0)))
-    end
-    D = Density(D)
-    return D
+    dims < 1 &&
+        throw(ArgumentError("Cannot infer a default target from a state of length $(length(u0)); supply `𝜋`, or a `u0` long enough for the sampler's order"))
+    x = first_dims(u0, dims)
+    D = length(x) == 1 ? Normal(0.0, 1.0) : MvNormal(zeros(length(x)), I(length(x)))
+    return Density(D)
 end
-function default_density(u0::Real)
+function default_density(u0::Real; kwargs...)
     return Normal(0.0, 1.0) |> Density
 end
 function Sampler{iip}(

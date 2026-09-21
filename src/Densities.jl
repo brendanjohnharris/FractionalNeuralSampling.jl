@@ -11,7 +11,7 @@ export AbstractDensity, AbstractUnivariateDensity, Density
 export potential, logdensity, gradlogdensity, graddensity, gradpotential, dimension
 
 abstract type AbstractDensity{D, N, doAd} end
-const AbstractUnivariateDensity{D, doAd} = AbstractDensity{D, 1, doAd} where {D, doAD}
+const AbstractUnivariateDensity{D, doAd} = AbstractDensity{D, 1, doAd}
 
 logdensity(D::AbstractDensity, x) = logdensity(D)(x)
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
@@ -35,12 +35,11 @@ function LogDensityProblems.dimension(d::AbstractDensity{D, N, doAd}) where {
     return N
 end
 doautodiff(d::AbstractDensity{D, N, doAd}) where {D, N, doAd} = doAd
-export dimension
 
 # * Automatic autodiff
 const AdDensity{D} = AbstractDensity{D, N, true} where {D, N}
 function _gradlogdensity(D::AdDensity, x::Real)
-    return gradient(x -> logdensity(D, only(x)), AD_BACKEND, [x]) |> only
+    return derivative(logdensity(D), AD_BACKEND, x)
 end
 function _gradlogdensity(D::AdDensity, x::AbstractVector{<:Real})
     f = logdensity(D)
@@ -54,7 +53,7 @@ function _gradlogdensity(
     f = logdensity(D)
     extras = prepare_gradient(f, AD_BACKEND, first(x))
     grad = map(similar, x)
-    map(grad, x) do _grad, _x
+    foreach(grad, x) do _grad, _x
         gradient!(f, _grad, extras, AD_BACKEND, _x)
     end
     return grad
@@ -78,7 +77,7 @@ end
 
 # * Gradient of density
 function _graddensity(D::AdDensity, x::Real)
-    return gradient(x -> density(D, only(x)), AD_BACKEND, [x]) |> only
+    return derivative(density(D), AD_BACKEND, x)
 end
 function _graddensity(D::AdDensity, x::AbstractVector{<:Real})
     f = density(D)
@@ -92,7 +91,7 @@ function _graddensity(
     f = density(D)
     extras = prepare_gradient(f, AD_BACKEND, first(x))
     grad = map(similar, x)
-    map(grad, x) do _grad, _x
+    foreach(grad, x) do _grad, _x
         gradient!(f, _grad, extras, AD_BACKEND, _x)
     end
     return grad
@@ -128,31 +127,6 @@ begin # * See here for the Density interface: define these methods and traits. C
     density(D::Density) = D.density
     logdensity(D::Density) = log ∘ density(D)
 end
-
-# ? Densities with supplied gradients:
-# begin # * GradDensity
-#     struct GradDensity{D, G} <: AbstractDensity{D, false} # You are supplying a gradient function, so don't autodiff
-#         density::D # Should be f([x, y]) -> d
-#         gradlogdensity::G # Should be f([x, y]) -> [∂x, ∂y]
-#         dimension::Int
-#     end
-#     GradDensity(d::D, g::G; dimension) where {D, G} = GradDensity{D, G}(d, g, dimension)
-
-#     gradlogdensity(d::D) where {D <: GradDensity} = d.gradlogdistribution
-#     gradlogdensity(d::D, x) where {D <: GradDensity} = d.gradlogdensity(x)
-#     (D::GradDensity)(x) = density(D)(x)
-#     Distributions.logpdf(d::GradDensity, x) = (log ∘ density(d))(x)
-#     Distributions.gradlogpdf(d::GradDensity, x) = d.gradlogdensity(x)
-
-#     function LogDensityProblems.capabilities(::Type{<:GradDensity})
-#         LogDensityProblems.LogDensityOrder{1}()
-#     end
-#     LogDensityProblems.dimension(d::GradDensity) = d.dimension
-#     LogDensityProblems.logdensity(d::GradDensity, x) = (log ∘ density(d))(x)
-#     function logdensity_and_gradient(D::GradDensity, x)
-#         (LogDensityProblems.logdensity(D, x), gradlogdensity(D, x))
-#     end
-# end
 
 include("Densities/Distributions.jl")
 include("Densities/PotentialDensity.jl")

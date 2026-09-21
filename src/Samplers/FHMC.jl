@@ -21,20 +21,24 @@ function fractional_hmc_g!(du, u, p, t)
 end
 
 function FHMC(;
-        tspan, α, β, γ, u0 = [0.0 0.0],
+        tspan, α, β, γ, u0 = [0.0, 0.0],
         boundaries = nothing,
         noise_rate_prototype = similar(u0),
-        𝜋 = Density(default_density(first(u0))),
+        𝜋 = default_density(u0),
         noise = NoiseProcesses.LevyProcess!(
             α; ND = dimension(𝜋),
             W0 = zero(u0)
         ),
+        alg = EM(),
+        callback = (),
         kwargs...
     )
     return Sampler(
-        fractional_hmc_f!, fractional_hmc_g!; callback = boundaries, kwargs..., u0,
+        fractional_hmc_f!, fractional_hmc_g!;
+        callback = CallbackSet(boundary_init(boundaries), callback...),
+        kwargs..., u0,
         noise_rate_prototype, noise,
-        tspan, p = SLVector(; α, β, γ), 𝜋
+        tspan, p = SLVector(; α, β, γ), 𝜋, alg
     ) |> assert_dimension(; order = 2)
 end
 

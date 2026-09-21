@@ -11,43 +11,47 @@ const FLSN_SCALE = 4 * erfinv(0.5) # Gives a variance of sqrt(2) for the Gaussia
 lfsm(args...; kwargs...) = cumsum(lfsn(args...; kwargs...))
 
 """
-    lfsn(N, m, M, α, H; sigma=1.0, rng=Random.default_rng())
+    lfsn(N, α, H; m = 128, M = 1000, sigma = 1.0, dt = 1, rng = Random.default_rng())
 
-Generate Linear Fractional Stable Noise (LFSN). The resulting process has a `scale` of 1 dot
-`dt=1`, meaning for β=1 it corresponds to draws from a Levy distribution with σ=1
+Generate linear fractional stable noise (LFSN). The result has a `scale` of 1 at `dt = 1`,
+so for β = 1 it corresponds to draws from a Lévy distribution with σ = 1.
 
 # Arguments
-- `N::Int`: Number of points of the LFSM
-- `m::Int`: Discretization parameter (points between motion points)
-- `M::Int`: Truncation parameter (lookback window)
-- `α::Float64`: Stability parameter ∈ (0, 2]
-- `H::Float64`: Hurst parameter ∈ (0, 1)
-- `sigma::Float64=1.0`: Scale parameter
+- `N::Int`: Number of points to return
+- `α::Real`: Stability parameter ∈ (0, 2]
+- `H::Real`: Hurst parameter ∈ (0, 1)
+- `m::Int = 128`: Discretization parameter (points between motion points); rounded up to even
+- `M::Int = 1000`: Truncation parameter (lookback window)
+- `sigma = 1.0`: Scale parameter
+- `dt = 1`: Time step, which scales the result by `dt^H`
 - `rng`: Random number generator (default: `Random.default_rng()`)
+
+!!! warning
+    Call `FFTW.set_num_threads(1)` first. Multithreaded FFTW segfaults on the in-place
+    plan used here (JuliaMath/FFTW.jl#236), taking the session with it rather than
+    throwing.
 """
 function lfsn(
         N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
         sigma = 1.0, rng = Random.default_rng(),
         dt = 1
     ) where {A <: Real, B <: Real}
-    T = promote_type(A, B)
-    total_length = m * (N + M)
-    next_pow_2 = 2^ceil(Int, log2(total_length))
-    m = iseven(m) ? m : m + 1
-    _N = N
-    N = next_pow_2 ÷ m - M
-    total_length = m * (N + M)
-
     # Validate parameters
     @assert 0 < α <= 2 "α must be in (0, 2]"
     @assert 0 < H < 1 "H must be in (0, 1); got α=$α, H=$H)"
     @assert sigma > 0 "sigma must be positive"
     @assert N > 0&&m > 0 && M > 0 "N, m, M must be positive"
 
+    T = promote_type(A, B)
+    m = iseven(m) ? m : m + 1
+    # Pad to (a multiple of m just under) a power of two, for the FFT. The padding is
+    # applied after m is made even, so the padded series always covers the requested N
+    total_length = m * (2^ceil(Int, log2(m * (N + M))) ÷ m)
+
     # Pre-allocate all arrays as complex from the start
     Ẑ = Vector{Complex{T}}(undef, total_length)
     â = Vector{Complex{T}}(undef, total_length)
-    result = Vector{T}(undef, _N)
+    result = Vector{T}(undef, N)
     # Fill kernel coefficients (directly as complex)
     X2 = m^(-1 / α)
     Ha = H - 1 / α
@@ -85,13 +89,8 @@ function lfsn(
 
     # Extract real parts at every m-th point directly into result
     offset = m * M
-    idx = 1
-    for i in 1:N
-        if idx <= _N
-            pos = offset + i * m
-            result[idx] = real(â[pos])
-            idx += 1
-        end
+    @inbounds for i in 1:N
+        result[i] = real(â[offset + i * m])
     end
 
     # Normalize in-place

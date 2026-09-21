@@ -108,7 +108,7 @@ ensemble = EnsembleProblem(S)
 sols = solve(ensemble, EM(); dt = 0.01, trajectories = 100)
 ```
 
-With [TimeseriesTools.jl](https://github.com/brendanjohnharris/TimeseriesTools.jl) loaded, solutions convert to annotated timeseries via `Timeseries(sol)` (a package extension).
+With [TimeseriesTools.jl](https://github.com/brendanjohnharris/TimeseriesTools.jl) loaded, solutions convert to annotated timeseries with `Timeseries(sol)`.
 
 ## Fractional solvers
 
@@ -127,7 +127,7 @@ All three reduce exactly to `EM()` at β = 1.
 
 ## Noise processes
 
-`LevyProcess(α)` (and the in-place `LevyProcess!`) construct α-stable noise processes usable wherever a `DiffEqNoiseProcess` is expected. Lévy steps are drawn isotropically with the standard convention σ = 1. Linear fractional stable motion is available via `lfsm`, and `lfsn` gives its increments (linear fractional stable noise), for sampling paths with tunable self-similarity and tail exponents.
+`LevyProcess!(α)` constructs an α-stable noise process usable wherever a `DiffEqNoiseProcess` is expected (the out-of-place `LevyProcess` is not implemented). Lévy steps are drawn isotropically with the standard convention σ = 1. Linear fractional stable motion is available via `lfsm`, and `lfsn` gives its increments (linear fractional stable noise), for sampling paths with tunable self-similarity and tail exponents.
 
 ## Boundaries
 
@@ -147,5 +147,4 @@ Loading companion packages activates extensions:
 
 - **TimeseriesTools.jl**: `Timeseries(sol)` conversion, `samplingpower`, and `samplingaccuracy` for quantifying sampler performance against the target.
 - **Distances.jl + StatsBase.jl**: divergence measures (e.g. `KLDivergence()(D, x)`) between a `Density` and sampled points.
-- **Makie.jl**: plotting recipes for densities.
 - **Interpolations.jl**: densities interpolated from empirical grids.

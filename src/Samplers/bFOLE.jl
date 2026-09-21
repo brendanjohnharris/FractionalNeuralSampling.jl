@@ -2,7 +2,7 @@ function gen_lfsm(α, β; u0, tspan, dt, seed) # * 1d for now
     tmin = length(tspan) == 2 ? minimum(tspan) : 0
     tmax = maximum(tspan)
     H = 1 / 2 - β / 2 + 1 / α
-    N = Int(tspan / dt) + 1
+    N = Int((tmax - tmin) / dt) + 1
     x = cumsum(lfsn(N, α, H; dt, rng = Xoshiro(seed)))
     ts = range(tmin, step = dt, length = N)
     @assert last(ts) == tmax
