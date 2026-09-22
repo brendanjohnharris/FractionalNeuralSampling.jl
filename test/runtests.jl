@@ -449,6 +449,54 @@ end
     include("./Samplers/Adaptive.jl")
 end
 
+@testitem "Parameter updates reach every sampler" setup = [Setup] begin
+    # `S(; k = v)` is the documented way to update a parameter. The spectral and adaptive
+    # samplers carry ApproxFun operators, and a transform plan, beside their scalars, so
+    # their parameters are a NamedTuple rather than an SLArray; the update used to go
+    # straight to `SLVector`, which has no NamedTuple method, so it threw for all six
+    𝜋 = Density(Normal(0.0, 1.0))
+    kern(x) = exp(-only(x)^2 / 2)
+    box = PeriodicBox(-5 .. 5)
+    d = -10 .. 10
+    t = (0.0, 1.0)
+
+    cases = [
+        "OLE" => (OLE(; tspan = t, η = 0.5, 𝜋), :η),
+        "Langevin" => (Langevin(; tspan = t, β = 1.0, η = 0.5, 𝜋), :η),
+        "FNS" => (FNS(; tspan = t, α = 1.5, β = 0.1, γ = 0.5, 𝜋), :γ),
+        "FHMC" => (FHMC(; tspan = t, α = 1.5, β = 0.1, γ = 0.5, 𝜋), :γ),
+        "tFOLE" => (tFOLE(; tspan = t, dt = 0.01, η = 0.5, β = 0.8, 𝜋), :η),
+        "sFOLE" => (sFOLE(; tspan = t, η = 0.5, α = 1.5, 𝜋, domain = d), :η),
+        "sFNS" => (sFNS(; tspan = t, α = 1.5, β = 0.05, γ = 0.5, 𝜋, domain = d), :γ),
+        "bFOLE" => (
+            bFOLE(; tspan = t, dt = 0.01, η = 0.5, α = 1.5, β = 0.8, 𝜋, domain = d), :η,
+        ),
+        "bFNS" => (
+            bFNS(;
+                tspan = t, dt = 0.01, α = 1.5, β = 0.8, γ = 0.5, η = 0.1, 𝜋, domain = d
+            ), :γ,
+        ),
+        "AdaptiveWalk" => (
+            AdaptiveWalkSampler(
+                kern, 64; tspan = t, γ = 0.5, τ_r = 1.0, τ_d = 10.0, 𝜋, boundaries = box
+            ), :γ,
+        ),
+        "AdaptiveLevy" => (
+            AdaptiveLevySampler(
+                kern, 64; tspan = t, α = 1.5, γ = 0.5, τ_r = 1.0, τ_d = 10.0, 𝜋,
+                boundaries = box
+            ), :γ,
+        ),
+    ]
+
+    for (name, (S, k)) in cases
+        S2 = @test_nowarn S(; (k => 2.0,)...)
+        @test getproperty(parameters(S2), k) == 2.0
+        @test getproperty(parameters(S), k) != 2.0 # The original is left alone
+        @test Density(S2) === Density(S)
+    end
+end
+
 @testitem "Spectral transforms run serially" setup = [Setup] begin
     # FFTW segfaults on the in-place plans used here when multithreaded
     # (JuliaMath/FFTW.jl#236), so `serial_fftw` drops it to one thread per transform and

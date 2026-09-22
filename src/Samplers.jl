@@ -169,6 +169,16 @@ function Sampler(f, g, args...; p, 𝜋, kwargs...)
     return Sampler(SDEFunction{isinplace(f, 4)}(f, g), args...; p, kwargs...)
 end
 
+"""
+Replace named entries of a sampler's parameter container.
+
+The plain samplers carry an `SLArray`. The spectral samplers (`sFOLE`, `sFNS`, `bFOLE`,
+`bFNS`) and the adaptive ones carry ApproxFun operators, and a transform plan, beside their
+scalars; no static vector holds those, so their parameters stay a `NamedTuple`.
+"""
+set_parameters(ps::NamedTuple; kwargs...) = merge(ps, values(kwargs))
+set_parameters(ps; kwargs...) = SLVector(ps; kwargs...)
+
 function (S::AbstractSampler)(; kwargs...)
     # First update any direct fields of the sampler
     for k in filter(k -> k ∈ propertynames(S), keys(kwargs))
@@ -190,7 +200,7 @@ function (S::AbstractSampler)(; kwargs...)
     pkeys = filter(k -> k in keys(ps), keys(kwargs))
     if !isempty(pkeys)
         ps = deepcopy(ps)
-        ps = SLVector(ps; kwargs[pkeys]...)
+        ps = set_parameters(ps; kwargs[pkeys]...)
     end
 
     S = set(S, PropertyLens(:p), (ps, 𝜋))

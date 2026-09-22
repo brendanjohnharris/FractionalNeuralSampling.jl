@@ -9,6 +9,7 @@
 - Box boundaries (`ReflectingBox`, `PeriodicBox`, `ReentrantBox`) carry their corner element type as a type parameter, so their fields are concrete.
 
 ### Fixed
+- Updating a parameter with the callable form a sampler documents, `S(; γ = 1.0)`, threw a `MethodError` for `sFOLE`, `sFNS`, `bFOLE`, `bFNS` and both adaptive samplers, including for the `sFNS` example the README gives it with. Those six carry ApproxFun operators, and a transform plan, beside their scalar parameters, so their parameters are a `NamedTuple` rather than an `SLArray`, and the update went straight to `SLVector`, which has no `NamedTuple` method. `remake` was unaffected.
 - Every spectral transform now runs through `FractionalNeuralSampling.serial_fftw`, which drops FFTW to one thread for the call and restores the previous count. FFTW segfaults on the in-place plans used here when it is multithreaded (JuliaMath/FFTW.jl#236), taking the session down rather than throwing, so `lfsn` and every sampler built on a spectral approximation of the target (`sFOLE`, `sFNS`, `bFOLE`, `bFNS`) crashed a default multicore session at any `approx_n_modes`. Only `lfsn` had documented the hazard, and the test suite hid it by setting the thread count to 1 before any sampler was built.
 - `FNS`, `FHMC`, `sFNS` and the adaptive samplers threw a `MethodError` when constructed without a `𝜋`; their default target now works, and `Langevin`, `OLE` and `tFOLE` gained the same default.
 - `FHMC` defaulted `u0` to a 1×2 matrix, ignored `boundaries` unless they were already a callback, and had no default algorithm.
