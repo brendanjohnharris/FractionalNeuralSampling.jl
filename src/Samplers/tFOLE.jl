@@ -8,7 +8,10 @@ end
 function tfole_g!(du, u, p, t)
     ps, 𝜋 = p
     @unpack η = ps
-    return du .= only(η) # ? × dW in the integrator.
+    # √η, not the √(2η) of `ole_g!`: `gen_fbm` draws α = 2 stable increments, which carry
+    # variance 2dt under the package's σ = 1 convention rather than the dt of a Wiener
+    # process. Both choices leave the stationary density at 𝜋; `η` alone gave 𝜋^(1/η)
+    return du .= sqrt(only(η)) # ? × dW in the integrator.
 end
 
 function gen_fbm(β; u0, tspan, dt, seed) # * 1d for now

@@ -3,6 +3,7 @@
 ## v0.3.0
 
 ### Breaking
+- `tFOLE`'s diffusion is now `√η` rather than `η`. `gen_fbm` draws α = 2 stable increments, which carry variance 2dt under the package's σ = 1 convention rather than the dt of a Wiener process, so the old coefficient left the stationary density at 𝜋^(1/η), correct only at η = 1: against a standard normal at η = 2 it sampled 𝜋^(1/2), of standard deviation 1.41. It is now 𝜋 for every η, matching `OLE`.
 - Removed `samplingefficiency`, which was exported but never defined.
 - Removed the empty `MakieExt`; `Makie` is no longer a weak dependency.
 - Box boundaries (`ReflectingBox`, `PeriodicBox`, `ReentrantBox`) carry their corner element type as a type parameter, so their fields are concrete.
