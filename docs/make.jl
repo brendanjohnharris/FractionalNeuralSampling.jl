@@ -27,6 +27,8 @@ makedocs(;
     authors = "brendanjohnharris <bhar9988@uni.sydney.edu.au> and contributors",
     sitename = "FractionalNeuralSampling",
     format,
+    # Explicit: the `origin` remote is `www.github.com/...`, which Documenter can't parse.
+    repo = GitHub("brendanjohnharris", "FractionalNeuralSampling.jl"),
     doctest = false,
     # `:missing_docs` and `:docs_block` keep a `@docs` entry for an undocumented symbol from
     # failing the build while the docstrings are still being written.

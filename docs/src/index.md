@@ -36,12 +36,12 @@ features:
     details: Euler--Maruyama schemes for Caputo fractional derivatives.
     link: /solvers
 ---
+```
 
-
+```@raw html
 <p style="margin-bottom:2cm"></p>
 
 <div class="vp-doc" style="width:80%; margin:auto">
-
 ```
 
 ## Overview
