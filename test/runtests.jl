@@ -6,10 +6,7 @@ using TestItemRunner
 
 @testitem "Aqua.jl" begin
     using Aqua
-    Aqua.test_all(
-        FractionalNeuralSampling; persistent_tasks = false,
-        undefined_exports = false
-    )
+    Aqua.test_all(FractionalNeuralSampling; persistent_tasks = false)
 end
 
 @testsnippet Setup begin
