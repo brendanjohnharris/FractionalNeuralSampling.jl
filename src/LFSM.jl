@@ -8,6 +8,21 @@ export lfsn, lfsm
 
 const FLSN_SCALE = 4 * erfinv(0.5) # Gives a variance of sqrt(2) for the Gaussian case, since IQR of a standard Normal is 2*sqrt(2)*erfinv(0.5)
 
+"""
+    lfsm(N, α, H; m = 128, M = 1000, sigma = 1.0, dt = 1, rng = Random.default_rng())
+
+Linear fractional stable motion: the cumulative sum of [`lfsn`](@ref).
+
+The stable-law analogue of fractional Brownian motion, self-similar with Hurst exponent `H`
+and built from α-stable increments. `H` controls the correlation between successive
+increments, so `H > 1/2` gives persistent excursions and `H < 1/2` antipersistent ones,
+while `α` controls their tails. The two exponents are set independently.
+
+This is the noise the fractional-in-time samplers need: [`tFOLE`](@ref) takes α = 2 with
+H = 1 - β/2, and [`bFOLE`](@ref) and [`bFNS`](@ref) take H = 1/2 - β/2 + 1/α.
+
+See [`lfsn`](@ref) for the arguments.
+"""
 lfsm(args...; kwargs...) = cumsum(lfsn(args...; kwargs...))
 
 """

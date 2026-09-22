@@ -117,6 +117,40 @@ function adaptive_walk_g!(du, u, p, t)
     return dx .= sqrt(2γ)
 end
 
+"""
+    AdaptiveWalkSampler(kernel, approx_n_modes; tspan, γ, τ_r, τ_d, boundaries, kwargs...)
+
+Overdamped dynamics with an adaptation kernel: a copy of `kernel` is deposited at the
+current position on every step and accumulated into a field K, which repels the sampler
+from states it has already visited.
+
+```math
+\\mathrm{d}x = -\\gamma \\left(\\nabla V(x) + \\nabla K(x)\\right) \\mathrm{d}t
+    + \\sqrt{2\\gamma} \\, \\mathrm{d}W, \\qquad
+\\frac{\\mathrm{d}K}{\\mathrm{d}t} = -\\frac{K}{\\tau_d} + \\frac{k(\\cdot - x(t))}{\\tau_r}
+```
+
+with V = -log𝜋. K is held by its coefficients in a Fourier basis over the domain of
+`boundaries`, so `boundaries` is required. The kernel mutates in place as the sampler runs
+and can be read back from `parameters(S).a_K`. With `τ_r = Inf` nothing is deposited and
+the sampler is [`OLE`](@ref) with `η = γ`.
+
+The accumulated kernel biases the sampled distribution away from `𝜋`, so an adaptive run
+reports where a target has support rather than how much.
+
+# Arguments
+- `kernel`: the bump deposited at each step, as a function of a displacement
+- `approx_n_modes`: number of Fourier modes retained for K
+- `tspan`: time span, as a tuple or a final time
+- `γ`: drift strength, which also sets the noise as ``\\sqrt{2γ}``
+- `τ_r`: deposition time; larger values deposit more slowly, and `Inf` disables adaptation
+- `τ_d`: decay time of the accumulated kernel
+- `boundaries`: an [`AbstractBoundary`](@ref), which sets the domain of K
+- `u0`: initial position
+- `𝜋`: target [`Density`](@ref)
+
+Remaining keywords pass through to [`Sampler`](@ref).
+"""
 function AdaptiveWalkSampler(
         kernel, approx_n_modes;
         tspan, γ, τ_r, τ_d,
@@ -156,6 +190,33 @@ function adaptive_levy_g!(du, u, p, t)
     return dx .= γ^(1 / α)
 end
 
+"""
+    AdaptiveLevySampler(kernel, approx_n_modes; tspan, α, γ, τ_r, τ_d, boundaries, kwargs...)
+
+[`AdaptiveWalkSampler`](@ref) driven by α-stable noise rather than Brownian noise, with the
+drift prefactor ``c_α = Γ(α-1)/Γ(α/2)^2`` that [`FNS`](@ref) also carries:
+
+```math
+\\mathrm{d}x = -\\gamma c_\\alpha \\left(\\nabla V(x) + \\nabla K(x)\\right) \\mathrm{d}t
+    + \\gamma^{1/\\alpha} \\, \\mathrm{d}L_\\alpha
+```
+
+At α = 2 the prefactor is one and the sampler matches [`AdaptiveWalkSampler`](@ref).
+
+# Arguments
+- `kernel`: the bump deposited at each step, as a function of a displacement
+- `approx_n_modes`: number of Fourier modes retained for K
+- `tspan`: time span, as a tuple or a final time
+- `α`: stability of the driving noise, in (1, 2]
+- `γ`: drift strength, which also scales the noise as ``γ^{1/α}``
+- `τ_r`: deposition time; `Inf` disables adaptation
+- `τ_d`: decay time of the accumulated kernel
+- `boundaries`: an [`AbstractBoundary`](@ref), which sets the domain of K
+- `u0`: initial position
+- `𝜋`: target [`Density`](@ref)
+
+Remaining keywords pass through to [`Sampler`](@ref).
+"""
 function AdaptiveLevySampler(
         kernel, approx_n_modes;
         tspan, α, γ, τ_r, τ_d,

@@ -1,6 +1,8 @@
 """
-    Sampler
-Defines the `DifferentialEquations`-compatible FNS sampling algorithm.
+    Samplers
+
+The sampler types and constructors. Each constructor returns a [`Sampler`](@ref), which
+subtypes `SciMLBase.AbstractSDEProblem`.
 """
 module Samplers
 using SciMLBase
@@ -29,6 +31,13 @@ import StochasticDiffEqLowOrder: EM
 
 export AbstractSampler, Sampler, parameters
 
+"""
+    AbstractSampler{uType, tType, isinplace, ND} <: AbstractSDEProblem
+
+Supertype of every sampler in the package. Since a sampler is an `SDEProblem`, it composes
+with callbacks, ensembles, and the standard `solve` interface. [`Sampler`](@ref) is the
+only concrete subtype; the constructors listed in the manual all return one.
+"""
 abstract type AbstractSampler{uType, tType, isinplace, ND} <:
 AbstractSDEProblem{uType, tType, isinplace, ND} end
 
@@ -44,6 +53,23 @@ end
 
 const Labelled = Union{SLArray, LArray, NamedTuple}
 
+"""
+    Sampler <: AbstractSampler
+
+An `SDEProblem` carrying a target density beside its parameters. The parameter field `p` is
+the pair `(parameters, 𝜋)`, read back with [`parameters`](@ref) and `Density`.
+
+Samplers are immutable. Calling one returns a copy with the named parameters, fields or
+target replaced, which is how a parameter sweep is written:
+
+```julia
+S2 = S(; γ = 1.0)          # a new sampler; S is untouched
+S3 = S(; u0 = [1.0, 0.0])  # fields work the same way
+```
+
+`remake` is also supported. Construct a sampler through one of the named constructors
+([`Langevin`](@ref), [`FNS`](@ref), and the rest) rather than directly.
+"""
 struct Sampler{
         uType, tType, isinplace, P <: Labelled, NP, F, G, K, ND,
         D <: Union{AbstractDensity, Function},
@@ -92,6 +118,16 @@ function Sampler{isinplace}(
         seed
     )
 end
+"""
+    parameters(S::Sampler)
+
+The parameter container of a sampler, holding the scalars its drift and diffusion read.
+
+Plain samplers carry an `SLArray`, so `parameters(S).γ` works and the whole container is
+static. The spectral samplers ([`sFOLE`](@ref), [`sFNS`](@ref), [`bFOLE`](@ref),
+[`bFNS`](@ref)) and the adaptive ones carry a `NamedTuple` instead, since no static vector
+holds the `ApproxFun` operators and transform plans they need beside their scalars.
+"""
 parameters(S::Sampler) = first(S.p)
 Density(S::Sampler) = last(S.p)
 SciMLBase.is_diagonal_noise(S::Sampler) = true

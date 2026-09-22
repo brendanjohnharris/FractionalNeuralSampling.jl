@@ -28,7 +28,30 @@ function gen_lfsm_fns(α, β; tspan, dt, seed, nhist) # * 1D with zeros for mome
 end
 
 """
-Bi-fractional neural sampling
+    bFNS(; tspan, dt, α, β, γ, η, 𝜋, domain, u0 = [0.0, 0.0], kwargs...)
+
+Bi-fractional neural sampling: [`sFNS`](@ref) with the position also fractional in time.
+The fractional drift is taken in space at order α and the Caputo derivative in time at
+order β, driven by linear fractional stable motion with H = 1/2 - β/2 + 1/α. The momentum
+is advanced by plain Euler--Maruyama, which
+[`PositionalCaputoEM`](@ref) provides. Aliased as `BiFractionalNeuralSampler`.
+
+Note that the roles of the parameters differ from [`sFNS`](@ref): here `η` is the drift
+strength and `γ` the momentum coupling.
+
+# Arguments
+- `tspan`: time span, as a tuple or a final time
+- `dt`: step size, used to generate the noise grid
+- `α`: fractional order in space, which is also the stability of the driving noise
+- `β`: fractional order in time, in (0, 1]
+- `γ`: coupling between position and momentum
+- `η`: drift strength, which also scales the noise as ``η^{1/α}``
+- `𝜋`: target [`Density`](@ref)
+- `domain`: interval over which `𝜋` is expanded
+- `τ`: history length for the solver and the noise; one tenth of the time span by default
+- `u0`: initial `[position; momentum]`
+
+Remaining keywords pass through to [`Sampler`](@ref).
 """
 function bFNS(;
         tspan,

@@ -50,7 +50,32 @@ function maybeLaplacian(S::ApproxFunBase.AbstractProductSpace) # * If the space 
 end
 
 """
-Space fractional overdamped langevin equation
+    sFOLE(; tspan, η, α, 𝜋, domain, λ = 0.001, u0 = [0.0], kwargs...)
+
+Overdamped Langevin dynamics that are fractional in space: first order, driven by α-stable
+noise, with the fractional drift
+
+```math
+\\mathrm{d}x = \\eta \\, \\frac{\\nabla (-\\Delta)^{(\\alpha - 2)/2} \\pi(x)}{\\pi(x) + \\lambda} \\, \\mathrm{d}t
+    + \\eta^{1/\\alpha} \\, \\mathrm{d}L_\\alpha.
+```
+
+The fractional Laplacian is applied spectrally, so `𝜋` is expanded over `domain`. Since
+the drift and the noise carry the same α, the sampler crosses between separated modes
+without momentum. At α = 2 it reduces to [`OLE`](@ref). Aliased as
+`SpaceFractionalOverdampedLangevinEquation`.
+
+# Arguments
+- `tspan`: time span, as a tuple or a final time
+- `η`: noise strength
+- `α`: fractional order in space, which is also the stability of the driving noise
+- `𝜋`: target [`Density`](@ref)
+- `domain`: interval over which `𝜋` is expanded; take it wider than the region sampled
+- `λ`: regularises the quotient where the density is small
+- `approx_n_modes`: number of Fourier modes retained, `1000` by default
+- `u0`: initial position
+
+Remaining keywords pass through to [`Sampler`](@ref).
 """
 function sFOLE(;
         tspan,

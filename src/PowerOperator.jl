@@ -3,6 +3,20 @@ import ApproxFun
 
 export Power
 
+"""
+    Power(op::Operator, p::Number)
+
+A diagonal `ApproxFun` operator raised to the power `p`, entry by entry.
+
+Used to build the fractional Laplacian ``(-\\Delta)^{(\\alpha-2)/2}`` that the
+space-fractional samplers need. The Laplacian is diagonal in the Fourier basis, so raising
+it to a fractional power is a power of each diagonal entry.
+
+A zero diagonal entry raised to a negative power is left at zero rather than diverging.
+That entry is the zero-frequency mode, which carries the offset of the potential and so
+does not affect a gradient; apply the fractional operator before the gradient operator for
+this to hold.
+"""
 abstract type Power{T, BT <: Operator, P <: Number} <: Operator{T} end
 
 struct ConcretePower{T, BT <: Operator, P <: Number} <: Power{T, BT, P}

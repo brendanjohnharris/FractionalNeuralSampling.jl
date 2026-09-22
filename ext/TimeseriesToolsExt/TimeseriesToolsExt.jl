@@ -66,7 +66,10 @@ end
 samplingpower(x::RegularTimeseries) = samplingpower(x, step(x))
 
 """
-Taus in unit steps
+    samplingaccuracy(x::RegularTimeseries, 𝜋::AbstractDensity, τs::AbstractVector; kwargs...)
+
+`τs` is given in samples, and the result is returned over time, with each window length
+converted to a duration by the sampling period of `x`.
 """
 function samplingaccuracy(
         x::RegularTimeseries, 𝜋::AbstractDensity, τs::AbstractVector;

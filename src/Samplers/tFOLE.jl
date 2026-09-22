@@ -27,7 +27,32 @@ function gen_fbm(β; u0, tspan, dt, seed) # * 1d for now
 end
 
 """
-Overdamped langevin equation
+    tFOLE(; tspan, dt, η, β, u0 = [0.0], 𝜋, kwargs...)
+
+Overdamped Langevin dynamics that are fractional in time: the time derivative is a Caputo
+derivative of order β ∈ (0, 1], driven by fractional Gaussian noise of matching exponent,
+
+```math
+D^{\\beta}_t x = \\eta \\, \\nabla \\log \\pi(x) + \\sqrt{\\eta} \\, \\xi(t),
+```
+
+where ξ has Hurst exponent H = 1 - β/2. The noise grid is generated ahead of the solve, so
+`dt` is required at construction and must match the `dt` passed to `solve`. Lowering β
+lengthens the memory of the trajectory and slows the approach to stationarity, leaving the
+stationary density unchanged. At β = 1 it reduces to [`OLE`](@ref). Aliased as
+`TemporalFractionalOverdampedLangevinEquation`.
+
+# Arguments
+- `tspan`: time span, as a tuple or a final time
+- `dt`: step size, used to generate the noise grid
+- `η`: noise strength
+- `β`: fractional order in time, in (0, 1]
+- `u0`: initial position
+- `𝜋`: target [`Density`](@ref)
+- `seed`: seed for the noise grid
+- `alg`: default solver, [`CaputoEM`](@ref)`(β, 1000)`
+
+Remaining keywords pass through to [`Sampler`](@ref).
 """
 function tFOLE(;
         tspan,

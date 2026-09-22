@@ -12,7 +12,27 @@ function ole_g!(du, u, p, t)
 end
 
 """
-Overdamped langevin equation
+    OLE(; tspan, η, u0 = [0.0], 𝜋 = default_density(u0; dims = length(u0)), kwargs...)
+
+Overdamped Langevin dynamics driven by Brownian noise, with stationary density `𝜋`.
+
+```math
+\\mathrm{d}x = \\eta \\, \\nabla \\log \\pi(x) \\, \\mathrm{d}t + \\sqrt{2\\eta} \\, \\mathrm{d}W
+```
+
+`η` scales the drift and the diffusion together, so it sets the timescale without changing
+the stationary density. First order, so `length(u0) == dimension(𝜋)`. Aliased as
+`OverdampedLangevinEquation`.
+
+# Arguments
+- `tspan`: time span, as a tuple or a final time
+- `η`: noise strength
+- `u0`: initial position
+- `𝜋`: target [`Density`](@ref); defaults to a standard normal
+- `boundaries`: an [`AbstractBoundary`](@ref), or `nothing`
+- `alg`: default solver, `EM()`
+
+Remaining keywords pass through to [`Sampler`](@ref).
 """
 function OLE(;
         tspan,

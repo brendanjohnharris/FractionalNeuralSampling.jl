@@ -9,6 +9,20 @@ using ForwardDiff
 @reexport using SciMLBase
 @reexport using StochasticDiffEqLowOrder # Reexports StochasticDiffEqCore; `EM` is the only upstream solver used
 
+"""
+    set_ad_backend!(backend)
+
+Set the automatic differentiation backend used for density gradients, as a
+`DifferentiationInterface` type or a string naming one.
+
+The choice is stored as a preference, so it survives across sessions, and is read when the
+package is loaded; a change therefore takes effect only after a restart. Defaults to
+`AutoForwardDiff()`.
+
+```julia
+FractionalNeuralSampling.set_ad_backend!("AutoEnzyme()")
+```
+"""
 function set_ad_backend!(
         new_backend::Union{
             DifferentiationInterface.AbstractADType,
@@ -86,7 +100,35 @@ include("Samplers.jl")
 import .Boundaries: domain
 
 # * Extension placeholders (defined in TimeseriesToolsExt)
+"""
+    samplingpower(x, dt; p = 2)
+    samplingpower(x::RegularTimeseries; p = 2)
+
+The p-variation of the increments of `x` per unit time; at `p = 2` a rate of quadratic
+variation.
+
+Measures how much ground a sampler covers rather than how well it covers it, so it
+separates a trajectory built from many small steps from one built from a few large jumps.
+
+Provided by the `TimeseriesTools` extension, so load `TimeseriesTools` to use it.
+"""
 function samplingpower end
+
+"""
+    samplingaccuracy(x, 𝜋::AbstractDensity; domain = nothing)
+    samplingaccuracy(x, 𝜋::AbstractDensity, τs::AbstractVector; p = 0, domain = nothing)
+
+The Wasserstein-1 distance between the samples `x` and the target `𝜋`, computed by
+comparing sorted samples against the quantiles of `𝜋`.
+
+Given `τs`, `x` is first cut into windows of each length τ and the distance is returned per
+window, which shows how the estimate converges with sample size; `p` sets the overlap
+between windows, and is zero by default. `domain` restricts the comparison to samples
+inside it, which matters where a sampler makes excursions far outside the support of `𝜋`.
+
+Provided by the `TimeseriesTools` extension, so load `TimeseriesTools` to use it. With a
+`RegularTimeseries`, `τs` is given in unit steps and the result is returned over time.
+"""
 function samplingaccuracy end
 function _samplingaccuracy end
 

@@ -10,7 +10,27 @@ function gen_lfsm(α, β; u0, tspan, dt, seed) # * 1d for now
 end
 
 """
-Bi fractional overdamped langevin equation
+    bFOLE(; tspan, dt, η, α, β, 𝜋, domain, λ = 1e-4, u0 = [0.0], kwargs...)
+
+Overdamped Langevin dynamics that are fractional in space and in time: the fractional drift
+of [`sFOLE`](@ref) with the Caputo time derivative of [`tFOLE`](@ref), driven by linear
+fractional stable motion with H = 1/2 - β/2 + 1/α. The noise grid is generated ahead of the
+solve, so `dt` is required at construction and must match the `dt` passed to `solve`.
+Aliased as `BiFractionalOverdampedLangevinEquation`.
+
+# Arguments
+- `tspan`: time span, as a tuple or a final time
+- `dt`: step size, used to generate the noise grid
+- `η`: noise strength
+- `α`: fractional order in space, which is also the stability of the driving noise
+- `β`: fractional order in time, in (0, 1]
+- `𝜋`: target [`Density`](@ref)
+- `domain`: interval over which `𝜋` is expanded
+- `λ`: regularises the fractional drift where the density is small
+- `u0`: initial position
+- `alg`: default solver, [`CaputoEM`](@ref)`(β, 1000)`, whose order must match the noise
+
+Remaining keywords pass through to [`Sampler`](@ref).
 """
 function bFOLE(;
         tspan,

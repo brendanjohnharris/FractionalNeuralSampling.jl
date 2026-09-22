@@ -58,6 +58,26 @@ function LevyProcess(
     )
     return throw(ArgumentError("Out-of-place Lévy noise is not implemented; use `LevyProcess!`"))
 end
+"""
+    LevyProcess!(α, β = 0.0, σ = 1; μ = 0.0, t0 = 0.0, W0 = [0.0], ND = 1, kwargs...)
+
+An α-stable (Lévy) noise process, usable wherever a `DiffEqNoiseProcess` is expected.
+
+Increments are drawn isotropically: a direction uniform on the sphere, and a magnitude from
+`Stable(α, β, σ, μ)`. The increment over a step is scaled by ``|dt|^{1/α}``, which makes
+the process self-similar with exponent 1/α. At α = 2 the increments are Gaussian and the
+process is a rescaled Brownian motion.
+
+# Arguments
+- `α`: stability, in (0, 2]; smaller α gives heavier tails
+- `β`: skewness
+- `σ`: scale
+- `μ`: location
+- `W0`: initial value
+- `ND`: number of dimensions to which noise is added independently
+
+The out-of-place [`LevyProcess`](@ref) is not implemented.
+"""
 function LevyProcess!(
         α, β = 0.0, σ = 1; μ = 0.0, t0 = 0.0, W0 = [0.0],
         Z0 = nothing, ND = 1,

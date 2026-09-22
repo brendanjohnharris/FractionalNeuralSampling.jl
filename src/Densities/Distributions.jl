@@ -9,11 +9,30 @@ import Distributions: gradlogpdf, pdf, logpdf
 export DistributionDensity, distribution
 
 begin # * Distribution densities; supply a Distributions.Distribution, get a density
+    """
+        DistributionDensity(d::Distribution)
+        DistributionDensity(d::Distribution, doAd::Bool)
+
+    A target wrapping a `Distributions.Distribution`, returned by `Density(d)`. The
+    dimension is taken from the distribution.
+
+    `doAd` is chosen on construction: analytic where the distribution defines
+    `Distributions.gradlogpdf`, and automatic differentiation otherwise. Pass it explicitly
+    to override. The wrapped distribution is recovered with [`distribution`](@ref), and
+    `rand(rng, 𝜋)` draws from it directly.
+    """
     struct DistributionDensity{D, N, doAd} <: AbstractDensity{D, N, doAd}
         distribution::D
     end
 
     capabilities(::Type{<:DistributionDensity}) = LogDensityProblems.LogDensityOrder{1}()
+    """
+        distribution(𝜋::DistributionDensity)
+
+    The `Distributions.Distribution` a target wraps. Needed where a routine wants the
+    distribution itself rather than its density, as `samplingaccuracy` does when it takes
+    quantiles.
+    """
     distribution(D::DistributionDensity) = D.distribution
     density(D::DistributionDensity) = Base.Fix1(pdf, distribution(D))
     logdensity(D::DistributionDensity) = Base.Fix1(logpdf, distribution(D))

@@ -10,17 +10,66 @@ export AbstractDensity, AbstractUnivariateDensity, Density
 
 export potential, logdensity, gradlogdensity, graddensity, gradpotential, dimension
 
+"""
+    AbstractDensity{D, N, doAd}
+
+Supertype of the target densities. `D` is the wrapped object, `N` the dimension of the
+state it accepts, and `doAd` records whether gradients come from automatic differentiation
+or from an analytic method.
+
+Subtypes are [`Density`](@ref) for a distribution or a probability density function,
+[`DistributionDensity`](@ref) for a `Distributions.Distribution`, and
+[`PotentialDensity`](@ref) for a target given by its potential. All of them are callable
+and support [`logdensity`](@ref), [`gradlogdensity`](@ref), [`graddensity`](@ref),
+[`potential`](@ref), [`gradpotential`](@ref) and [`dimension`](@ref).
+"""
 abstract type AbstractDensity{D, N, doAd} end
 const AbstractUnivariateDensity{D, doAd} = AbstractDensity{D, 1, doAd}
 
+"""
+    logdensity(𝜋::AbstractDensity, x)
+
+log𝜋(x). Up to an additive constant for a [`PotentialDensity`](@ref), which is not
+normalised.
+"""
 logdensity(D::AbstractDensity, x) = logdensity(D)(x)
+"""
+    gradlogdensity(𝜋::AbstractDensity, x)
+    gradlogdensity(𝜋::AbstractDensity)
+
+∇log𝜋(x), the drift of an overdamped sampler. Called with the density alone, returns the
+function of `x`.
+
+Evaluated analytically where the wrapped distribution defines
+`Distributions.gradlogpdf`, and by automatic differentiation otherwise.
+"""
 gradlogdensity(D::AbstractDensity) = Base.Fix1(gradlogdensity, D)
+"""
+    graddensity(𝜋::AbstractDensity, x)
+    graddensity(𝜋::AbstractDensity)
+
+∇𝜋(x), the gradient of the density itself rather than of its logarithm. Called with the
+density alone, returns the function of `x`.
+"""
 graddensity(D::AbstractDensity) = Base.Fix1(graddensity, D)
 
+"""
+    potential(𝜋::AbstractDensity, x)
+    potential(𝜋::AbstractDensity)
+
+V(x) = -log𝜋(x). Called with the density alone, returns the function of `x`.
+"""
 potential(D::AbstractDensity, x) = -logdensity(D, x)
 potential(D::AbstractDensity, x::Tuple) = potential(D, collect(x))
 potential(D::AbstractDensity) = Base.Fix1(potential, D)
 
+"""
+    gradpotential(𝜋::AbstractDensity, x)
+    gradpotential(𝜋::AbstractDensity)
+
+∇V(x) = -∇log𝜋(x), the force a sampler feels. Called with the density alone, returns the
+function of `x`.
+"""
 gradpotential(D::AbstractDensity, x) = -gradlogdensity(D, x)
 gradpotential(D::AbstractDensity) = (-) ∘ gradlogdensity(D)
 
@@ -28,6 +77,12 @@ gradpotential(D::AbstractDensity) = (-) ∘ gradlogdensity(D)
 (D::AbstractDensity)(x::Tuple) = D(collect(x))
 (D::AbstractUnivariateDensity)(x::AbstractVector) = D(only(x))
 
+"""
+    dimension(𝜋::AbstractDensity)
+
+The dimension of the state `𝜋` accepts. A second-order sampler needs
+`length(u0) == 2 * dimension(𝜋)`, and a first-order one `length(u0) == dimension(𝜋)`.
+"""
 function LogDensityProblems.dimension(d::AbstractDensity{D, N, doAd}) where {
         D, N,
         doAd,
@@ -111,6 +166,30 @@ function graddensity(d::AbstractDensity, x)
 end
 
 begin # * See here for the Density interface: define these methods and traits. Custom differentiation functions can also be added; see Densities/Distributions.jl
+    """
+        Density(d::Distribution)
+        Density{N}(f)
+        Density{N, doAd}(f)
+
+    The target distribution 𝜋 that a sampler is to reproduce.
+
+    Given a `Distributions.Distribution`, the dimension is taken from the distribution and
+    a [`DistributionDensity`](@ref) is returned; gradients are analytic where the
+    distribution defines `Distributions.gradlogpdf` and come from automatic differentiation
+    otherwise. Given a function, `N` is the dimension of the state it accepts and cannot be
+    inferred, so it is supplied as a type parameter.
+
+    `doAd` overrides the choice of gradient: `Density{false}(d)` forces the analytic method
+    and `Density{true}(d)` forces automatic differentiation. The backend defaults to
+    `AutoForwardDiff()` and is changed with
+    `FractionalNeuralSampling.set_ad_backend!`, which takes effect after a restart.
+
+    ```julia
+    Density(Normal(0.0, 1.0))                 # analytic gradient
+    Density(MixtureModel(Normal, [(-2.0, 0.5), (2.0, 0.5)]))  # autodiff
+    Density{1}(x -> exp(-only(x)^2 / 2))      # a pdf given as a function
+    ```
+    """
     struct Density{D, N, doAd} <: AbstractDensity{D, N, doAd}
         density::D
     end

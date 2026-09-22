@@ -16,7 +16,28 @@ function langevin_g!(du, u, p, t)
 end
 
 """
-Langevin equation
+    Langevin(; tspan, β, η, u0 = [0.0, 0.0], 𝜋 = default_density(u0), kwargs...)
+
+Underdamped Langevin dynamics driven by Brownian noise, with stationary density `𝜋`.
+
+```math
+\\mathrm{d}x = \\beta v \\, \\mathrm{d}t, \\qquad
+\\mathrm{d}v = (\\beta \\nabla \\log \\pi(x) - \\eta v) \\, \\mathrm{d}t + \\sqrt{2\\eta} \\, \\mathrm{d}W
+```
+
+Second order, so `u0` stacks position and momentum and `length(u0) == 2 * dimension(𝜋)`.
+Aliased as `LangevinEquation`.
+
+# Arguments
+- `tspan`: time span, as a tuple or a final time
+- `β`: coupling between position and momentum
+- `η`: damping rate, which is also the noise strength
+- `u0`: initial `[position; momentum]`
+- `𝜋`: target [`Density`](@ref); defaults to a standard normal over the position
+- `boundaries`: an [`AbstractBoundary`](@ref), or `nothing`
+- `alg`: default solver, `EM()`
+
+Remaining keywords pass through to [`Sampler`](@ref).
 """
 function Langevin(;
         tspan,
