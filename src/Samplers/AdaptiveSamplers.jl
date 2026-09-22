@@ -28,14 +28,15 @@ function kernel_parameters(kernel, approx_n_modes, u0, boundaries)
     dim = length(u0)
     sp = prod(Fourier.(Boundaries.domain(boundaries)))
 
-    a_K = zeros(length(Fun(kernel, sp, approx_n_modes).coefficients))
+    a_K, grid_points, plan = serial_fftw() do
+        a_K = zeros(length(Fun(kernel, sp, approx_n_modes).coefficients))
+        grid_points = points(sp, length(a_K))
+        a_K, grid_points, ApproxFunBase.plan_transform(sp, length(grid_points))
+    end
 
     Ds = SVector{dim, Int}.(eachrow(I(dim)))
     sp isa TensorSpace || (Ds = only.(Ds))
     D = Derivative.([sp], Ds)
-
-    grid_points = points(sp, length(a_K))
-    plan = ApproxFunBase.plan_transform(sp, length(grid_points))
 
     return (; D, a_K, sp, plan, kernel, grid_points, dim)
 end

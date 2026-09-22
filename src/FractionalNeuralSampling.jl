@@ -1,6 +1,7 @@
 module FractionalNeuralSampling
 using Reexport
 using Preferences
+import FFTW
 using DifferentiationInterface
 using RecursiveArrayTools
 using ComponentArrays
@@ -25,6 +26,28 @@ const AD_BACKEND = eval(
         )
     )
 )
+
+"""
+    serial_fftw(f)
+
+Run `f` with FFTW restricted to a single thread, restoring the previous count afterwards.
+
+FFTW segfaults on the in-place plans used here when it is multithreaded
+(JuliaMath/FFTW.jl#236), taking the session down rather than throwing. Every spectral
+transform in the package is planned and executed inside this, so the default multithreaded
+FFTW a user arrives with is safe. A plan carries its thread count from construction, so
+transforms applied later (the adaptation kernel's, each step) stay serial too.
+"""
+function serial_fftw(f)
+    n = FFTW.get_num_threads()
+    n == 1 && return f()
+    FFTW.set_num_threads(1)
+    return try
+        f()
+    finally
+        FFTW.set_num_threads(n)
+    end
+end
 
 """
 Divide a vector into views of length ND. Works with regular vectors, with optimizations for

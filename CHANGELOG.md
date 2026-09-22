@@ -8,6 +8,7 @@
 - Box boundaries (`ReflectingBox`, `PeriodicBox`, `ReentrantBox`) carry their corner element type as a type parameter, so their fields are concrete.
 
 ### Fixed
+- Every spectral transform now runs through `FractionalNeuralSampling.serial_fftw`, which drops FFTW to one thread for the call and restores the previous count. FFTW segfaults on the in-place plans used here when it is multithreaded (JuliaMath/FFTW.jl#236), taking the session down rather than throwing, so `lfsn` and every sampler built on a spectral approximation of the target (`sFOLE`, `sFNS`, `bFOLE`, `bFNS`) crashed a default multicore session at any `approx_n_modes`. Only `lfsn` had documented the hazard, and the test suite hid it by setting the thread count to 1 before any sampler was built.
 - `FNS`, `FHMC`, `sFNS` and the adaptive samplers threw a `MethodError` when constructed without a `𝜋`; their default target now works, and `Langevin`, `OLE` and `tFOLE` gained the same default.
 - `FHMC` defaulted `u0` to a 1×2 matrix, ignored `boundaries` unless they were already a callback, and had no default algorithm.
 - `Langevin` defaulted `u0` to `[0.0]`, one element short of the 2 a second-order sampler needs, so the default always failed `assert_dimension`. It is now `[0.0, 0.0]`.

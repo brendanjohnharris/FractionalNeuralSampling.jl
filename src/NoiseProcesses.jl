@@ -5,7 +5,7 @@ using DiffEqNoiseProcess
 using Random
 using LinearAlgebra
 using StaticArraysCore
-import ..FractionalNeuralSampling.divide_dims
+import ..FractionalNeuralSampling: divide_dims, serial_fftw
 export LevyProcess, LevyProcess!
 
 struct LevyNoise{inplace, T}

@@ -26,10 +26,11 @@ so for β = 1 it corresponds to draws from a Lévy distribution with σ = 1.
 - `dt = 1`: Time step, which scales the result by `dt^H`
 - `rng`: Random number generator (default: `Random.default_rng()`)
 
-!!! warning
-    Call `FFTW.set_num_threads(1)` first. Multithreaded FFTW segfaults on the in-place
-    plan used here (JuliaMath/FFTW.jl#236), taking the session with it rather than
-    throwing.
+!!! note
+    The in-place plan used here segfaults under multithreaded FFTW
+    (JuliaMath/FFTW.jl#236), so the transform runs through
+    [`FractionalNeuralSampling.serial_fftw`](@ref); the caller's thread count is restored
+    afterwards.
 """
 function lfsn(
         N::Int, α::A, H::B; m::Int = 128, M::Int = 1000,
@@ -81,11 +82,13 @@ function lfsn(
         Ẑ[i] = Complex(rand(rng, d), zero(T))
     end
 
-    ℱ = plan_fft!(Ẑ)
-    ℱ * Ẑ
-    ℱ * â
-    â .*= Ẑ
-    ifft!(â)
+    serial_fftw() do
+        ℱ = plan_fft!(Ẑ)
+        ℱ * Ẑ
+        ℱ * â
+        â .*= Ẑ
+        ifft!(â)
+    end
 
     # Extract real parts at every m-th point directly into result
     offset = m * M

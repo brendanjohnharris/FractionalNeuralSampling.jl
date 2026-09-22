@@ -15,7 +15,7 @@ using Accessors
 using Random
 
 import ..NoiseProcesses
-import ..FractionalNeuralSampling: divide_dims, first_dims
+import ..FractionalNeuralSampling: divide_dims, first_dims, serial_fftw
 import ..NoiseProcesses: lfsn
 import ..Solvers: CaputoEM, MultiCaputoEM, PositionalCaputoEM
 using ..Densities

@@ -23,9 +23,10 @@ end
 
 function space_fractional_drift(𝜋; approx_n_modes = 10000, kwargs...)
     S, D, 𝒟 = space_fractional_deriv(Val(dimension(𝜋)); kwargs...)
-    𝜋s = Fun(𝜋, S, approx_n_modes)
-    ∇𝒟𝜋 = D * 𝒟 * 𝜋s
-    return ∇𝒟𝜋, 𝜋s
+    return serial_fftw() do
+        𝜋s = Fun(𝜋, S, approx_n_modes)
+        D * 𝒟 * 𝜋s, 𝜋s
+    end
 end
 
 function sfole_f!(du, u, p, t)
