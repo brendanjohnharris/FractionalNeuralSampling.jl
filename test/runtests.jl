@@ -430,6 +430,43 @@ end
 @testitem "LFSM" begin
     include("./lfsn.jl")
 end
+@testitem "tFOLE" begin
+    include("./Samplers/tFOLE.jl")
+end
+@testitem "sFOLE" begin
+    include("./Samplers/sFOLE.jl")
+end
+@testitem "bFOLE" begin
+    include("./Samplers/bFOLE.jl")
+end
+@testitem "bFNS" begin
+    include("./Samplers/bFNS.jl")
+end
+@testitem "FHMC" begin
+    include("./Samplers/FHMC.jl")
+end
+@testitem "Adaptive samplers" begin
+    include("./Samplers/Adaptive.jl")
+end
+
+@testitem "Spectral transforms run serially" setup = [Setup] begin
+    # FFTW segfaults on the in-place plans used here when multithreaded
+    # (JuliaMath/FFTW.jl#236), so `serial_fftw` drops it to one thread per transform and
+    # restores the caller's count. Without it these two calls take the process down
+    n = FFTW.get_num_threads()
+    try
+        FFTW.set_num_threads(2)
+        @test FFTW.get_num_threads() == 2
+        @test_nowarn lfsn(1000, 1.5, 0.6)
+        @test_nowarn sFOLE(;
+            tspan = (0.0, 1.0), η = 0.5, α = 1.5,
+            𝜋 = Density(Normal(0, 1)), domain = -10 .. 10
+        )
+        @test FFTW.get_num_threads() == 2 # Restored, not clamped
+    finally
+        FFTW.set_num_threads(n)
+    end
+end
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Regression tests for the v0.3.0 cleanup
