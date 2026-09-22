@@ -1,0 +1,75 @@
+/* Fathom.jl palette (test/colors.yaml), snapshotted. Semantic mappings live in style.css. */
+:root {
+    --c-abyad-base: #B4B4B4;
+    --c-abyad-darker: #777777;
+    --c-abyad-light: #D4D4D4;
+    --c-abyad-lighter: #F5F5F5;
+    --c-abyad-dark: #959595;
+
+    --c-mesopelagic-base: #007878;
+    --c-mesopelagic-darker: #004041;
+    --c-mesopelagic-light: #4D9393;
+    --c-mesopelagic-lighter: #7DAFAE;
+    --c-mesopelagic-dark: #005B5C;
+
+    --c-bathypelagic-base: #023653;
+    --c-bathypelagic-darker: #00041F;
+    --c-bathypelagic-light: #2E5169;
+    --c-bathypelagic-lighter: #526C7F;
+    --c-bathypelagic-dark: #001C38;
+
+    --c-bermejo-base: #F93D53;
+    --c-bermejo-darker: #B30012;
+    --c-bermejo-light: #FF787E;
+    --c-bermejo-lighter: #FFA9A9;
+    --c-bermejo-dark: #D60034;
+
+    --c-playa-base: #F5F1E8;
+    --c-playa-darker: #B4B0A7;
+    --c-playa-light: #FFFFF8;
+    --c-playa-lighter: #FFFFF9;
+    --c-playa-dark: #D4D0C7;
+
+    --c-ianthina-base: #B97AD7;
+    --c-ianthina-darker: #7C3C99;
+    --c-ianthina-light: #D3A1EC;
+    --c-ianthina-lighter: #EDC7FF;
+    --c-ianthina-dark: #9A5BB8;
+
+    --c-qinghai-base: #88BD69;
+    --c-qinghai-darker: #4B7F26;
+    --c-qinghai-light: #AEDA97;
+    --c-qinghai-lighter: #D6F7C4;
+    --c-qinghai-dark: #699D49;
+
+    --c-chernoe-base: #282C34;
+    --c-chernoe-darker: #010306;
+    --c-chernoe-light: #42464D;
+    --c-chernoe-lighter: #5E6167;
+    --c-chernoe-dark: #11141C;
+
+    --c-seohae-base: #FFA829;
+    --c-seohae-darker: #BE6800;
+    --c-seohae-light: #FFCE79;
+    --c-seohae-lighter: #FFF4B6;
+    --c-seohae-dark: #DE8800;
+
+    --c-baikal-base: #6EA0F9;
+    --c-baikal-darker: #3262BA;
+    --c-baikal-light: #98C1FF;
+    --c-baikal-lighter: #C2E2FF;
+    --c-baikal-dark: #5081D9;
+
+    --c-epipelagic-base: #FA9F42;
+    --c-epipelagic-darker: #B95F00;
+    --c-epipelagic-light: #FFC581;
+    --c-epipelagic-lighter: #FFEBB9;
+    --c-epipelagic-dark: #D97F0A;
+
+    --c-abyssopelagic-base: #280137;
+    --c-abyssopelagic-darker: #010006;
+    --c-abyssopelagic-light: #3F224C;
+    --c-abyssopelagic-lighter: #564061;
+    --c-abyssopelagic-dark: #10001D;
+
+}

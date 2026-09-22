@@ -1,0 +1,193 @@
+/* Palette: a static snapshot of Fathom.jl's colours */
+@import './palette.css';
+
+/* ------------------------------------------------------------------ *
+ *  Semantic palette mapping
+ * ------------------------------------------------------------------ */
+
+/* Light theme */
+:root {
+    --vp-c-bg: #ffffff;
+    --vp-c-bg-alt: var(--c-abyad-lighter);
+    --vp-c-bg-soft: var(--c-abyad-lighter);
+    --vp-c-text-1: var(--c-chernoe-base);
+    --vp-c-text-2: var(--c-chernoe-light);
+    --vp-c-text-3: var(--c-chernoe-lighter);
+    --vp-c-gray-1: var(--c-abyad-light);
+    --vp-c-gray-2: var(--c-abyad-base);
+    --vp-c-gray-3: var(--c-abyad-lighter);
+
+    --vp-c-brand-1: var(--c-mesopelagic-dark);
+    --vp-c-brand-2: var(--c-mesopelagic-base);
+    --vp-c-brand-3: var(--c-baikal-base);
+    --vp-c-accent: var(--c-ianthina-base);
+    --vp-c-accent-alt: var(--c-ianthina-darker);
+    --vp-c-danger: var(--c-bermejo-base);
+    --vp-c-danger-alt: var(--c-bermejo-darker);
+    --vp-c-warning: var(--c-seohae-base);
+    --vp-c-warning-alt: var(--c-seohae-darker);
+    --vp-c-success: var(--c-qinghai-base);
+    --vp-c-success-alt: var(--c-qinghai-darker);
+    --vp-c-info: var(--c-mesopelagic-base);
+    --vp-c-info-alt: var(--c-mesopelagic-darker);
+
+    /* Depth ramp used for the hero name + accents */
+    --tt-depth-1: var(--c-mesopelagic-base);
+    --tt-depth-2: var(--c-bathypelagic-light);
+    --tt-depth-3: var(--c-ianthina-base);
+}
+
+/* Dark theme: lean into the deep-ocean blacks for real depth */
+.dark:root {
+    --vp-c-bg: var(--c-chernoe-dark);
+    --vp-c-bg-alt: var(--c-chernoe-base);
+    --vp-c-bg-soft: var(--c-chernoe-base);
+    --vp-c-text-1: var(--c-abyad-lighter);
+    --vp-c-text-2: var(--c-abyad-light);
+    --vp-c-text-3: var(--c-abyad-base);
+    --vp-c-gray-1: var(--c-chernoe-lighter);
+    --vp-c-gray-2: var(--c-chernoe-light);
+    --vp-c-gray-3: var(--c-abyad-dark);
+
+    --vp-c-brand-1: var(--c-baikal-base);
+    --vp-c-brand-2: var(--c-baikal-light);
+    --vp-c-brand-3: var(--c-mesopelagic-light);
+    --vp-c-accent: var(--c-ianthina-light);
+    --vp-c-accent-alt: var(--c-ianthina-base);
+
+    --tt-depth-1: var(--c-baikal-light);
+    --tt-depth-2: var(--c-mesopelagic-light);
+    --tt-depth-3: var(--c-ianthina-light);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Brand gradients (hero name, buttons)
+ * ------------------------------------------------------------------ */
+:root {
+    --vp-home-hero-name-color: transparent;
+    --vp-home-hero-name-background: linear-gradient(
+        120deg,
+        var(--tt-depth-1) 0%,
+        var(--tt-depth-2) 45%,
+        var(--tt-depth-3) 100%
+    );
+
+    --vp-home-hero-image-background-image: radial-gradient(
+        circle at 50% 40%,
+        var(--c-mesopelagic-base) 0%,
+        var(--c-ianthina-base) 60%,
+        transparent 75%
+    );
+    --vp-home-hero-image-filter: blur(56px) opacity(0.55);
+
+    --vp-button-brand-bg: var(--vp-c-brand-1);
+    --vp-button-brand-hover-bg: var(--vp-c-brand-2);
+    --vp-button-brand-active-bg: var(--vp-c-brand-3);
+}
+
+.dark {
+    --vp-home-hero-image-filter: blur(60px) opacity(0.45);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Hero
+ * ------------------------------------------------------------------ */
+.VPHero .clip {
+    white-space: pre;
+    max-width: 1000px;
+}
+
+.VPHero .name {
+    letter-spacing: -0.02em;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Feature cards: depth, lift, per-card accent
+ * ------------------------------------------------------------------ */
+.VPFeature {
+    border: 1px solid var(--vp-c-gray-1);
+    border-radius: 14px;
+    background: var(--vp-c-bg-soft);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.VPFeature::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--tt-depth-1);
+    opacity: 0.85;
+}
+
+.VPFeatures .VPFeature:nth-child(4n + 1)::before { background: var(--c-mesopelagic-base); }
+.VPFeatures .VPFeature:nth-child(4n + 2)::before { background: var(--c-baikal-base); }
+.VPFeatures .VPFeature:nth-child(4n + 3)::before { background: var(--c-ianthina-base); }
+.VPFeatures .VPFeature:nth-child(4n + 4)::before { background: var(--c-qinghai-base); }
+
+.VPFeature:hover {
+    transform: translateY(-4px);
+    border-color: var(--vp-c-brand-1);
+    box-shadow: 0 12px 28px -12px var(--c-bathypelagic-base);
+}
+
+.dark .VPFeature:hover {
+    box-shadow: 0 12px 30px -10px #000;
+}
+
+.VPFeature .title {
+    font-weight: 650;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Links, code, inline accents
+ * ------------------------------------------------------------------ */
+.vp-doc a {
+    text-decoration-color: var(--vp-c-accent);
+    text-underline-offset: 3px;
+    transition: color 0.15s ease;
+}
+.vp-doc a:hover {
+    color: var(--vp-c-accent);
+}
+
+.vp-doc :not(pre) > code {
+    color: var(--vp-c-brand-1);
+    background-color: color-mix(in srgb, var(--vp-c-brand-1) 10%, transparent);
+    border-radius: 5px;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Example output blocks
+ * ------------------------------------------------------------------ *
+ * Documenter @example/@repl *output* is emitted as an `ansi` fence,
+ * which Shiki doesn't recognise, so VitePress renders it with an empty
+ * language class: `<div class="language- vp-adaptive-theme">`. Input
+ * code stays `language-julia`. The `^="language- "` selector (trailing
+ * space) therefore matches output only. Darken it so each result reads
+ * as distinct from the code that produced it. */
+:root {
+    --tt-output-bg: color-mix(in srgb, var(--vp-code-block-bg) 90%, #000);
+}
+.dark {
+    --tt-output-bg: color-mix(in srgb, var(--vp-code-block-bg) 78%, #000);
+}
+
+.vp-doc div[class^="language- "] {
+    background-color: var(--tt-output-bg);
+}
+
+/* Tables: soften, brand the header row */
+.vp-doc th {
+    background: color-mix(in srgb, var(--vp-c-brand-1) 12%, var(--vp-c-bg-soft));
+    color: var(--vp-c-text-1);
+}
+.vp-doc tr:nth-child(2n) {
+    background: var(--vp-c-bg-soft);
+}
+
+.mono {
+    font-feature-settings: 'calt' 0;
+}

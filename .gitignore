@@ -23,3 +23,8 @@ tmp.jl
 *.pdf
 *.ppm
 *.png
+
+# Node.js and npm
+node_modules/
+package-lock.json
+npm-debug.log*

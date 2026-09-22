@@ -1,0 +1,37 @@
+/* Component: Documenter docstring blocks (`@docs`/`@autodocs` output) */
+
+.jldocstring.custom-block {
+    border: 1px solid var(--vp-c-gray-1);
+    border-left: 3px solid var(--vp-c-brand-1);
+    color: var(--vp-c-text-1);
+    background-color: var(--vp-c-bg-soft);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 18px 0;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jldocstring.custom-block:hover {
+    border-left-color: var(--vp-c-accent);
+    box-shadow: 0 6px 18px -14px var(--c-bathypelagic-base);
+}
+
+.jldocstring.custom-block summary {
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    margin: 0 0 8px;
+    color: var(--vp-c-text-1);
+}
+
+.jldocstring.custom-block summary:hover {
+    color: var(--vp-c-brand-1);
+}
+
+/* The method signature header inside a docstring reads as code; tint it subtly. */
+.jldocstring.custom-block > header code,
+.jldocstring.custom-block summary code {
+    color: var(--vp-c-brand-1);
+    background: transparent;
+    padding: 0;
+}
