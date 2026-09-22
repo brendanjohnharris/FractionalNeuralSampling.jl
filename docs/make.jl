@@ -17,6 +17,7 @@ pages = [
     "Quick start" => "quickstart.md",
     "Densities" => "densities.md",
     "Samplers" => "samplers.md",
+    "Adaptive samplers" => "adaptive.md",
     "Noise processes" => "noise.md",
     "Solvers" => "solvers.md",
     "Boundaries" => "boundaries.md",

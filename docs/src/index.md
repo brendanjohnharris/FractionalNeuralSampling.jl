@@ -27,6 +27,10 @@ features:
     title: Samplers
     details: Langevin dynamics, fractional neural sampling, and space-, time-, and bi-fractional variants.
     link: /samplers
+  - icon: 🔁
+    title: Adaptive samplers
+    details: Samplers that deposit a decaying kernel to repel themselves from states they have already visited.
+    link: /adaptive
   - icon: 〰️
     title: Noise processes
     details: Lévy α-stable noise and linear fractional stable motion for DiffEqNoiseProcess.jl.

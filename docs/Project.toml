@@ -1,9 +1,21 @@
 [deps]
+ApproxFun = "28f2ccd6-bb30-5033-b560-165f7b14dc2f"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DiffEqNoiseProcess = "77a26b50-5914-5dd7-bc55-306e6241c503"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
+Fathom = "05518021-a905-466c-bf96-cf0c89e1b0a0"
 FractionalNeuralSampling = "1a146edb-494d-4c3d-929d-e214933c7497"
+IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TimeseriesTools = "380cddd1-6ef2-46ca-b087-e7151fb095ff"
 
 [sources]
+Fathom = {rev = "main", url = "https://github.com/brendanjohnharris/Fathom.jl"}
 FractionalNeuralSampling = {path = ".."}
+TimeseriesTools = {rev = "main", url = "https://github.com/brendanjohnharris/TimeseriesTools.jl"}
