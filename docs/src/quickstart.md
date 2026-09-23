@@ -1,5 +1,9 @@
 # Quick start
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 ## Installation
 
 ```julia

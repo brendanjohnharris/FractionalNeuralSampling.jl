@@ -1,6 +1,7 @@
+# Only the package itself is loaded here: the example blocks import what they plot.
+# Makie exports `Density` as well, so loading it into `Main` leaves every `@docs` and
+# `@ref` for our `Density` resolving to an ambiguous binding.
 using FractionalNeuralSampling
-using Distributions
-using CairoMakie
 
 using Documenter
 using Documenter.Remotes: GitHub
@@ -15,12 +16,16 @@ format = DocumenterVitepress.MarkdownVitepress(;
 pages = [
     "Home" => "index.md",
     "Quick start" => "quickstart.md",
-    "Densities" => "densities.md",
-    "Samplers" => "samplers.md",
-    "Adaptive samplers" => "adaptive.md",
-    "Noise processes" => "noise.md",
-    "Solvers" => "solvers.md",
-    "Boundaries" => "boundaries.md",
+    "Sampling" => [
+        "Densities" => "densities.md",
+        "Samplers" => "samplers.md",
+        "Adaptive samplers" => "adaptive.md",
+    ],
+    "Solving" => [
+        "Noise processes" => "noise.md",
+        "Solvers" => "solvers.md",
+        "Boundaries" => "boundaries.md",
+    ],
     "Reference" => "reference.md",
 ]
 

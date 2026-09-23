@@ -1,5 +1,9 @@
 # Solvers
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 The samplers whose time derivative is fractional cannot be advanced by an ordinary
 Euler--Maruyama step, since the state at a given time depends on the whole trajectory that
 led to it. The package supplies three `StochasticDiffEqCore`-compatible algorithms that

@@ -1,5 +1,9 @@
 # Adaptive samplers
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 The samplers of the previous page are memoryless: the drift at a point depends on the
 target alone, so a trajectory that has already visited a mode is no less likely to stay
 there. The adaptive samplers add a second, time-dependent potential built from where the

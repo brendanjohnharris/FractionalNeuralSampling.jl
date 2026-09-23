@@ -1,5 +1,9 @@
 # Boundaries
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 A boundary is a callback, so it is passed to any sampler through the `boundaries` keyword
 and composes with whatever other callbacks the solve already carries. Three box types are
 provided, each built from one `IntervalSets` interval per dimension.

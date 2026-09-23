@@ -1,5 +1,9 @@
 # Noise processes
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 Every sampler is driven by a noise process, and for the fractional samplers the exponent of
 that process must match the exponent of the drift. This page covers the two processes the
 package supplies: α-stable (Lévy) noise, and linear fractional stable motion.

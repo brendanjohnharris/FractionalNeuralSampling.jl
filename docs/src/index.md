@@ -5,7 +5,7 @@ layout: home
 
 hero:
   name: "FractionalNeuralSampling"
-  text: "Lévy-driven and fractional-order samplers"
+  text: "Lévy-driven and fractional-order stochastic processes"
   tagline: "SDE samplers for fractional neural sampling, built on the SciML interface."
   actions:
     - theme: brand

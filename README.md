@@ -58,7 +58,9 @@ Samplers are keyword constructors returning a `Sampler <: AbstractSDEProblem`. E
 | `FNS` | `FractionalNeuralSampler` | Underdamped sampler driven by Lévy noise |
 | `sFNS` | `SpaceFractionalNeuralSampler` | FNS with a spatial fractional (Riesz) derivative of 𝜋 |
 | `bFNS` | `BiFractionalNeuralSampler` | FNS with both spatial and temporal fractional orders |
-| `tFOLE`, `sFOLE`, `bFOLE` | — | Temporal-, space-, and bi-fractional overdamped Langevin |
+| `tFOLE` | `TemporalFractionalOverdampedLangevinEquation` | Overdamped Langevin, fractional in time |
+| `sFOLE` | `SpaceFractionalOverdampedLangevinEquation` | Overdamped Langevin, fractional in space |
+| `bFOLE` | `BiFractionalOverdampedLangevinEquation` | Overdamped Langevin, fractional in space and time |
 | `FHMC` | `FractionalHamiltonianMonteCarlo` | Fractional Hamiltonian Monte Carlo |
 
 For example, a Langevin sampler of a standard normal:

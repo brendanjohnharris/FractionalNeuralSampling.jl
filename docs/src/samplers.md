@@ -1,5 +1,9 @@
 # Samplers
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 A sampler is a keyword constructor returning a [`Sampler`](@ref), which subtypes
 `SciMLBase.AbstractSDEProblem`. Since a sampler is an SDE problem, it composes with
 callbacks, ensembles, and the standard `solve` interface.
@@ -12,9 +16,9 @@ callbacks, ensembles, and the standard `solve` interface.
 | [`FHMC`](@ref) | `FractionalHamiltonianMonteCarlo` | 2 | α-stable | Fractional Hamiltonian Monte Carlo |
 | [`sFNS`](@ref) | `SpaceFractionalNeuralSampler` | 2 | α-stable | FNS with a fractional Laplacian of 𝜋 |
 | [`bFNS`](@ref) | `BiFractionalNeuralSampler` | 2 | fractional stable | sFNS with a fractional time derivative |
-| [`tFOLE`](@ref) | none | 1 | fractional Gaussian | Overdamped, fractional in time |
-| [`sFOLE`](@ref) | none | 1 | α-stable | Overdamped, fractional in space |
-| [`bFOLE`](@ref) | none | 1 | fractional stable | Overdamped, fractional in both |
+| [`tFOLE`](@ref) | `TemporalFractionalOverdampedLangevinEquation` | 1 | fractional Gaussian | Overdamped, fractional in time |
+| [`sFOLE`](@ref) | `SpaceFractionalOverdampedLangevinEquation` | 1 | α-stable | Overdamped, fractional in space |
+| [`bFOLE`](@ref) | `BiFractionalOverdampedLangevinEquation` | 1 | fractional stable | Overdamped, fractional in both |
 
 ## The common interface
 
@@ -121,11 +125,11 @@ u0 = [0.0, 0.0]
 
 samplers = ["OLE" => OLE(; tspan, η = 0.5, u0 = [0.0], 𝜋),
             "Langevin" => Langevin(; tspan, β = 1.0, η = 0.5, u0, 𝜋),
-            "FNS" => FNS(; tspan, α = 1.4, β = 0.1, γ = 0.5, u0, 𝜋)]
+            "FNS" => FNS(; tspan, α = 1.4, β = 1.0, γ = 5.0, u0, 𝜋)]
 
 sols = map(samplers) do (name, S)
     Random.seed!(42)
-    name => solve(S; dt = 0.01)
+    name => solve(S; dt = 0.002)
 end
 
 fig = FourPanel()
@@ -133,7 +137,7 @@ for (i, (name, sol)) in enumerate(sols)
     ax = Axis(fig[(i > 2) + 1, mod1(i, 2)]; xlabel = "Time", ylabel = "Position",
               title = name)
     lines!(ax, sol.t, first.(sol.u); linewidth = 0.5, color = Fathom.colororder[i])
-    ylims!(ax, -8, 8)
+    limits!(ax, 0, 100, -8, 8)  # a window; the densities below use the whole run
 end
 
 ax = Axis(fig[2, 2]; xlabel = "Position", ylabel = "Density", title = "Sampled")
@@ -148,12 +152,21 @@ addlabels!(fig)
 fig
 ```
 
-Neither Langevin sampler leaves the mode it first settles in, so each returns a unimodal
-estimate of a bimodal target. The Lévy sampler crosses the origin 27 times and occupies
-both modes, although at this length it still weights them unevenly, placing 31% of its
-samples on the positive side. The comparison is about mixing rather than about
-correctness, since all three have 𝜋 as their stationary density and the Langevin samplers
-would recover it given long enough.
+Neither Langevin sampler leaves the mode it first settles in, and the two settle in
+different modes, so each returns a unimodal estimate of a bimodal target. The Lévy sampler
+crosses the origin 259 times and divides its samples almost evenly, placing 48.7% of them
+on the positive side.
+
+The trajectory panels show the first 100 of the 1000 time units simulated, since at this
+mixing rate the whole run is solid ink; the sampled densities use every sample.
+
+Crossing often is necessary for a correct estimate without being sufficient. Even at this
+rate the sampled distribution is not the target: each mode comes out narrower than 𝜋, at
+an interquartile width of 0.36 against 0.5, and 8.4% of samples fall between or beyond the
+modes, carried there by jumps in transit. The Langevin samplers have 𝜋 as their stationary
+density and would recover it given long enough. For the Lévy sampler, a longer run fixes
+the balance between the modes and leaves that discrepancy, which is what the
+space-fractional drift below addresses.
 
 ### The role of α
 
@@ -168,14 +181,14 @@ axd = Axis(fig[2, 2]; xlabel = "Position", ylabel = "Density", title = "Sampled"
 
 for (i, α) in enumerate(αs)
     Random.seed!(7)
-    S = FNS(; tspan = (0.0, 1000.0), α, β = 0.1, γ = 0.5, u0 = [0.0, 0.0], 𝜋)
-    x = first.(solve(S; dt = 0.01).u)
+    S = FNS(; tspan = (0.0, 1000.0), α, β = 1.0, γ = 5.0, u0 = [0.0, 0.0], 𝜋)
+    x = first.(solve(S; dt = 0.002).u)
 
     ax = Axis(fig[(i > 2) + 1, mod1(i, 2)]; xlabel = "Time", ylabel = "Position",
               title = "α = $α")
     lines!(ax, range(0, 1000; length = length(x)), x; linewidth = 0.5,
            color = Fathom.colororder[i])
-    ylims!(ax, -8, 8)
+    limits!(ax, 0, 100, -8, 8)  # a window; the densities use the whole run
 
     ziggurat!(axd, x; bins = range(-8, 8; length = 80), normalization = :pdf,
               color = Fathom.colororder[i], label = "α = $α")
@@ -186,11 +199,13 @@ addlabels!(fig)
 fig
 ```
 
-At α = 2 the sampler settles into one mode and never reaches |x| = 6, crossing the origin
-only while settling. Lowering α buys crossings (27 at α = 1.6, 45 at α = 1.2) at the cost
-of excursion size: 0.4% of samples at α = 1.6 and 1.0% at α = 1.2 fall beyond |x| = 8,
-reaching |x| ≈ 64 and ≈ 485 respectively, so both trajectory panels are cropped to the
-frame. [Boundaries](boundaries.md) confine a Lévy-driven sampler to a region of
+The trajectory panels again show the first 100 time units, and the densities the whole
+run. At α = 2 the sampler settles into one mode and never reaches |x| = 6, crossing the
+origin only while settling. Lowering α buys crossings (158 at α = 1.6, 413 at α = 1.2) at the cost
+of excursion size: 0.25% of samples at α = 1.6 and 0.62% at α = 1.2 fall beyond |x| = 8,
+reaching |x| ≈ 100 and ≈ 872 respectively, so the trajectory panels are cropped to the
+frame. In the density panel α = 1.6 tracks the target at both modes while α = 1.2
+over-peaks them, so more crossings do not by themselves buy a closer fit. [Boundaries](boundaries.md) confine a Lévy-driven sampler to a region of
 interest when those excursions are unwanted.
 
 ## Fractional samplers
@@ -248,7 +263,8 @@ fig
 The space-fractional sampler recovers the bimodal target from a first-order equation, with
 no momentum to carry it across the barrier: the fractional drift and the α-stable noise do
 that work between them. Over this run the two modes are visited almost equally, with 50.9%
-of samples on the positive side and 94.6% of them within one unit of a mode.
+of samples on the positive side and 94.6% of them within one unit of a mode, so the halo
+that [`FNS`](@ref) leaves between the modes is largely absent.
 
 !!! note "Parameter names differ between samplers"
     The symbol attached to each role is not uniform across the family. In [`sFNS`](@ref) γ

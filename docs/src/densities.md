@@ -1,5 +1,9 @@
 # Densities
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 A [`Density`](@ref) wraps the target distribution 𝜋 that a sampler is to reproduce, and
 gives every sampler one interface to that target. The drift of every sampler in this
 package is built either from ∇log𝜋 or from a fractional derivative of 𝜋.

@@ -1,5 +1,9 @@
 # Reference
 
+```@meta
+CurrentModule = FractionalNeuralSampling
+```
+
 Every exported symbol is documented on the page where it is introduced. The index below
 links to each of them.
 
