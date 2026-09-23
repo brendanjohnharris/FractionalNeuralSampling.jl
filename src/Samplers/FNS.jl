@@ -30,8 +30,12 @@ Fractional neural sampling: underdamped dynamics driven by α-stable (Lévy) noi
 \\mathrm{d}v = \\beta c_\\alpha \\nabla \\log \\pi(x) \\, \\mathrm{d}t
 ```
 
-The prefactor ``c_α = Γ(α-1)/Γ(α/2)^2`` keeps the stationary density at `𝜋` under Lévy
-noise. At α = 2 the noise is Brownian and ``c_α = 1``. Second order, so `u0` stacks
+The prefactor ``c_α = Γ(α-1)/Γ(α/2)^2`` rescales the drift for Lévy noise; at α = 2 the
+noise is Brownian and ``c_α = 1``. Below α = 2 the sampled distribution retains a
+discrepancy from `𝜋` that a longer run does not remove, since the drift is built from
+∇log𝜋 rather than from its fractional analogue; [`sFNS`](@ref) uses the latter.
+
+Second order, so `u0` stacks
 position and momentum. Aliased as `FractionalNeuralSampler`.
 
 # Arguments
@@ -41,7 +45,7 @@ position and momentum. Aliased as `FractionalNeuralSampler`.
 - `γ`: drift strength, which also scales the noise as ``γ^{1/α}``
 - `u0`: initial `[position; momentum]`
 - `𝜋`: target [`Density`](@ref)
-- `boundaries`: an [`AbstractBoundary`](@ref), or `nothing`
+- `boundaries`: an [`AbstractBoundary`](@ref FractionalNeuralSampling.Boundaries.AbstractBoundary), or `nothing`
 - `noise`: defaults to [`LevyProcess!`](@ref) of the same α
 
 Remaining keywords pass through to [`Sampler`](@ref).

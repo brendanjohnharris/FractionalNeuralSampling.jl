@@ -18,8 +18,10 @@ and built from α-stable increments. `H` controls the correlation between succes
 increments, so `H > 1/2` gives persistent excursions and `H < 1/2` antipersistent ones,
 while `α` controls their tails. The two exponents are set independently.
 
-This is the noise the fractional-in-time samplers need: [`tFOLE`](@ref) takes α = 2 with
-H = 1 - β/2, and [`bFOLE`](@ref) and [`bFNS`](@ref) take H = 1/2 - β/2 + 1/α.
+This is the noise the fractional-in-time samplers need:
+[`tFOLE`](@ref FractionalNeuralSampling.Samplers.tFOLE) takes α = 2 with H = 1 - β/2, and
+[`bFOLE`](@ref FractionalNeuralSampling.Samplers.bFOLE) and
+[`bFNS`](@ref FractionalNeuralSampling.Samplers.bFNS) take H = 1/2 - β/2 + 1/α.
 
 See [`lfsn`](@ref) for the arguments.
 """

@@ -29,7 +29,7 @@ the stationary density. First order, so `length(u0) == dimension(𝜋)`. Aliased
 - `η`: noise strength
 - `u0`: initial position
 - `𝜋`: target [`Density`](@ref); defaults to a standard normal
-- `boundaries`: an [`AbstractBoundary`](@ref), or `nothing`
+- `boundaries`: an [`AbstractBoundary`](@ref FractionalNeuralSampling.Boundaries.AbstractBoundary), or `nothing`
 - `alg`: default solver, `EM()`
 
 Remaining keywords pass through to [`Sampler`](@ref).

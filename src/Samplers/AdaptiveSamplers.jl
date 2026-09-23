@@ -145,7 +145,7 @@ reports where a target has support rather than how much.
 - `γ`: drift strength, which also sets the noise as ``\\sqrt{2γ}``
 - `τ_r`: deposition time; larger values deposit more slowly, and `Inf` disables adaptation
 - `τ_d`: decay time of the accumulated kernel
-- `boundaries`: an [`AbstractBoundary`](@ref), which sets the domain of K
+- `boundaries`: an [`AbstractBoundary`](@ref FractionalNeuralSampling.Boundaries.AbstractBoundary), which sets the domain of K
 - `u0`: initial position
 - `𝜋`: target [`Density`](@ref)
 
@@ -211,7 +211,7 @@ At α = 2 the prefactor is one and the sampler matches [`AdaptiveWalkSampler`](@
 - `γ`: drift strength, which also scales the noise as ``γ^{1/α}``
 - `τ_r`: deposition time; `Inf` disables adaptation
 - `τ_d`: decay time of the accumulated kernel
-- `boundaries`: an [`AbstractBoundary`](@ref), which sets the domain of K
+- `boundaries`: an [`AbstractBoundary`](@ref FractionalNeuralSampling.Boundaries.AbstractBoundary), which sets the domain of K
 - `u0`: initial position
 - `𝜋`: target [`Density`](@ref)
 

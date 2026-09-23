@@ -34,7 +34,7 @@ Aliased as `LangevinEquation`.
 - `η`: damping rate, which is also the noise strength
 - `u0`: initial `[position; momentum]`
 - `𝜋`: target [`Density`](@ref); defaults to a standard normal over the position
-- `boundaries`: an [`AbstractBoundary`](@ref), or `nothing`
+- `boundaries`: an [`AbstractBoundary`](@ref FractionalNeuralSampling.Boundaries.AbstractBoundary), or `nothing`
 - `alg`: default solver, `EM()`
 
 Remaining keywords pass through to [`Sampler`](@ref).
