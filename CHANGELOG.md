@@ -3,36 +3,37 @@
 ## v0.3.0
 
 ### Breaking
-- `tFOLE`'s diffusion is now `√η` rather than `η`. `gen_fbm` draws α = 2 stable increments, which carry variance 2dt under the package's σ = 1 convention rather than the dt of a Wiener process, so the old coefficient left the stationary density at 𝜋^(1/η), correct only at η = 1: against a standard normal at η = 2 it sampled 𝜋^(1/2), of standard deviation 1.41. It is now 𝜋 for every η, matching `OLE`.
-- Removed `samplingefficiency`, which was exported but never defined.
-- Removed the empty `MakieExt`; `Makie` is no longer a weak dependency.
-- Box boundaries (`ReflectingBox`, `PeriodicBox`, `ReentrantBox`) carry their corner element type as a type parameter, so their fields are concrete.
+- `tFOLE`'s diffusion is now `√η` rather than `η`, so it samples 𝜋 for every η (previously 𝜋^(1/η)).
+- Depends on and reexports `StochasticDiffEqLowOrder` rather than `StochasticDiffEq`. `EM` is still available; load `StochasticDiffEq` for other solvers.
+- Removed `samplingefficiency` (exported but never defined), the empty `MakieExt`, and the unused `Makie` and `TimeseriesBase` weak dependencies.
+- Box boundaries carry their corner element type as a type parameter.
 
 ### Fixed
-- Updating a parameter with the callable form a sampler documents, `S(; γ = 1.0)`, threw a `MethodError` for `sFOLE`, `sFNS`, `bFOLE`, `bFNS` and both adaptive samplers, including for the `sFNS` example the README gives it with. Those six carry ApproxFun operators, and a transform plan, beside their scalar parameters, so their parameters are a `NamedTuple` rather than an `SLArray`, and the update went straight to `SLVector`, which has no `NamedTuple` method. `remake` was unaffected.
-- Every spectral transform now runs through `FractionalNeuralSampling.serial_fftw`, which drops FFTW to one thread for the call and restores the previous count. FFTW segfaults on the in-place plans used here when it is multithreaded (JuliaMath/FFTW.jl#236), taking the session down rather than throwing, so `lfsn` and every sampler built on a spectral approximation of the target (`sFOLE`, `sFNS`, `bFOLE`, `bFNS`) crashed a default multicore session at any `approx_n_modes`. Only `lfsn` had documented the hazard, and the test suite hid it by setting the thread count to 1 before any sampler was built.
-- `FNS`, `FHMC`, `sFNS` and the adaptive samplers threw a `MethodError` when constructed without a `𝜋`; their default target now works, and `Langevin`, `OLE` and `tFOLE` gained the same default.
-- `FHMC` defaulted `u0` to a 1×2 matrix, ignored `boundaries` unless they were already a callback, and had no default algorithm.
-- `Langevin` defaulted `u0` to `[0.0]`, one element short of the 2 a second-order sampler needs, so the default always failed `assert_dimension`. It is now `[0.0, 0.0]`.
-- `lfsn` returned uninitialised memory for small odd `m`, since the FFT padding was computed before `m` was made even.
-- `tFOLE`, `bFOLE` and `bFNS` failed for a tuple `tspan`, having divided the tuple by `dt`.
-- The Fourier-Laplacian assertions in `space_fractional_deriv` checked one diagonal entry rather than 100 (`1:length(100)`).
+- Compatibility with StochasticDiffEq v7.2 (DiffEqBase ≥ 7.21), under which every `solve` threw a `MethodError`.
+- `lfsn`, `sFOLE`, `sFNS`, `bFOLE` and `bFNS` segfaulted under multithreaded FFTW (JuliaMath/FFTW.jl#236); spectral transforms now run single-threaded.
+- Parameter updates via `S(; k = v)` threw for `sFOLE`, `sFNS`, `bFOLE`, `bFNS` and the adaptive samplers.
+- Samplers constructed without `𝜋` now default to a standard normal target.
+- `FHMC`: wrong default `u0`, ignored `boundaries`, no default algorithm.
+- `Langevin`: default `u0` had one element rather than two.
+- `lfsn` returned uninitialised memory for small odd `m`.
+- `tFOLE`, `bFOLE` and `bFNS` failed for a tuple `tspan`.
+- `space_fractional_deriv` checked only one entry of its Fourier-Laplacian assertion.
 - `domain` and `in` now work for `ReentrantBox`.
-- Adaptive samplers now report a missing `boundaries` rather than failing inside `domain`.
-- `lfsn`'s docstring gave a signature it does not have (`m` and `M` are keywords, not positional) and omitted `dt`. It now also warns that multithreaded FFTW segfaults on the in-place plan (JuliaMath/FFTW.jl#236), which takes the session down rather than throwing.
-- `Sampler` now normalises its `kwargs` field to `Base.Pairs` in the positional constructor that `remake` reaches. `DiffEqBase` reads `values(prob.kwargs)` and needs a `NamedTuple` back; since DiffEqBase v7.21, `_erase_problem_callback_types` rebuilds the field as a plain `NamedTuple`, whose `values` is a `Tuple`, so every `solve` failed in `merge_problem_kwargs` with a `MethodError`. This made the package unusable with StochasticDiffEq v7.2. The normalisation is a no-op on earlier versions, so one implementation covers both.
+- Box constructors now forward keywords, e.g. `PeriodicBox(-4 .. 4; reset = true)`.
+- Adaptive samplers report a missing `boundaries` explicitly.
 
 ### Performance
-No change to any sampler's output; all of the following remove per-step allocations.
-- Box boundary conditions test for a crossing without materialising the edge distances, and take the position partition without allocating the others.
-- `CaputoEM` and `MultiCaputoEM` overwrite the dropped history element rather than allocating a new one each step.
-- `OLE` and `tFOLE` take the single-vector gradient path, rather than routing a one-element collection of views through the collection method.
-- Univariate autodiff uses a scalar derivative rather than a gradient over a one-element vector.
-- `LevyNoise` stores `ND::Int`, and constructs its `Stable` distribution once per call rather than once per variable.
+- Removed per-step allocations in box boundaries, `CaputoEM`, `MultiCaputoEM`, `LevyNoise`, univariate autodiff and the `OLE`/`tFOLE` gradient. Output is unchanged.
+
+### Documentation
+- Added a documentation site and docstrings for every exported symbol.
+- Corrected the docstrings of `lfsn`, `tFOLE`, `ReentrantBox` and `Sampler`, and the claim that `FNS` samples 𝜋 exactly for α < 2.
 
 ### Internal
-- Removed `src/FourierSpectral.jl` (a scratch script) and the empty `Probabilities` module; stripped the superseded commented-out implementations from `Window.jl` and elsewhere.
-- The two adaptive samplers share their spectral setup and kernel-gradient code.
+- Tests for every sampler, including parameter updates; plotting removed from tests.
+- CI tests Julia 1.12 and 1.13; Aqua's undefined-exports check is re-enabled.
+- Moved exploratory scripts from `test/` to `scripts/`; removed dead code (`FourierSpectral.jl`, `Probabilities`, commented-out implementations).
+- The adaptive samplers share their spectral setup.
 
 ## v0.2.0
 
