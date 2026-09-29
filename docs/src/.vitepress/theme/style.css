@@ -191,3 +191,25 @@
 .mono {
     font-feature-settings: 'calt' 0;
 }
+
+/* ------------------------------------------------------------------ *
+ *  Outline placement
+ * ------------------------------------------------------------------ *
+ * VitePress reveals the right-hand outline only at 1280px, and below that
+ * collapses it into an "On this page" bar above the content. These pages are
+ * narrow enough to carry the aside sooner, so move the switch down. Mirrors
+ * the rules VitePress applies at its own breakpoint. */
+@media (min-width: 1152px) {
+    body .VPLocalNav {
+        display: none;
+    }
+
+    body .VPDoc .container {
+        display: flex;
+        justify-content: center;
+    }
+
+    body .VPDoc .aside {
+        display: block;
+    }
+}

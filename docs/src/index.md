@@ -6,7 +6,6 @@ layout: home
 hero:
   name: "FractionalNeuralSampling"
   text: "Lévy-driven and fractional-order stochastic processes"
-  tagline: "SDE samplers for fractional neural sampling, built on the SciML interface."
   actions:
     - theme: brand
       text: Get started
@@ -25,12 +24,8 @@ features:
     link: /densities
   - icon: 🎲
     title: Samplers
-    details: Langevin dynamics, fractional neural sampling, and space-, time-, and bi-fractional variants.
+    details: Langevin dynamics, fractional neural sampling, its space-, time- and bi-fractional variants, and adaptive samplers that repel themselves from visited states.
     link: /samplers
-  - icon: 🔁
-    title: Adaptive samplers
-    details: Samplers that deposit a decaying kernel to repel themselves from states they have already visited.
-    link: /adaptive
   - icon: 〰️
     title: Noise processes
     details: Lévy α-stable noise and linear fractional stable motion for DiffEqNoiseProcess.jl.

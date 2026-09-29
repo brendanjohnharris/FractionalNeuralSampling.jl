@@ -56,13 +56,14 @@ Random.seed!(42)
 
 𝜋 = Density(MixtureModel(Normal, [(-2.0, 0.5), (2.0, 0.5)]))
 S = FractionalNeuralSampler(; u0 = [0.0, 0.0], tspan = (0.0, 2000.0),
-                            α = 1.4, β = 0.1, γ = 0.5, 𝜋)
+                            α = 1.7, β = 0.1, γ = 0.5, 𝜋)
 sol = solve(S; dt = 0.01)
 x = first.(sol.u)
 
 fig = TwoPanel()
 ax = Axis(fig[1, 1]; xlabel = "Time", ylabel = "Position")
 lines!(ax, sol.t, x; linewidth = 0.5)
+ylims!(ax, -6, 6)  # the jumps are power-law, so a few excursions leave the frame
 
 ax = Axis(fig[1, 2]; xlabel = "Position", ylabel = "Density")
 ziggurat!(ax, x; bins = range(-5, 5; length = 80), normalization = :pdf)
@@ -75,8 +76,12 @@ fig
 
 The trajectory jumps between the two modes rather than diffusing across the barrier
 between them, and the sampled positions recover the target. Both panels come from the same
-solve, displayed as a timeseries on the left and as an empirical distribution on the
-right.
+solve, displayed as a timeseries on the left and as an empirical distribution on the right.
+
+The left panel is cropped to ±6. Lévy jumps are power-law distributed, so a run of this
+length reaches |x| ≈ 400 at least once however large α is; cropping keeps the rest of the
+trajectory legible, and [boundaries](boundaries.md) confine the sampler outright when the
+excursions matter.
 
 ## Where next
 
